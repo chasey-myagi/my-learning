@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 趣味功能大赏：你可能不知道的 18 个隐藏特性</title>
+<style>
+/* ===== CSS Variables ===== */
+:root{--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03);--card-bg:#fff;--card-shadow:0 1px 3px rgba(0,0,0,0.06);--code-inline-bg:rgba(28,25,23,0.06);--nav-bg:rgba(244,240,236,0.92);--progress-bg:var(--accent);--hero-gradient:linear-gradient(135deg,#dc4a1a 0%,#9a3412 50%,#1c1917 100%)}
+[data-theme="dark"]{--bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;--fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;--accent:#fb923c;--accent-2:#fdba74;--green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);--border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);--quote-bg:rgba(255,255,255,0.03);--card-bg:#1c1917;--card-shadow:0 1px 3px rgba(0,0,0,0.3);--code-inline-bg:rgba(255,255,255,0.08);--nav-bg:rgba(12,10,9,0.92);--progress-bg:var(--accent);--hero-gradient:linear-gradient(135deg,#fb923c 0%,#dc4a1a 50%,#0c0a09 100%)}
+
+/* ===== Reset & Base ===== */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',sans-serif;background:var(--bg);color:var(--fg);line-height:1.75;transition:background 0.3s,color 0.3s}
+
+/* ===== Scroll Progress Bar ===== */
+#progress-bar{position:fixed;top:0;left:0;width:0;height:3px;background:var(--progress-bg);z-index:1001;transition:width 0.1s linear}
+
+/* ===== Navigation ===== */
+.nav{position:fixed;top:3px;left:0;right:0;z-index:1000;background:var(--nav-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);transform:translateY(-100%);transition:transform 0.3s ease}
+.nav.visible{transform:translateY(0)}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0.5rem 1.5rem;display:flex;align-items:center;gap:1rem;overflow-x:auto;scrollbar-width:none}
+.nav-inner::-webkit-scrollbar{display:none}
+.nav-title{font-weight:700;font-size:0.85rem;color:var(--accent);white-space:nowrap;flex-shrink:0}
+.nav-links{display:flex;gap:0.25rem;flex-wrap:nowrap}
+.nav-links a{font-size:0.75rem;color:var(--fg-3);text-decoration:none;padding:0.25rem 0.5rem;border-radius:4px;white-space:nowrap;transition:all 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent);background:var(--tag-bg)}
+.theme-toggle{margin-left:auto;flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.8rem;color:var(--fg-2);cursor:pointer;transition:all 0.2s}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ===== Hero ===== */
+.hero{min-height:80vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:4rem 1.5rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:var(--hero-gradient);opacity:0.06}
+.hero-badge{display:inline-block;padding:0.35rem 1rem;border-radius:100px;font-size:0.8rem;font-weight:600;color:var(--accent);background:var(--tag-bg);border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);margin-bottom:1.5rem;letter-spacing:0.02em}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;line-height:1.15;max-width:800px;margin-bottom:1rem;background:linear-gradient(135deg,var(--accent),var(--fg));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero .subtitle{font-size:1.1rem;color:var(--fg-2);max-width:600px;line-height:1.6}
+.hero .meta{margin-top:2rem;font-size:0.85rem;color:var(--fg-3)}
+.hero .meta span{margin:0 0.5rem}
+.hero-ascii{margin-top:3rem;font-family:'SF Mono',Monaco,'Cascadia Code',Consolas,monospace;font-size:0.7rem;line-height:1.3;color:var(--accent);opacity:0.5;white-space:pre;text-align:center}
+
+/* ===== Content Container ===== */
+.container{max-width:820px;margin:0 auto;padding:0 1.5rem 6rem}
+
+/* ===== TOC ===== */
+.toc{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:2rem;margin-bottom:4rem;box-shadow:var(--card-shadow)}
+.toc h2{font-size:1.1rem;font-weight:700;margin-bottom:1rem;color:var(--accent)}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem}
+.toc a{display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;color:var(--fg-2);text-decoration:none;padding:0.4rem 0.6rem;border-radius:6px;transition:all 0.2s}
+.toc a:hover{background:var(--tag-bg);color:var(--accent)}
+.toc-num{font-weight:700;font-size:0.75rem;color:var(--accent);opacity:0.6;font-variant-numeric:tabular-nums;min-width:1.5em}
+
+/* ===== Section ===== */
+.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:opacity 0.6s ease,transform 0.6s ease}
+.section.revealed{opacity:1;transform:translateY(0)}
+.section-num{display:inline-block;font-size:0.75rem;font-weight:700;color:var(--accent);opacity:0.5;margin-bottom:0.5rem;letter-spacing:0.1em;text-transform:uppercase}
+.section h2{font-size:1.8rem;font-weight:800;line-height:1.2;margin-bottom:0.5rem}
+.section .section-subtitle{font-size:1rem;color:var(--fg-2);margin-bottom:1.5rem}
+.section-path{display:inline-block;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:0.75rem;color:var(--fg-3);background:var(--code-inline-bg);padding:0.2rem 0.6rem;border-radius:4px;margin-bottom:1.5rem}
+
+/* ===== Cards ===== */
+.feature-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:var(--card-shadow);transition:border-color 0.2s}
+.feature-card:hover{border-color:color-mix(in srgb, var(--accent) 40%, transparent)}
+.feature-card h3{font-size:1rem;font-weight:700;margin-bottom:0.5rem}
+.feature-card p{font-size:0.9rem;color:var(--fg-2);line-height:1.7}
+
+/* ===== Code Block ===== */
+.code-block{background:var(--bg-code);border-radius:8px;padding:1rem 1.25rem;margin:1rem 0;overflow-x:auto;font-family:'SF Mono',Monaco,'Cascadia Code',Consolas,monospace;font-size:0.82rem;line-height:1.6;color:#e7e5e4;border:1px solid rgba(255,255,255,0.06)}
+.code-block .comment{color:#78716c}
+.code-block .keyword{color:#fb923c}
+.code-block .string{color:#4ade80}
+.code-block .type{color:#60a5fa}
+.code-block .func{color:#c084fc}
+
+/* ===== Inline Code ===== */
+code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:0.85em;background:var(--code-inline-bg);padding:0.15rem 0.4rem;border-radius:4px}
+
+/* ===== Tags ===== */
+.tag{display:inline-block;font-size:0.7rem;font-weight:600;padding:0.15rem 0.5rem;border-radius:100px;margin-right:0.35rem;margin-bottom:0.35rem}
+.tag-fun{background:rgba(251,146,60,0.12);color:var(--accent)}
+.tag-hidden{background:rgba(96,165,250,0.12);color:#60a5fa}
+.tag-power{background:rgba(74,222,128,0.12);color:var(--green)}
+.tag-cute{background:rgba(244,114,182,0.12);color:#f472b6}
+
+/* ===== ASCII Art ===== */
+.ascii-art{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:0.75rem;line-height:1.2;background:var(--bg-code);padding:1rem 1.5rem;border-radius:8px;color:var(--accent);overflow-x:auto;white-space:pre;margin:1rem 0;border:1px solid rgba(255,255,255,0.06)}
+
+/* ===== Quote ===== */
+.quote{border-left:3px solid var(--accent);padding:0.75rem 1rem;margin:1rem 0;background:var(--quote-bg);border-radius:0 6px 6px 0;font-size:0.9rem;color:var(--fg-2);font-style:italic}
+
+/* ===== Grid ===== */
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:1rem 0}
+
+/* ===== Highlight Box ===== */
+.highlight-box{background:var(--tag-bg);border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);border-radius:8px;padding:1rem 1.25rem;margin:1rem 0}
+.highlight-box p{font-size:0.9rem;color:var(--fg-2)}
+.highlight-box strong{color:var(--accent)}
+
+/* ===== Stat Row ===== */
+.stat-row{display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0}
+.stat-item{text-align:center}
+.stat-num{font-size:1.8rem;font-weight:800;color:var(--accent)}
+.stat-label{font-size:0.75rem;color:var(--fg-3);text-transform:uppercase;letter-spacing:0.05em}
+
+/* ===== Species Grid ===== */
+.species-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:0.75rem;margin:1rem 0}
+.species-item{background:var(--bg-alt);border-radius:8px;padding:0.75rem 0.5rem;text-align:center;font-size:0.8rem;color:var(--fg-2);border:1px solid var(--border);transition:all 0.2s}
+.species-item:hover{border-color:var(--accent);transform:translateY(-2px)}
+.species-icon{font-size:1.5rem;margin-bottom:0.25rem}
+
+/* ===== Key Grid ===== */
+.key-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.5rem;margin:1rem 0}
+.key-item{display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;color:var(--fg-2)}
+.key-cap{display:inline-flex;align-items:center;justify-content:center;min-width:2rem;padding:0.15rem 0.5rem;background:var(--bg-alt);border:1px solid var(--border);border-radius:4px;font-family:monospace;font-size:0.75rem;font-weight:600;color:var(--fg)}
+
+/* ===== Footer ===== */
+.footer{text-align:center;padding:3rem 1.5rem;border-top:1px solid var(--border);margin-top:4rem;color:var(--fg-3);font-size:0.8rem}
+.footer a{color:var(--accent);text-decoration:none}
+.footer a:hover{text-decoration:underline}
+
+/* ===== Responsive ===== */
+@media(max-width:640px){
+  .hero h1{font-size:1.8rem}
+  .toc-grid{grid-template-columns:1fr}
+  .grid-2{grid-template-columns:1fr}
+  .species-grid{grid-template-columns:repeat(3,1fr)}
+  .key-grid{grid-template-columns:1fr}
+  .stat-row{justify-content:center}
+  .nav-links{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Scroll Progress Bar -->
+<div id="progress-bar"></div>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <span class="nav-title">CC Fun Features</span>
+    <div class="nav-links" id="nav-links"></div>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">
+      <span id="theme-icon">&#9788;</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="hero-badge">Source Code Deep Dive</div>
+  <h1>Claude Code 趣味功能大赏<br>你可能不知道的 18 个隐藏特性</h1>
+  <p class="subtitle">
+    我们深入翻阅了 Claude Code 的源码，发掘了那些藏在终端深处的宝藏功能——从在 CLI 里玩 Vim，到 AI 在后台「做梦」整理记忆，再到可以养的 ASCII 宠物。
+  </p>
+  <p class="meta">
+    <span>2026-03-31</span>
+    <span>&middot;</span>
+    <span>源码版本：claude-code/src</span>
+    <span>&middot;</span>
+    <span>约 18 个特性</span>
+  </p>
+  <div class="hero-ascii">   /\_/\
+  ( o   o)
+  (  w  )    "嘘...这些功能不是每个人都知道的"
+  (")_(")</div>
+</header>
+
+<!-- TOC -->
+<div class="container">
+  <div class="toc">
+    <h2>&#x1F5C2; 目录导航</h2>
+    <div class="toc-grid" id="toc-grid"></div>
+  </div>
+
+  <!-- Section 1: Vim Mode -->
+  <section class="section" id="sec-vim" data-title="Vim 模式">
+    <div class="section-num">01</div>
+    <h2>&#x1F5A5; 在终端 CLI 里实现了一个 Vim</h2>
+    <p class="section-subtitle">完整的 Vim 状态机，支持 motions、operators、text objects、dot-repeat</p>
+    <div class="section-path">src/vim/ &mdash; 5 个文件，一个微型 Vim 引擎</div>
+    <span class="tag tag-power">硬核</span>
+    <span class="tag tag-hidden">隐藏功能</span>
+
+    <p>Claude Code 的输入框不只是一个普通的文本框——它内置了一个<strong>完整的 Vim 模态编辑器</strong>。输入 <code>/vim</code> 即可切换。这不是什么简单的 "支持 hjkl 移动" 的玩具实现，而是一个严肃的状态机。</p>
+
+    <div class="feature-card">
+      <h3>状态机架构</h3>
+      <p>源码中的类型定义本身就是文档。Vim 状态分为 INSERT 和 NORMAL 两个大模式，NORMAL 模式下又有一套精巧的命令状态机：idle -> count -> operator -> operatorCount -> operatorFind -> operatorTextObj，完美复刻了真正的 Vim 命令解析流程。</p>
+    </div>
+
+    <div class="ascii-art">                          VimState
+  +--------------------------+------------------------------+
+  |  INSERT                  |  NORMAL                      |
+  |  (tracks insertedText)   |  (CommandState machine)      |
+  |                          |                              |
+  |                          |  idle --+-[d/c/y]-> operator |
+  |                          |         +-[1-9]---> count    |
+  |                          |         +-[fFtT]--> find     |
+  |                          |         +-[g]-----> g        |
+  |                          |         +-[r]-----> replace  |
+  |                          |         +-[><]----> indent   |
+  +--------------------------+------------------------------+</div>
+
+    <div class="grid-2">
+      <div class="feature-card">
+        <h3>支持的操作</h3>
+        <p><code>d</code> (delete)、<code>c</code> (change)、<code>y</code> (yank) 三大 operators，配合所有 motions 和 text objects 自由组合。<code>dd</code>/<code>cc</code>/<code>yy</code> 行操作、<code>p</code>/<code>P</code> 粘贴、<code>.</code> dot-repeat、<code>u</code> undo——一个不少。</p>
+      </div>
+      <div class="feature-card">
+        <h3>Text Objects</h3>
+        <p>支持 <code>iw</code>/<code>aw</code> (word)、<code>i"</code>/<code>a"</code> (引号)、<code>ib</code>/<code>ab</code> (括号)、<code>iB</code>/<code>aB</code> (花括号)，以及尖括号 <code>i&lt;</code>/<code>a&lt;</code>。甚至正确处理了 grapheme clusters（emoji 不会被切成两半）。</p>
+      </div>
+    </div>
+
+    <div class="quote">
+      有趣的细节：代码中有个 <code>MAX_VIM_COUNT = 10000</code> 的限制——防止你输入 <code>99999dd</code> 把整个输入框炸了。这很 Vim。
+    </div>
+  </section>
+
+  <!-- Section 2: Buddy System -->
+  <section class="section" id="sec-buddy" data-title="宠物伙伴系统">
+    <div class="section-num">02</div>
+    <h2>&#x1F43E; 养一只 ASCII 宠物</h2>
+    <p class="section-subtitle">18 种生物 + 稀有度系统 + RPG 属性 + 帽子装扮</p>
+    <div class="section-path">src/buddy/ &mdash; sprites.ts / companion.ts / types.ts</div>
+    <span class="tag tag-cute">超萌</span>
+    <span class="tag tag-hidden">隐藏功能</span>
+
+    <p>这大概是整个 Claude Code 最可爱的功能了。你可以在终端里养一只 ASCII 艺术的虚拟宠物，它会坐在你的输入框旁边，偶尔发表评论。</p>
+
+    <div class="species-grid">
+      <div class="species-item"><div class="species-icon">&#x1F986;</div>duck</div>
+      <div class="species-item"><div class="species-icon">&#x1F9A2;</div>goose</div>
+      <div class="species-item"><div class="species-icon">&#x1F431;</div>cat</div>
+      <div class="species-item"><div class="species-icon">&#x1F409;</div>dragon</div>
+      <div class="species-item"><div class="species-icon">&#x1F419;</div>octopus</div>
+      <div class="species-item"><div class="species-icon">&#x1F989;</div>owl</div>
+      <div class="species-item"><div class="species-icon">&#x1F427;</div>penguin</div>
+      <div class="species-item"><div class="species-icon">&#x1F422;</div>turtle</div>
+      <div class="species-item"><div class="species-icon">&#x1F40C;</div>snail</div>
+      <div class="species-item"><div class="species-icon">&#x1F47B;</div>ghost</div>
+      <div class="species-item"><div class="species-icon">&#x1F98E;</div>axolotl</div>
+      <div class="species-item"><div class="species-icon">&#x1F9AB;</div>capybara</div>
+      <div class="species-item"><div class="species-icon">&#x1F335;</div>cactus</div>
+      <div class="species-item"><div class="species-icon">&#x1F916;</div>robot</div>
+      <div class="species-item"><div class="species-icon">&#x1F430;</div>rabbit</div>
+      <div class="species-item"><div class="species-icon">&#x1F344;</div>mushroom</div>
+      <div class="species-item"><div class="species-icon">&#x1F408;</div>chonk</div>
+      <div class="species-item"><div class="species-icon">&#x1F7E2;</div>blob</div>
+    </div>
+
+    <div class="feature-card">
+      <h3>宝可梦式稀有度系统</h3>
+      <p>每只宠物有 5 个稀有等级：Common (60%)、Uncommon (25%)、Rare (10%)、Epic (4%)、<strong>Legendary (1%)</strong>。稀有度决定了帽子（Common 没帽子）和属性上限。你的宠物种类由 <code>hash(userId + salt)</code> 确定性生成——每个人的宠物都独一无二，但不能通过改配置来作弊拿 Legendary。</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="feature-card">
+        <h3>RPG 属性</h3>
+        <p>每只宠物有 5 项属性：<strong>DEBUGGING</strong>、<strong>PATIENCE</strong>、<strong>CHAOS</strong>、<strong>WISDOM</strong>、<strong>SNARK</strong>（毒舌值！）。有一项巅峰属性和一项弱项属性，其余随机分配。Legendary 的属性下限是 50。</p>
+      </div>
+      <div class="feature-card">
+        <h3>帽子与眼睛</h3>
+        <p>7 种帽子：crown、tophat、propeller（螺旋桨）、halo（光环）、wizard、beanie、<strong>tinyduck</strong>（头顶一只小鸭子！）。6 种眼睛样式：<code>&middot;</code> <code>&#x2726;</code> <code>&times;</code> <code>&#x25C9;</code> <code>@</code> <code>&deg;</code>。还有 1% 概率出闪光（shiny）！</p>
+      </div>
+    </div>
+
+    <div class="ascii-art">   /\_/\          .----.        .---.
+  ( ·   ·)      ( ·  · )      (·>·)
+  (  w  )       (      )     /(   )\
+  (")_(")~       `----'       `---'
+   cat            blob        penguin</div>
+
+    <div class="quote">
+      源码注释："Mulberry32 -- tiny seeded PRNG, good enough for picking ducks"。一个专门用来决定你是鸭子还是龙的随机数生成器。
+    </div>
+  </section>
+
+  <!-- Section 3: Dream Task -->
+  <section class="section" id="sec-dream" data-title="AI 做梦系统">
+    <div class="section-num">03</div>
+    <h2>&#x1F4AD; AI 在后台「做梦」</h2>
+    <p class="section-subtitle">autoDream：记忆整合 + 背景代理 + 四阶段反思流程</p>
+    <div class="section-path">src/services/autoDream/ &amp; src/tasks/DreamTask/</div>
+    <span class="tag tag-fun">有趣</span>
+    <span class="tag tag-power">高级功能</span>
+
+    <p>这是 Claude Code 最富有诗意的功能之一——<strong>AI 会在后台「做梦」</strong>。当你不在与它交互时，它会像人类睡眠时整理记忆一样，启动一个后台代理来整理和巩固它的记忆文件。</p>
+
+    <div class="feature-card">
+      <h3>触发条件（三重门控）</h3>
+      <p>做梦不是随时发生的，有严格的门控机制（从便宜到贵排序）：<br>
+      <strong>1. 时间门控</strong>：距上次整合已过足够小时数<br>
+      <strong>2. 会话门控</strong>：积累了足够多新的会话 transcript<br>
+      <strong>3. 锁门控</strong>：没有其他进程正在做梦<br>
+      这避免了多个 Claude Code 实例同时「做梦」的混乱场景。</p>
+    </div>
+
+    <div class="feature-card">
+      <h3>四阶段梦境流程</h3>
+      <p>做梦的 prompt 设计得非常精巧，分四个阶段：</p>
+      <p><strong>Phase 1 - Orient</strong>：查看现有记忆目录，了解已有的知识结构<br>
+      <strong>Phase 2 - Gather</strong>：从日志和 transcript 中搜集新信息<br>
+      <strong>Phase 3 - Consolidate</strong>：把新信息合并到现有记忆文件中，解决矛盾<br>
+      <strong>Phase 4 - Prune</strong>：修剪过期内容，更新索引文件</p>
+    </div>
+
+    <div class="highlight-box">
+      <p><strong>实现细节</strong>：做梦时写入的文件被放在一个 overlay 目录中，只有成功完成后才合并到主目录。如果做梦被中断（kill），会回滚锁的 mtime，让下一个会话可以重试。在 footer 状态栏中会显示一个 pill 指示 "dreaming"，用户可以通过 Shift+Down 查看做梦的进度。</p>
+    </div>
+  </section>
+
+  <!-- Section 4: Speculation -->
+  <section class="section" id="sec-speculation" data-title="推测执行">
+    <div class="section-num">04</div>
+    <h2>&#x26A1; 推测执行：预测你的下一步</h2>
+    <p class="section-subtitle">在你打字的时候，AI 已经开始执行它猜测你会接受的建议</p>
+    <div class="section-path">src/services/PromptSuggestion/speculation.ts</div>
+    <span class="tag tag-power">硬核</span>
+    <span class="tag tag-fun">黑科技</span>
+
+    <p>受 CPU 推测执行启发，Claude Code 实现了一个<strong>用户意图推测系统</strong>。当 AI 给出一个建议（比如 "接下来应该修复那个 bug"）时，它不是傻等你按回车——而是悄悄在后台启动一个分支执行。</p>
+
+    <div class="feature-card">
+      <h3>工作原理</h3>
+      <p>
+      1. AI 生成一个建议（prompt suggestion）<br>
+      2. 系统创建一个 <strong>overlay 目录</strong>，把文件写操作重定向到这里<br>
+      3. 后台 forked agent 开始执行这个建议<br>
+      4. 如果你接受了建议 → overlay 的改动合并到主目录，消息历史拼接<br>
+      5. 如果你拒绝或输入了不同的内容 → overlay 被清理，一切回滚
+      </p>
+    </div>
+
+    <div class="grid-2">
+      <div class="feature-card">
+        <h3>安全约束</h3>
+        <p>推测执行中的 Bash 命令会检查只读约束（不允许执行 <code>cd</code> 等改变状态的命令），Write/Edit 操作被重定向到 overlay。最多 20 个 turn、100 条消息。</p>
+      </div>
+      <div class="feature-card">
+        <h3>流水线建议</h3>
+        <p>更厉害的是：在推测执行进行的同时，系统还会生成<strong>下一轮的建议</strong>（pipelined suggestion），形成一个推测执行的流水线。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5: Voice Mode -->
+  <section class="section" id="sec-voice" data-title="语音输入">
+    <div class="section-num">05</div>
+    <h2>&#x1F3A4; 对着终端说话</h2>
+    <p class="section-subtitle">Hold-to-Talk 语音输入，支持多语言识别</p>
+    <div class="section-path">src/voice/ &amp; src/commands/voice/</div>
+    <span class="tag tag-fun">有趣</span>
+    <span class="tag tag-cute">酷</span>
+
+    <p>你没看错——Claude Code 支持<strong>语音输入</strong>。输入 <code>/voice</code> 启用后，按住空格键（Hold-to-Talk）就能用语音向 AI 下达指令。</p>
+
+    <div class="feature-card">
+      <h3>技术栈</h3>
+      <p>语音通过 <code>voice_stream</code> 端点连接到 Claude.ai 的语音转文字服务。需要 Anthropic OAuth 认证（API key 和 Bedrock/Vertex 不行）。在 macOS 上通过 SoX 录音，系统会自动检测麦克风权限并引导设置。支持多语言，可以通过 <code>/config</code> 切换识别语言。</p>
+    </div>
+
+    <div class="quote">
+      Kill-switch 的代号很有趣：<code>tengu_amber_quartz_disabled</code>。Anthropic 内部似乎用 "tengu" 作为 Claude Code 的项目代号，配合各种颜色+矿石的命名来区分不同的功能开关。
+    </div>
+  </section>
+
+  <!-- Section 6: Theme System -->
+  <section class="section" id="sec-theme" data-title="主题系统">
+    <div class="section-num">06</div>
+    <h2>&#x1F3A8; 精心调校的主题系统</h2>
+    <p class="section-subtitle">6 个预设主题 + 色盲友好模式 + 彩虹色 + 闪烁动画</p>
+    <div class="section-path">src/utils/theme.ts &amp; src/components/ThemePicker.tsx</div>
+    <span class="tag tag-fun">有趣</span>
+
+    <p>输入 <code>/theme</code> 可以打开主题选择器。但不只是 "深色/浅色" 那么简单——</p>
+
+    <div class="grid-2">
+      <div class="feature-card">
+        <h3>6 个预设主题</h3>
+        <p><code>dark</code>、<code>light</code>、<code>dark-daltonized</code>（深色色盲友好）、<code>light-daltonized</code>（浅色色盲友好）、<code>dark-ansi</code>（使用终端自定义色）、<code>light-ansi</code>。还有 <code>auto</code> 跟随系统。</p>
+      </div>
+      <div class="feature-card">
+        <h3>Shimmer 动画色</h3>
+        <p>Theme 对象里几乎每个颜色都配了一个 <code>*Shimmer</code> 变体——用于 Spinner 加载动画的闪烁效果。甚至还有一整套<strong>彩虹色</strong>（rainbow_red 到 rainbow_violet）用于 "ultrathink" 关键词高亮！</p>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <h3>Agent 彩色系统</h3>
+      <p>通过 <code>/color</code> 命令可以给当前会话设置颜色标签。有 8 种专属 Agent 颜色：red、blue、green、yellow、purple、orange、pink、cyan。用于多 Agent 协作（"swarm"）时区分不同的 teammate。Swarm 中的 teammate 不能自己改颜色——由 team leader 分配。</p>
+    </div>
+  </section>
+
+  <!-- Section 7: Keybindings -->
+  <section class="section" id="sec-keybindings" data-title="快捷键系统">
+    <div class="section-num">07</div>
+    <h2>&#x2328; 快捷键系统</h2>
+    <p class="section-subtitle">16 个上下文 + Chord 绑定 + 完整可自定义</p>
+    <div class="section-path">src/keybindings/ &mdash; 14 个文件，完整的键绑定框架</div>
+    <span class="tag tag-power">硬核</span>
+
+    <p>Claude Code 的快捷键系统不亚于 VS Code 的精细程度——它有<strong>16 个上下文</strong>（Context），每个上下文有独立的键绑定，支持 Chord（组合键序列，如 <code>ctrl+x ctrl+k</code>），且完全可通过 <code>~/.claude/keybindings.json</code> 自定义。</p>
+
+    <div class="key-grid">
+      <div class="key-item"><span class="key-cap">Ctrl+C</span> 中断执行</div>
+      <div class="key-item"><span class="key-cap">Ctrl+R</span> 历史搜索</div>
+      <div class="key-item"><span class="key-cap">Ctrl+T</span> 切换 Todo</div>
+      <div class="key-item"><span class="key-cap">Ctrl+O</span> 查看 Transcript</div>
+      <div class="key-item"><span class="key-cap">Ctrl+G</span> 外部编辑器</div>
+      <div class="key-item"><span class="key-cap">Ctrl+S</span> Stash 消息</div>
+      <div class="key-item"><span class="key-cap">Shift+Tab</span> 切换模式</div>
+      <div class="key-item"><span class="key-cap">Meta+P</span> 模型选择器</div>
+      <div class="key-item"><span class="key-cap">Meta+O</span> Fast 模式</div>
+      <div class="key-item"><span class="key-cap">Meta+T</span> Thinking 开关</div>
+      <div class="key-item"><span class="key-cap">Ctrl+V</span> 粘贴图片</div>
+      <div class="key-item"><span class="key-cap">Ctrl+B</span> 后台执行</div>
+      <div class="key-item"><span class="key-cap">Shift+Up</span> 消息导航</div>
+      <div class="key-item"><span class="key-cap">Ctrl+X Ctrl+E</span> 外部编辑器</div>
+      <div class="key-item"><span class="key-cap">Ctrl+X Ctrl+K</span> 杀掉 Agent</div>
+      <div class="key-item"><span class="key-cap">Space</span> 语音录入</div>
+    </div>
+
+    <div class="quote">
+      有趣：Windows 上 <code>shift+tab</code> 在没有 VT mode 的终端里不工作（这是一个 2019 年的 Windows Terminal bug），所以 Claude Code 检测 Node.js 和 Bun 的版本来决定是否用 <code>meta+m</code> 作为替代。这种平台兼容性细节令人佩服。
+    </div>
+  </section>
+
+  <!-- Section 8: Doctor -->
+  <section class="section" id="sec-doctor" data-title="/doctor 自诊断">
+    <div class="section-num">08</div>
+    <h2>&#x1FA7A; /doctor 自诊断系统</h2>
+    <p class="section-subtitle">环境检查 + 版本追踪 + MCP 验证 + 沙箱状态</p>
+    <div class="section-path">src/commands/doctor/ &amp; src/screens/Doctor.tsx</div>
+    <span class="tag tag-power">实用</span>
+
+    <p>输入 <code>/doctor</code> 会触发一个全面的环境健康检查界面。它不只是打印几行版本号——而是一个交互式的 React（Ink）UI 组件。</p>
+
+    <div class="feature-card">
+      <h3>检查项目</h3>
+      <p>
+      &#x2705; 当前版本 vs npm/gcs 上的最新版和稳定版<br>
+      &#x2705; 设置文件语法错误检测<br>
+      &#x2705; MCP 服务器连接状态和解析警告<br>
+      &#x2705; Sandbox（沙箱）配置状态<br>
+      &#x2705; 上下文窗口警告（context warnings）<br>
+      &#x2705; 插件错误<br>
+      &#x2705; Agent 配置（用户级和项目级）<br>
+      &#x2705; 版本锁信息和过期锁清理<br>
+      &#x2705; 键绑定冲突检测<br>
+      &#x2705; 环境变量合法性验证
+      </p>
+    </div>
+  </section>
+
+  <!-- Section 9: Cost Tracker -->
+  <section class="section" id="sec-cost" data-title="费用追踪">
+    <div class="section-num">09</div>
+    <h2>&#x1F4B0; 精细到 Token 的费用追踪</h2>
+    <p class="section-subtitle">实时成本计算 + 多模型分拆 + cache read/creation 分离统计</p>
+    <div class="section-path">src/cost-tracker.ts</div>
+    <span class="tag tag-power">实用</span>
+
+    <p>输入 <code>/cost</code> 查看当前会话的费用。但内部的 cost-tracker 远比你想的复杂——它追踪的维度包括：</p>
+
+    <div class="grid-2">
+      <div class="feature-card">
+        <h3>追踪维度</h3>
+        <p>总费用 (USD)、API 调用耗时（含/不含重试）、工具执行耗时、代码修改行数（新增/删除）、输入/输出 token 数、cache read vs cache creation tokens、web search 请求次数、<strong>每个模型的分拆用量</strong>。</p>
+      </div>
+      <div class="feature-card">
+        <h3>订阅用户的贴心处理</h3>
+        <p>对 Claude.ai 订阅用户，<code>/cost</code> 不会显示具体费用（因为包含在订阅里），而是告诉你当前是用订阅额度还是 overage 额度。但内部员工（<code>USER_TYPE === 'ant'</code>）会看到一行 "[ANT-ONLY] Showing cost anyway" 然后显示实际费用。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 10: BTW Side Question -->
+  <section class="section" id="sec-btw" data-title="/btw 侧问题">
+    <div class="section-num">10</div>
+    <h2>&#x1F4AC; /btw 不打断对话的侧问题</h2>
+    <p class="section-subtitle">"对了顺便问一下..." 的优雅实现</p>
+    <div class="section-path">src/commands/btw/</div>
+    <span class="tag tag-fun">巧妙</span>
+
+    <p>有时候你正在让 AI 干一件大事，突然想问个不相关的小问题。<code>/btw 为什么天是蓝的？</code> 就像跟同事说 "by the way..."——它会在不打断主对话上下文的情况下，用一个独立面板显示回答。</p>
+
+    <div class="feature-card">
+      <h3>实现方式</h3>
+      <p>底层用的是 <code>runSideQuestion</code>——fork 一个独立的对话来回答问题，但共享当前的系统 prompt 和上下文。回答在一个可滚动的 ScrollBox 里显示，80ms 刷新一次动画，有专属的加载 spinner。按上/下键可以滚动，Escape 关闭。</p>
+    </div>
+  </section>
+
+  <!-- Section 11: Stickers -->
+  <section class="section" id="sec-stickers" data-title="/stickers 贴纸">
+    <div class="section-num">11</div>
+    <h2>&#x1F4EC; /stickers 真的会寄贴纸给你</h2>
+    <p class="section-subtitle">StickerMule 联名，一键打开购买页面</p>
+    <div class="section-path">src/commands/stickers/stickers.ts</div>
+    <span class="tag tag-cute">彩蛋</span>
+
+    <p>输入 <code>/stickers</code>，Claude Code 会用默认浏览器打开 <a href="https://www.stickermule.com/claudecode" style="color:var(--accent)">stickermule.com/claudecode</a>。没错，这是一个<strong>真实的贴纸购买页面</strong>。一个 CLI 工具里居然内置了周边商店入口，这很 Anthropic。</p>
+
+    <div class="code-block"><span class="keyword">export async function</span> <span class="func">call</span>(): <span class="type">Promise</span>&lt;<span class="type">LocalCommandResult</span>&gt; {
+  <span class="keyword">const</span> url = <span class="string">'https://www.stickermule.com/claudecode'</span>
+  <span class="keyword">const</span> success = <span class="keyword">await</span> <span class="func">openBrowser</span>(url)
+  <span class="comment">// 就这么简单直接</span>
+}</div>
+  </section>
+
+  <!-- Section 12: ThinkBack -->
+  <section class="section" id="sec-thinkback" data-title="ThinkBack 年度回顾">
+    <div class="section-num">12</div>
+    <h2>&#x1F3AC; ThinkBack：你和 AI 的年度回顾</h2>
+    <p class="section-subtitle">类似 Spotify Wrapped 的动画回顾</p>
+    <div class="section-path">src/commands/thinkback/ &amp; src/commands/thinkback-play/</div>
+    <span class="tag tag-fun">有趣</span>
+    <span class="tag tag-cute">温暖</span>
+
+    <p>这是一个<strong>像 Spotify Wrapped 一样的年度回顾功能</strong>。<code>/think-back</code> 会生成回顾数据，<code>/think-back-play</code> 播放动画。它作为插件分发（通过 marketplace），内部用 Node.js 子进程播放 JavaScript 动画。</p>
+
+    <div class="feature-card">
+      <h3>技术细节</h3>
+      <p>回顾数据保存为 <code>year_in_review.js</code>，播放器是 <code>player.js</code>，都存在插件的 skills 目录下。播放前会检查两个文件是否存在——如果你还没生成过回顾数据，会提示 "No animation found. Run /think-back first to generate one."</p>
+    </div>
+  </section>
+
+  <!-- Section 13: Startup Profiler -->
+  <section class="section" id="sec-profiler" data-title="启动性能分析">
+    <div class="section-num">13</div>
+    <h2>&#x23F1; 启动性能分析器</h2>
+    <p class="section-subtitle">设置环境变量即可获得详细的启动时间分析报告</p>
+    <div class="section-path">src/utils/startupProfiler.ts</div>
+    <span class="tag tag-power">开发者工具</span>
+
+    <p>设置 <code>CLAUDE_CODE_PROFILE_STARTUP=1</code> 后，Claude Code 会在每个初始化检查点记录时间戳和内存快照，最终生成一份详细的启动性能报告。</p>
+
+    <div class="feature-card">
+      <h3>双模式设计</h3>
+      <p><strong>采样模式</strong>：100% 的 Anthropic 内部用户和 0.5% 的外部用户被采样，数据上报到 Statsig（事件名 <code>tengu_startup_perf</code>）。<strong>详细模式</strong>：需要环境变量，会记录每个阶段的内存使用并输出到 <code>~/.claude/startup-perf/{sessionId}.txt</code>。</p>
+    </div>
+
+    <div class="feature-card">
+      <h3>追踪的阶段</h3>
+      <p><code>import_time</code>（模块加载时间）、<code>init_time</code>（初始化时间）、<code>settings_time</code>（配置加载时间）、<code>total_time</code>（总启动时间）。检查点名称如 <code>cli_entry</code> -> <code>main_tsx_imports_loaded</code> -> <code>init_function_start</code> -> <code>init_function_end</code> -> <code>main_after_run</code>。</p>
+    </div>
+  </section>
+
+  <!-- Section 14: Rewind -->
+  <section class="section" id="sec-rewind" data-title="/rewind 时间回溯">
+    <div class="section-num">14</div>
+    <h2>&#x23EA; /rewind 对话时间回溯</h2>
+    <p class="section-subtitle">打开消息选择器，回到任意历史节点</p>
+    <div class="section-path">src/commands/rewind/</div>
+    <span class="tag tag-power">实用</span>
+
+    <p>AI 做了你不满意的事？不需要重新开始整个对话。<code>/rewind</code> 会打开一个<strong>消息选择器界面</strong>（MessageSelector），让你可以浏览对话历史并回退到任意一个节点。支持 j/k 导航、Shift+Up/Down 跳转到最前/最后。</p>
+  </section>
+
+  <!-- Section 15: Resume -->
+  <section class="section" id="sec-resume" data-title="会话恢复">
+    <div class="section-num">15</div>
+    <h2>&#x1F504; /resume 断线重连</h2>
+    <p class="section-subtitle">恢复之前的对话，支持搜索和 ID 直跳</p>
+    <div class="section-path">src/commands/resume/</div>
+    <span class="tag tag-power">实用</span>
+
+    <p>不小心关了终端？<code>/resume</code> 让你恢复之前的对话。可以直接 <code>/resume</code> 浏览历史会话列表，或者 <code>/resume &lt;id&gt;</code> 直接跳到某个会话，甚至 <code>/resume 修复了那个bug</code> 通过搜索词找到相关会话。别名 <code>/continue</code> 也能用。</p>
+  </section>
+
+  <!-- Section 16: Ultraplan -->
+  <section class="section" id="sec-ultraplan" data-title="Ultraplan 远程探索">
+    <div class="section-num">16</div>
+    <h2>&#x1F680; Ultraplan：远程多 Agent 探索</h2>
+    <p class="section-subtitle">30 分钟超时的远程会话，用 Opus 4.6 深度思考</p>
+    <div class="section-path">src/commands/ultraplan.tsx</div>
+    <span class="tag tag-hidden">高级功能</span>
+    <span class="tag tag-power">硬核</span>
+
+    <p>这可能是 Claude Code 最 "重型" 的功能。<code>/ultraplan</code> 会在远程服务器上启动一个 CCR（Claude Code Remote）会话，用 Opus 4.6 模型做深度的多 Agent 探索。30 分钟超时，完成后可以通过 <code>teleport</code> 机制把结果同步回来。</p>
+
+    <div class="feature-card">
+      <h3>代码中的有趣细节</h3>
+      <p>prompt.txt 被包在 <code>&lt;system-reminder&gt;</code> 标签里，这样 CCR 的浏览器 UI 会隐藏脚手架文本。源码注释提到 "phrasing deliberately avoids the feature name because the remote CCR CLI runs keyword detection on raw input" ——为了避免触发远程 CLI 的关键词检测，连 prompt 的措辞都要小心翼翼。</p>
+    </div>
+  </section>
+
+  <!-- Section 17: Clawd Mascot -->
+  <section class="section" id="sec-clawd" data-title="Clawd 吉祥物">
+    <div class="section-num">17</div>
+    <h2>&#x2728; Clawd：会动的 ASCII 吉祥物</h2>
+    <p class="section-subtitle">4 个姿势 + Unicode 半块字符渲染 + 动画效果</p>
+    <div class="section-path">src/components/LogoV2/Clawd.tsx</div>
+    <span class="tag tag-cute">可爱</span>
+    <span class="tag tag-fun">有趣</span>
+
+    <p>启动 Claude Code 时看到的那个小方块生物就是 <strong>Clawd</strong>——Claude 的终端吉祥物。它用 Unicode 的<strong>四分之一块字符</strong>（&#x259B;&#x259C;&#x2599;&#x259F; 等）渲染出惊人的效果。</p>
+
+    <div class="feature-card">
+      <h3>四个姿势</h3>
+      <p>
+      <code>default</code> — 正常站姿<br>
+      <code>arms-up</code> — 双手举起（跳跃时使用）<br>
+      <code>look-left</code> — 眼睛看左<br>
+      <code>look-right</code> — 眼睛看右<br>
+      姿势的差异仅在眼睛字符和手臂片段上——用 &#x259B;/&#x259C; (下半) vs &#x2599;/&#x259F; (上半) 实现视觉上 "手举起来了" 的效果。9 列宽的 ASCII 艺术，用 segment 拆分实现精确的部位替换。
+      </p>
+    </div>
+
+    <div class="feature-card">
+      <h3>欢迎页的信息密度</h3>
+      <p>LogoV2 组件除了 Clawd 之外还有：最近活动 feed、What's New（发布说明）、项目 onboarding 提示、Guest Passes 推广、Overage Credit 提示、Voice Mode 通知、Emergency Tip（从 GrowthBook 远程推送的紧急提示）、调试模式信息——全部压缩在一个启动画面里。</p>
+    </div>
+  </section>
+
+  <!-- Section 18: Hidden Commands -->
+  <section class="section" id="sec-commands" data-title="隐藏命令全集">
+    <div class="section-num">18</div>
+    <h2>&#x1F50D; 隐藏命令宝藏图</h2>
+    <p class="section-subtitle">80+ 命令中那些你可能没发现的</p>
+    <div class="section-path">src/commands/ &mdash; 80+ 个命令目录</div>
+    <span class="tag tag-hidden">隐藏功能</span>
+    <span class="tag tag-fun">有趣</span>
+
+    <p>Claude Code 注册了<strong>超过 80 个命令</strong>，其中很多是隐藏的（<code>isHidden: true</code>）或仅对内部员工开放。以下是一些有趣的：</p>
+
+    <div class="grid-2">
+      <div class="feature-card">
+        <h3>/insights 深度洞察</h3>
+        <p>用 Opus 模型分析你所有历史会话的 transcript，提取 facet 和摘要，生成类似 "Spotify Wrapped" 的深度使用洞察报告。直接操作 JSONL 日志文件。</p>
+      </div>
+      <div class="feature-card">
+        <h3>/stats 使用统计</h3>
+        <p>展示你的 Claude Code 使用活动和统计数据的交互式 UI。比 <code>/cost</code> 更宏观的维度。</p>
+      </div>
+      <div class="feature-card">
+        <h3>/effort 控制努力程度</h3>
+        <p>调节模型的 "努力级别"：<code>low</code>、<code>medium</code>、<code>high</code>、<code>max</code>、<code>auto</code>。低努力 = 快速简洁，高努力 = 深度思考。</p>
+      </div>
+      <div class="feature-card">
+        <h3>/fast 快速模式</h3>
+        <p>只使用轻量模型回答，追求速度而非深度。对简单问题很好用。</p>
+      </div>
+      <div class="feature-card">
+        <h3>/statusline 状态栏</h3>
+        <p>通过 AI 子代理自动从你的 shell PS1 配置读取信息，配置一个自定义的状态栏 UI。用 Agent 来配置 UI，很 meta。</p>
+      </div>
+      <div class="feature-card">
+        <h3>/compact 压缩上下文</h3>
+        <p>当对话太长时，压缩历史消息以节省上下文窗口空间。</p>
+      </div>
+      <div class="feature-card">
+        <h3>/diff 查看变更</h3>
+        <p>打开一个多源、可导航的 diff 对话框，查看 AI 做了哪些文件修改。支持源切换和文件导航。</p>
+      </div>
+      <div class="feature-card">
+        <h3>Stub 命令（已禁用/内部）</h3>
+        <p><code>/good-claude</code>、<code>/teleport</code>、<code>/share</code>、<code>/onboarding</code>、<code>/bughunter</code>、<code>/summary</code>、<code>/debug-tool-call</code>、<code>/ctx_viz</code> ——这些命令在外部构建中被替换为 stub（<code>isEnabled: () => false</code>），暗示它们是仅限 Anthropic 内部使用的功能。<code>/good-claude</code> 的名字暗示了某种正向反馈机制。</p>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-item">
+        <div class="stat-num">80+</div>
+        <div class="stat-label">注册命令数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">16</div>
+        <div class="stat-label">快捷键上下文</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">18</div>
+        <div class="stat-label">宠物种类</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">6</div>
+        <div class="stat-label">主题预设</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">5</div>
+        <div class="stat-label">Vim 源文件</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>
+      基于 <a href="https://github.com/anthropics/claude-code">Claude Code</a> 源码分析生成
+    </p>
+    <p style="margin-top:0.5rem">
+      Claude Code 由 Anthropic 开发 &middot; 本报告仅为技术研究用途
+    </p>
+  </footer>
+
+</div>
+
+<script>
+// ===== Theme Toggle =====
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  document.getElementById('theme-icon').textContent = next === 'dark' ? '\u2606' : '\u263E';
+  localStorage.setItem('theme', next);
+}
+(function() {
+  const saved = localStorage.getItem('theme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    document.getElementById('theme-icon').textContent = saved === 'dark' ? '\u2606' : '\u263E';
+  }
+})();
+
+// ===== Scroll Progress Bar =====
+window.addEventListener('scroll', function() {
+  const scrollTop = document.documentElement.scrollTop;
+  const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  const progress = (scrollTop / scrollHeight) * 100;
+  document.getElementById('progress-bar').style.width = progress + '%';
+});
+
+// ===== Sticky Nav =====
+(function() {
+  const nav = document.getElementById('nav');
+  let lastScroll = 0;
+  window.addEventListener('scroll', function() {
+    const current = window.scrollY;
+    if (current > 400) {
+      nav.classList.add('visible');
+    } else {
+      nav.classList.remove('visible');
+    }
+    lastScroll = current;
+  });
+})();
+
+// ===== Build TOC & Nav Links =====
+(function() {
+  const sections = document.querySelectorAll('.section');
+  const tocGrid = document.getElementById('toc-grid');
+  const navLinks = document.getElementById('nav-links');
+  sections.forEach(function(sec, i) {
+    const id = sec.id;
+    const title = sec.getAttribute('data-title');
+    const num = String(i + 1).padStart(2, '0');
+    // TOC
+    const a = document.createElement('a');
+    a.href = '#' + id;
+    a.innerHTML = '<span class="toc-num">' + num + '</span> ' + title;
+    tocGrid.appendChild(a);
+    // Nav
+    const navA = document.createElement('a');
+    navA.href = '#' + id;
+    navA.textContent = title;
+    navA.setAttribute('data-section', id);
+    navLinks.appendChild(navA);
+  });
+})();
+
+// ===== Scroll Reveal =====
+(function() {
+  const observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  document.querySelectorAll('.section').forEach(function(sec) {
+    observer.observe(sec);
+  });
+})();
+
+// ===== Active Nav Highlight =====
+(function() {
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav-links a');
+  const observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        navLinks.forEach(function(link) { link.classList.remove('active'); });
+        const active = document.querySelector('.nav-links a[data-section="' + entry.target.id + '"]');
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3, rootMargin: '-80px 0px -60% 0px' });
+  sections.forEach(function(sec) { observer.observe(sec); });
+})();
+</script>
+
+</body>
+</html>
