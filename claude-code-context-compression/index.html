@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 上下文压缩机制深度解析</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;
+  --fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;
+  --accent:#dc4a1a;--accent-2:#9a3412;
+  --green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;
+  --border:#d6d0c8;
+  --tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);
+  --quote-bg:rgba(28,25,23,0.03);
+  --code-fg:#fde68a;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;
+    --fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;
+    --accent:#fb923c;--accent-2:#fdba74;
+    --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);
+    --border:#292524;
+    --tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);
+    --quote-bg:rgba(255,255,255,0.03);
+    --code-fg:#fbbf24;
+  }
+}
+[data-theme="dark"]{
+  --bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;
+  --fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;
+  --accent:#fb923c;--accent-2:#fdba74;
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);
+  --border:#292524;
+  --tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);
+  --quote-bg:rgba(255,255,255,0.03);
+  --code-fg:#fbbf24;
+}
+[data-theme="light"]{
+  --bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;
+  --fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;
+  --accent:#dc4a1a;--accent-2:#9a3412;
+  --green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;
+  --border:#d6d0c8;
+  --tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);
+  --quote-bg:rgba(28,25,23,0.03);
+  --code-fg:#fde68a;
+}
+html{scroll-behavior:smooth}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:17px;line-height:1.7;color:var(--fg-2);background:var(--bg);-webkit-font-smoothing:antialiased}
+.wrap{max-width:780px;margin:0 auto;padding:0 1.5rem}
+.wrap-wide{max-width:960px;margin:0 auto;padding:0 1.5rem}
+h1{font-size:clamp(2.6rem,6vw,4rem);font-weight:900;color:var(--fg);line-height:1.1;letter-spacing:-0.03em}
+h2{font-size:clamp(1.7rem,3.5vw,2.3rem);font-weight:800;color:var(--fg);line-height:1.2;margin-bottom:1.2rem}
+h3{font-size:1.08rem;font-weight:700;color:var(--fg);margin-bottom:0.6rem}
+h4{font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);font-family:'SF Mono',ui-monospace,monospace;margin-bottom:0.4rem}
+p{max-width:65ch;margin-bottom:1rem}
+a{color:var(--accent);text-decoration:none;transition:opacity .2s}
+a:hover{opacity:0.75}
+code{font-family:'SF Mono',ui-monospace,monospace;font-size:0.82em;background:var(--tag-bg);color:var(--tag-fg);padding:0.15em 0.4em;border-radius:4px}
+.highlight{color:var(--accent)}
+
+/* Progress bar */
+.progress-bar{position:fixed;top:0;left:0;height:2px;background:var(--accent);z-index:1000;transition:width 60ms linear;width:0}
+
+/* Theme toggle */
+.theme-toggle{position:fixed;top:1rem;right:1rem;z-index:999;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--bg-alt);color:var(--fg-3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+
+/* Nav */
+.nav{position:sticky;top:0;z-index:99;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.nav-inner{max-width:960px;margin:0 auto;padding:0.6rem 1.5rem;display:flex;gap:1.6rem;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.nav-inner::-webkit-scrollbar{display:none}
+.nav-inner a{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3);white-space:nowrap;padding:0.2rem 0;border-bottom:2px solid transparent;transition:all .2s;font-family:'SF Mono',ui-monospace,monospace}
+.nav-inner a:hover{color:var(--fg-2);opacity:1}
+.nav-inner a.active{color:var(--accent);border-color:var(--accent)}
+
+/* Hero */
+.hero{padding:6rem 0 3.5rem;background:var(--bg)}
+.hero-tag{font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);font-family:'SF Mono',ui-monospace,monospace;margin-bottom:1.2rem;opacity:0;animation:fadeUp .6s ease forwards .1s}
+.hero h1{margin-bottom:1.2rem;opacity:0;animation:fadeUp .6s ease forwards .2s}
+.hero-deck{font-size:1.15rem;color:var(--fg-3);max-width:55ch;opacity:0;animation:fadeUp .6s ease forwards .3s}
+.hero-meta{display:flex;flex-wrap:wrap;gap:1.5rem;margin-top:1.8rem;padding-top:1.5rem;border-top:1px solid var(--border);opacity:0;animation:fadeUp .6s ease forwards .5s}
+.hero-meta span{font-size:0.82rem;color:var(--fg-3)}
+.hero-meta b{color:var(--fg);font-weight:700}
+
+/* Sections */
+section{padding:4rem 0 3.5rem}
+section:nth-child(odd){background:var(--bg)}
+section:nth-child(even){background:var(--bg-alt)}
+.sn{font-size:4.5rem;font-weight:900;color:var(--accent);opacity:0.18;line-height:1;margin-bottom:-0.3rem;font-family:'SF Mono',ui-monospace,monospace}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1.2rem;margin:2rem 0}
+.stat{text-align:center;padding:1.3rem 0.8rem;border-radius:10px;background:var(--bg);border:1px solid var(--border)}
+.stat-val{font-size:2.2rem;font-weight:900;color:var(--accent);transition:transform .2s}
+.stat:hover .stat-val{transform:scale(1.08)}
+.stat-lbl{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3);margin-top:0.3rem;font-family:'SF Mono',ui-monospace,monospace}
+
+/* Flow */
+.flow{margin:2rem 0}
+.flow-step{display:flex;gap:1.2rem;min-height:3.2rem}
+.flow-rail{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0}
+.flow-dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px;box-shadow:0 0 0 4px var(--tag-bg)}
+.flow-line{width:2px;flex:1;background:var(--border);margin:4px 0}
+.flow-body{padding-bottom:1.6rem;flex:1}
+.flow-title{font-weight:700;color:var(--fg);font-size:0.95rem;margin-bottom:0.25rem}
+.flow-desc{color:var(--fg-3);font-size:0.88rem;line-height:1.55}
+.flow-fork{display:flex;gap:1rem;margin-top:0.5rem}
+.flow-fork-item{font-size:0.82rem;padding:0.4rem 0.8rem;border-radius:6px;flex:1}
+.fork-yes{background:var(--green-bg);color:var(--green)}
+.fork-no{background:var(--red-bg);color:var(--fg-2)}
+
+/* Quote */
+.quote{border-left:3px solid var(--accent);padding:1.2rem 1.5rem;margin:1.5rem 0;background:var(--quote-bg);border-radius:0 8px 8px 0}
+.quote p{color:var(--fg-2);font-style:italic;margin-bottom:0.3rem;max-width:none}
+.quote cite{font-size:0.78rem;color:var(--fg-3);font-style:normal}
+
+/* Callout */
+.callout{padding:1rem 1.3rem;border-radius:8px;margin:1.5rem 0;font-size:0.92rem;line-height:1.6}
+.callout-green{background:var(--green-bg);color:var(--green)}
+.callout-green strong{color:var(--green)}
+.callout-accent{background:var(--tag-bg);color:var(--fg-2)}
+.callout-accent strong{color:var(--accent)}
+
+/* Table */
+.table-wrap{overflow-x:auto;margin:1.5rem 0;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+th{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3);text-align:left;padding:0.8rem 1rem;border-bottom:2px solid var(--border);font-family:'SF Mono',ui-monospace,monospace}
+td{padding:0.7rem 1rem;border-bottom:1px solid var(--border);font-size:0.9rem;color:var(--fg-2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td:first-child{color:var(--fg);font-weight:600}
+.row-hl{background:var(--tag-bg)}
+.row-hl td{color:var(--fg)}
+
+/* Card grid */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin:1.5rem 0}
+.card{padding:1.2rem;border:1px solid var(--border);border-radius:10px;background:var(--bg);transition:border-color .2s}
+.card:hover{border-color:var(--accent)}
+.card-name{font-weight:700;color:var(--fg);margin-bottom:0.2rem}
+.card-sub{font-size:0.72rem;color:var(--fg-3);font-family:'SF Mono',ui-monospace,monospace;margin-bottom:0.5rem}
+.card-desc{font-size:0.88rem;color:var(--fg-3);line-height:1.5}
+
+/* Two-col pros/cons */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0}
+@media(max-width:600px){.two-col{grid-template-columns:1fr}}
+.col h4{margin-bottom:0.8rem}
+.col ul{list-style:none;display:flex;flex-direction:column;gap:0.4rem}
+.col li{font-size:0.9rem;color:var(--fg-2);padding-left:1.4rem;position:relative}
+.col li::before{position:absolute;left:0;font-weight:700}
+.pros li::before{content:'+';color:var(--green)}
+.cons li::before{content:'-';color:var(--accent)}
+
+/* Verdict */
+.verdict{border:2px solid var(--accent);border-radius:12px;padding:2rem;margin:2rem 0}
+.verdict h3{color:var(--accent);font-size:1.15rem;margin-bottom:0.8rem}
+.verdict p{color:var(--fg-2);max-width:none}
+
+/* Files */
+.files{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.8rem;margin:1.5rem 0}
+.file{padding:0.8rem 1rem;border:1px solid var(--border);border-radius:8px;background:var(--bg)}
+.file-name{font-family:'SF Mono',ui-monospace,monospace;font-size:0.78rem;font-weight:600;color:var(--accent);word-break:break-all}
+.file-desc{font-size:0.78rem;color:var(--fg-3);margin-top:0.2rem}
+
+/* Code block */
+.code-block{background:var(--bg-code);border-radius:10px;padding:1.2rem 1.5rem;margin:1.5rem 0;overflow-x:auto}
+.code-block pre{font-family:'SF Mono',ui-monospace,monospace;font-size:0.78rem;line-height:1.65;color:var(--code-fg);white-space:pre;margin:0}
+.code-block .code-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);margin-bottom:0.6rem;font-family:'SF Mono',ui-monospace,monospace}
+.code-comment{color:#6b7280}
+.code-keyword{color:#c084fc}
+.code-string{color:#86efac}
+.code-number{color:#fb923c}
+.code-fn{color:#60a5fa}
+
+/* Diagram */
+.diagram{margin:2rem 0;padding:2rem;background:var(--bg-code);border-radius:12px;overflow-x:auto}
+.diagram pre{font-family:'SF Mono',ui-monospace,monospace;font-size:0.75rem;line-height:1.7;color:var(--code-fg);white-space:pre;margin:0}
+.diagram .d-accent{color:var(--accent)}
+.diagram .d-green{color:#4ade80}
+.diagram .d-muted{color:#6b7280}
+
+/* Reveal animation */
+.reveal{opacity:0.08;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal:nth-child(2){transition-delay:.05s}
+.reveal:nth-child(3){transition-delay:.1s}
+.reveal:nth-child(4){transition-delay:.15s}
+.reveal:nth-child(5){transition-delay:.2s}
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .hero-tag,.hero h1,.hero-deck,.hero-meta{opacity:1;animation:none}
+}
+
+/* Keyframes */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--fg-3)}
+
+/* Badge */
+.badge{display:inline-block;font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:0.2rem 0.6rem;border-radius:99px;font-family:'SF Mono',ui-monospace,monospace}
+.badge-accent{background:var(--tag-bg);color:var(--tag-fg)}
+.badge-green{background:var(--green-bg);color:var(--green)}
+
+/* Layer visual */
+.layer-stack{display:flex;flex-direction:column;gap:0;margin:2rem 0}
+.layer{padding:1.2rem 1.5rem;border:1px solid var(--border);position:relative}
+.layer:first-child{border-radius:10px 10px 0 0}
+.layer:last-child{border-radius:0 0 10px 10px}
+.layer:not(:last-child){border-bottom:none}
+.layer-num{font-size:0.65rem;font-weight:700;color:var(--accent);font-family:'SF Mono',ui-monospace,monospace;margin-bottom:0.2rem}
+.layer-title{font-weight:700;color:var(--fg);font-size:0.95rem;margin-bottom:0.2rem}
+.layer-desc{font-size:0.82rem;color:var(--fg-3)}
+.layer-l1{background:var(--tag-bg)}
+.layer-l2{background:var(--bg)}
+.layer-l3{background:var(--bg-alt)}
+
+/* Pipe diagram */
+.pipe{display:flex;flex-direction:column;gap:0;margin:2rem 0}
+.pipe-step{display:flex;align-items:stretch;min-height:3rem}
+.pipe-label{width:200px;flex-shrink:0;padding:0.8rem 1rem;font-size:0.78rem;font-weight:600;font-family:'SF Mono',ui-monospace,monospace;display:flex;align-items:center;border:1px solid var(--border);border-bottom:none;color:var(--fg)}
+.pipe-step:last-child .pipe-label{border-bottom:1px solid var(--border)}
+.pipe-content{flex:1;padding:0.8rem 1rem;font-size:0.82rem;color:var(--fg-3);display:flex;align-items:center;border:1px solid var(--border);border-left:none;border-bottom:none;line-height:1.5}
+.pipe-step:last-child .pipe-content{border-bottom:1px solid var(--border)}
+.pipe-step:first-child .pipe-label{border-radius:8px 0 0 0}
+.pipe-step:first-child .pipe-content{border-radius:0 8px 0 0}
+.pipe-step:last-child .pipe-label{border-radius:0 0 0 8px}
+.pipe-step:last-child .pipe-content{border-radius:0 0 8px 0}
+.pipe-active .pipe-label{background:var(--tag-bg);color:var(--accent)}
+@media(max-width:600px){
+  .pipe-step{flex-direction:column}
+  .pipe-label{width:100%;border-bottom:none!important}
+  .pipe-content{border-left:1px solid var(--border)!important}
+  .pipe-step:first-child .pipe-label{border-radius:8px 8px 0 0}
+  .pipe-step:first-child .pipe-content{border-radius:0}
+  .pipe-step:last-child .pipe-label{border-radius:0}
+  .pipe-step:last-child .pipe-content{border-radius:0 0 8px 8px}
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+  <span id="themeIcon">&#9789;</span>
+</button>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#overview">概览</a>
+    <a href="#architecture">三层架构</a>
+    <a href="#trigger">触发机制</a>
+    <a href="#microcompact">微压缩</a>
+    <a href="#full-compact">完整压缩</a>
+    <a href="#prompt">摘要提示词</a>
+    <a href="#session-memory">会话内存</a>
+    <a href="#recovery">压缩后恢复</a>
+    <a href="#pipeline">管道集成</a>
+    <a href="#resilience">容错设计</a>
+    <a href="#verdict">总结</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-tag">Source Code Analysis &middot; 2026.03.31</div>
+    <h1>Claude Code<br><span class="highlight">上下文压缩</span>机制<br>深度解析</h1>
+    <p class="hero-deck">基于 Claude Code 源码快照的逆向分析，完整拆解 LLM 对话上下文管理的工程实现 &mdash; 三层压缩策略、令牌预算管理、以及如何在不丢失关键信息的前提下将百万级上下文压缩到可控范围。</p>
+    <div class="hero-meta">
+      <span><b>源码</b> instructkr/claude-code</span>
+      <span><b>核心文件</b> ~8 个 TS 模块</span>
+      <span><b>代码量</b> compact/ 目录 4,000+ 行</span>
+      <span><b>分析深度</b> 函数级逆向</span>
+    </div>
+  </div>
+</header>
+
+<!-- Section 1: Overview -->
+<section id="overview">
+  <div class="wrap">
+    <div class="sn reveal">01</div>
+    <h2 class="reveal">为什么需要上下文压缩</h2>
+    <p class="reveal">LLM 对话的根本矛盾：模型的上下文窗口有限，但软件工程任务天然需要长对话。一次复杂的代码重构可能涉及数十次文件读取、Bash 执行、搜索查询，每次工具调用的结果都会吃掉大量 token。</p>
+
+    <div class="stats reveal">
+      <div class="stat">
+        <div class="stat-val" data-target="200000">200K</div>
+        <div class="stat-lbl">标准上下文窗口</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">13K</div>
+        <div class="stat-lbl">自动压缩缓冲区</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">20K</div>
+        <div class="stat-lbl">摘要预留 Token</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">3</div>
+        <div class="stat-lbl">最大连续失败容忍</div>
+      </div>
+    </div>
+
+    <p class="reveal">Claude Code 的解决方案不是简单地截断历史消息，而是设计了一套<strong>三层递进的压缩体系</strong>，在保证上下文连贯性的同时，将 token 使用量控制在安全范围内。</p>
+
+    <div class="callout callout-accent reveal">
+      <strong>核心洞察：</strong>压缩不是一次性操作，而是一条管道 &mdash; 消息在到达 API 之前，会依次经过 snip 裁剪、微压缩、上下文折叠、自动压缩四道关卡，每道关卡解决不同层次的问题。
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: Architecture -->
+<section id="architecture">
+  <div class="wrap">
+    <div class="sn reveal">02</div>
+    <h2 class="reveal">三层压缩架构</h2>
+    <p class="reveal">压缩系统按成本和侵入性从低到高分为三层，每层有明确的职责边界：</p>
+
+    <div class="layer-stack reveal">
+      <div class="layer layer-l1">
+        <div class="layer-num">LAYER 1 &mdash; MICRO COMPACT</div>
+        <div class="layer-title">微压缩：清除工具结果</div>
+        <div class="layer-desc">零 API 调用。直接删除旧的工具结果内容（file_read、bash、grep 等），只保留工具调用的结构。成本最低，速度最快，每次查询前自动运行。</div>
+      </div>
+      <div class="layer layer-l2">
+        <div class="layer-num">LAYER 2 &mdash; SESSION MEMORY COMPACT</div>
+        <div class="layer-title">会话内存压缩：利用已有摘要</div>
+        <div class="layer-desc">零额外 API 调用。如果后台的会话内存提取器已经生成了摘要，直接复用该摘要替换旧消息。比完整压缩便宜得多，优先尝试。</div>
+      </div>
+      <div class="layer layer-l3">
+        <div class="layer-num">LAYER 3 &mdash; FULL COMPACT</div>
+        <div class="layer-title">完整压缩：AI 生成摘要</div>
+        <div class="layer-desc">需要一次完整的 API 调用。将整段对话发送给模型，让它生成结构化的详细摘要，然后用摘要替换原始消息。成本最高，但信息保留最完整。</div>
+      </div>
+    </div>
+
+    <div class="callout callout-green reveal">
+      <strong>优先级策略：</strong>自动压缩时，系统总是先尝试 Layer 2（会话内存），失败后才回退到 Layer 3（完整压缩）。微压缩（Layer 1）作为前置步骤始终运行。
+    </div>
+  </div>
+</section>
+
+<!-- Section 3: Trigger -->
+<section id="trigger">
+  <div class="wrap">
+    <div class="sn reveal">03</div>
+    <h2 class="reveal">触发机制与令牌预算</h2>
+    <p class="reveal">自动压缩的触发基于精确的令牌计算，而非简单的消息条数。核心公式如下：</p>
+
+    <div class="code-block reveal">
+      <div class="code-label">autoCompact.ts &mdash; 阈值计算</div>
+<pre><span class="code-comment">// 有效上下文窗口 = 模型上下文窗口 - 摘要预留空间</span>
+<span class="code-keyword">const</span> effectiveWindow = contextWindow - <span class="code-fn">Math.min</span>(
+  maxOutputTokens,
+  <span class="code-number">20_000</span>  <span class="code-comment">// MAX_OUTPUT_TOKENS_FOR_SUMMARY</span>
+)
+
+<span class="code-comment">// 自动压缩阈值 = 有效窗口 - 缓冲区</span>
+<span class="code-keyword">const</span> threshold = effectiveWindow - <span class="code-number">13_000</span>
+<span class="code-comment">// AUTOCOMPACT_BUFFER_TOKENS</span></pre>
+    </div>
+
+    <p class="reveal">系统维护四个递进的阈值级别，每个级别触发不同的行为：</p>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead>
+          <tr>
+            <th>阈值</th>
+            <th>缓冲区</th>
+            <th>触发行为</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-hl">
+            <td>自动压缩阈值</td>
+            <td><code>-13,000</code></td>
+            <td>静默触发自动压缩，用户无感知</td>
+          </tr>
+          <tr>
+            <td>警告阈值</td>
+            <td><code>-20,000</code></td>
+            <td>UI 显示黄色警告，提示上下文即将用尽</td>
+          </tr>
+          <tr>
+            <td>错误阈值</td>
+            <td><code>-20,000</code></td>
+            <td>UI 显示红色错误，强烈建议手动压缩</td>
+          </tr>
+          <tr>
+            <td>阻断限制</td>
+            <td><code>-3,000</code></td>
+            <td>阻止发送请求，返回合成 413 错误</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="reveal" style="margin-top:2rem">递归防护</h3>
+    <p class="reveal"><code>shouldAutoCompact()</code> 函数包含关键的递归防护逻辑，防止压缩过程中的 fork 代理触发新的压缩：</p>
+
+    <div class="code-block reveal">
+      <div class="code-label">递归防护条件</div>
+<pre><span class="code-comment">// 这些 querySource 会被跳过，防止死锁</span>
+<span class="code-keyword">if</span> (querySource === <span class="code-string">'session_memory'</span>) <span class="code-keyword">return false</span>
+<span class="code-keyword">if</span> (querySource === <span class="code-string">'compact'</span>)         <span class="code-keyword">return false</span>
+<span class="code-keyword">if</span> (querySource === <span class="code-string">'marble_origami'</span>)  <span class="code-keyword">return false</span></pre>
+    </div>
+
+    <p class="reveal">此外还支持两个环境变量覆盖：<code>CLAUDE_CODE_AUTO_COMPACT_WINDOW</code> 强制设置有效窗口大小，<code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code> 按百分比设置阈值。</p>
+  </div>
+</section>
+
+<!-- Section 4: Microcompact -->
+<section id="microcompact">
+  <div class="wrap">
+    <div class="sn reveal">04</div>
+    <h2 class="reveal">微压缩：零成本的第一道防线</h2>
+    <p class="reveal">微压缩的核心思想极其简单：<strong>工具调用的结果在被模型看过一次之后，就不再需要完整保留。</strong>删除旧的工具结果内容，不影响模型对对话上下文的理解。</p>
+
+    <h3 class="reveal" style="margin-top:1.5rem">可压缩的工具集合</h3>
+    <div class="card-grid reveal">
+      <div class="card">
+        <div class="card-name">file_read</div>
+        <div class="card-desc">文件内容读取结果，通常体积最大</div>
+      </div>
+      <div class="card">
+        <div class="card-name">bash / bun / python / node</div>
+        <div class="card-desc">Shell 命令执行输出</div>
+      </div>
+      <div class="card">
+        <div class="card-name">grep / glob</div>
+        <div class="card-desc">搜索和文件匹配结果</div>
+      </div>
+      <div class="card">
+        <div class="card-name">web_search / web_fetch</div>
+        <div class="card-desc">网页内容和搜索结果</div>
+      </div>
+      <div class="card">
+        <div class="card-name">file_edit / file_write</div>
+        <div class="card-desc">文件修改/写入的确认输出</div>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="margin-top:1.5rem">两种微压缩路径</h3>
+
+    <div class="two-col reveal">
+      <div class="col pros">
+        <h4>时间基础微压缩</h4>
+        <ul>
+          <li>基于最后一条助手消息的时间戳</li>
+          <li>超过配置的时间间隔后触发</li>
+          <li>适用于用户长时间离开后返回的场景</li>
+          <li>清除内容并替换为占位文本</li>
+        </ul>
+      </div>
+      <div class="col cons">
+        <h4>缓存微压缩（内部版）</h4>
+        <ul>
+          <li>利用 Anthropic API 的 cache_edits 功能</li>
+          <li>不修改消息本身，在 API 层删除缓存内容</li>
+          <li>保留 cache_reference 以便复用缓存前缀</li>
+          <li>仅在内部构建（ant）中启用</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block reveal">
+      <div class="code-label">microCompact.ts &mdash; 工具结果清除</div>
+<pre><span class="code-keyword">const</span> TIME_BASED_MC_CLEARED_MESSAGE =
+  <span class="code-string">'[Old tool result content cleared]'</span>
+
+<span class="code-comment">// 对每个可压缩的工具结果：</span>
+<span class="code-comment">// 1. 收集 tool_use_id 到可压缩集合</span>
+<span class="code-comment">// 2. 保留最近 N 个工具结果（keepRecent 配置）</span>
+<span class="code-comment">// 3. 将旧结果的 content 替换为清除消息</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- Section 5: Full Compact -->
+<section id="full-compact">
+  <div class="wrap">
+    <div class="sn reveal">05</div>
+    <h2 class="reveal">完整压缩：AI 驱动的摘要生成</h2>
+    <p class="reveal">当微压缩和会话内存都无法将 token 降到阈值以下时，系统启动完整压缩 &mdash; 发起一次专用的 API 调用，让模型对整段对话生成结构化摘要。</p>
+
+    <div class="flow reveal">
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">1. 预处理消息</div>
+          <div class="flow-desc">剥离图像（替换为 <code>[image]</code> 占位符）、移除会重新注入的附件（技能列表等），减少发送给压缩模型的 token 量。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">2. 执行前置 Hook</div>
+          <div class="flow-desc">触发 <code>pre_compact</code> 钩子，允许用户通过 settings.json 配置的脚本注入自定义压缩指令。Hook 返回的 <code>newCustomInstructions</code> 会合并到压缩提示词中。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">3. 流式调用摘要 API</div>
+          <div class="flow-desc">通过 <code>streamCompactSummary()</code> 发起 API 调用。优先使用 fork 代理（复用主对话的缓存前缀），失败后回退到常规流式路径。thinking 模式被禁用以节省 token。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">4. Prompt-too-long 重试</div>
+          <div class="flow-desc">如果 API 返回 prompt-too-long 错误，按 API 轮次分组消息，从最旧的组开始逐步删除，最多重试 3 次。删除量基于错误响应中的 token 间隙计算，无法解析时回退到删除 20%。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">5. 格式化摘要</div>
+          <div class="flow-desc">提取 <code>&lt;summary&gt;</code> 标签内容，去除 <code>&lt;analysis&gt;</code> 思考过程（节省 token），清理多余空行。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">6. 清理状态 + 恢复文件</div>
+          <div class="flow-desc">清空 <code>readFileState</code> 缓存和嵌套内存路径，然后从压缩前的文件读取状态中恢复最多 5 个最近的文件作为附件重新注入。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">7. 构建压缩结果</div>
+          <div class="flow-desc">生成边界标记（<code>compact_boundary</code> 类型的系统消息），携带压缩前 token 数、触发方式、已发现的工具列表等元数据。所有后续查询只会看到边界之后的消息。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 6: Prompt -->
+<section id="prompt">
+  <div class="wrap">
+    <div class="sn reveal">06</div>
+    <h2 class="reveal">摘要提示词工程</h2>
+    <p class="reveal">压缩质量的核心在于提示词设计。Claude Code 使用了精心设计的提示词模板，强制模型生成结构化、不遗漏的摘要。</p>
+
+    <div class="callout callout-accent reveal">
+      <strong>关键约束：</strong>压缩提示词开头有一段极其严厉的 "NO_TOOLS_PREAMBLE"，用全大写强调模型<strong>绝对不能调用任何工具</strong>，必须纯文本输出。这是因为压缩 API 调用如果触发了工具调用，会破坏整个流程。
+    </div>
+
+    <h3 class="reveal" style="margin-top:1.5rem">强制摘要结构（9 个必填部分）</h3>
+
+    <div class="pipe reveal">
+      <div class="pipe-step pipe-active">
+        <div class="pipe-label">1. Primary Request</div>
+        <div class="pipe-content">捕获用户所有的显式请求和意图，<strong>详细记录</strong></div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">2. Key Concepts</div>
+        <div class="pipe-content">列出所有重要的技术概念、技术栈和框架</div>
+      </div>
+      <div class="pipe-step pipe-active">
+        <div class="pipe-label">3. Files & Code</div>
+        <div class="pipe-content">枚举具体的文件和代码段，包含<strong>完整代码片段</strong>和变更原因</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">4. Errors & Fixes</div>
+        <div class="pipe-content">记录所有遇到的错误及修复方式，特别关注用户反馈</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">5. Problem Solving</div>
+        <div class="pipe-content">记录已解决的问题和正在进行的排查</div>
+      </div>
+      <div class="pipe-step pipe-active">
+        <div class="pipe-label">6. All User Messages</div>
+        <div class="pipe-content">列出<strong>所有非工具结果的用户消息</strong> &mdash; 理解用户反馈和意图变化的关键</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">7. Pending Tasks</div>
+        <div class="pipe-content">列出明确被要求完成但尚未完成的任务</div>
+      </div>
+      <div class="pipe-step pipe-active">
+        <div class="pipe-label">8. Current Work</div>
+        <div class="pipe-content"><strong>详细描述</strong>压缩前最近的工作内容，包含文件名和代码片段</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">9. Next Step</div>
+        <div class="pipe-content">列出与最近工作相关的下一步行动（可选）</div>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="margin-top:1.5rem">分析-摘要双阶段输出</h3>
+    <p class="reveal">提示词要求模型先在 <code>&lt;analysis&gt;</code> 标签中<strong>按时间顺序逐条分析</strong>对话内容，然后在 <code>&lt;summary&gt;</code> 标签中输出最终摘要。分析阶段的存在是为了提高摘要质量（类似 Chain of Thought），但格式化时会被去除以节省 token。</p>
+
+    <div class="quote reveal">
+      <p>"Chronologically analyze each message and section of the conversation. For each section thoroughly identify: the user's explicit requests and intents, your approach, key decisions, technical concepts, specific details like file names, full code snippets, function signatures..."</p>
+      <cite>compact/prompt.ts &mdash; DETAILED_ANALYSIS_INSTRUCTION_BASE</cite>
+    </div>
+  </div>
+</section>
+
+<!-- Section 7: Session Memory -->
+<section id="session-memory">
+  <div class="wrap">
+    <div class="sn reveal">07</div>
+    <h2 class="reveal">会话内存压缩：更便宜的替代路径</h2>
+    <p class="reveal">会话内存压缩是一条"投机取巧"的路径：如果后台的会话内存提取器（一个独立运行的 fork 代理）已经生成了对话摘要，就直接复用它，避免昂贵的完整压缩 API 调用。</p>
+
+    <div class="stats reveal">
+      <div class="stat">
+        <div class="stat-val">10K</div>
+        <div class="stat-lbl">最小保留 Token</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">5</div>
+        <div class="stat-lbl">最少保留文本消息</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">40K</div>
+        <div class="stat-lbl">最大保留 Token</div>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="margin-top:1.5rem">消息保留算法</h3>
+    <p class="reveal"><code>calculateMessagesToKeepIndex()</code> 是会话内存压缩的核心算法，它决定哪些消息需要保留在摘要之后：</p>
+
+    <div class="flow reveal">
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">定位最后已摘要的消息</div>
+          <div class="flow-desc">通过 <code>lastSummarizedMessageId</code> 找到摘要覆盖的最后一条消息的索引</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">从后向前计算保留范围</div>
+          <div class="flow-desc">从 lastSummarizedIndex 之后的消息开始计算 token 数和文本消息数，直到同时满足 minTokens（10K）和 minTextBlockMessages（5）</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">不足时向前扩展</div>
+          <div class="flow-desc">如果摘要之后的消息不够，向前扩展（但不超过上一个压缩边界），直到满足最小值或达到 maxTokens（40K）</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">调整索引保持 API 不变量</div>
+          <div class="flow-desc">确保 tool_use / tool_result 配对完整，thinking 块不被分割 &mdash; 这是最关键的一步，防止 API 调用失败</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-green reveal">
+      <strong>API 不变量保护：</strong><code>adjustIndexToPreserveAPIInvariants()</code> 会向前扫描找到所有孤立的 tool_result，然后回溯找到它们对应的 tool_use 所在的 assistant 消息，将整个配对包含在保留范围内。同样的逻辑也适用于 thinking 块和 message.id 的一致性。
+    </div>
+  </div>
+</section>
+
+<!-- Section 8: Recovery -->
+<section id="recovery">
+  <div class="wrap">
+    <div class="sn reveal">08</div>
+    <h2 class="reveal">压缩后恢复：重建上下文</h2>
+    <p class="reveal">压缩不只是生成摘要 &mdash; 更关键的是压缩后如何恢复必要的上下文，让模型能够无缝继续工作。</p>
+
+    <h3 class="reveal" style="margin-top:1.5rem">压缩后消息重建</h3>
+    <div class="code-block reveal">
+      <div class="code-label">compact.ts &mdash; buildPostCompactMessages</div>
+<pre><span class="code-keyword">function</span> <span class="code-fn">buildPostCompactMessages</span>(result) {
+  <span class="code-keyword">return</span> [
+    result.boundaryMarker,     <span class="code-comment">// 压缩边界标记</span>
+    ...result.summaryMessages,  <span class="code-comment">// AI 生成的摘要</span>
+    ...(result.messagesToKeep), <span class="code-comment">// 保留的原始消息</span>
+    ...result.attachments,      <span class="code-comment">// 恢复的文件和工具</span>
+    ...result.hookResults,      <span class="code-comment">// Hook 执行结果</span>
+  ]
+}</pre>
+    </div>
+
+    <h3 class="reveal" style="margin-top:1.5rem">六类恢复注入</h3>
+    <div class="card-grid reveal">
+      <div class="card">
+        <div class="card-name">文件附件恢复</div>
+        <div class="card-sub">POST_COMPACT_MAX_FILES = 5</div>
+        <div class="card-desc">从压缩前的 readFileState 缓存中恢复最多 5 个最近读取的文件，确保模型记得正在编辑的代码</div>
+      </div>
+      <div class="card">
+        <div class="card-name">延迟工具增量</div>
+        <div class="card-sub">getDeferredToolsDeltaAttachment</div>
+        <div class="card-desc">重新宣布已加载的 deferred tools（ToolSearch 发现的工具），避免模型"忘记"自己有哪些工具可用</div>
+      </div>
+      <div class="card">
+        <div class="card-name">代理列表重建</div>
+        <div class="card-sub">getAgentListingDeltaAttachment</div>
+        <div class="card-desc">重新宣布可用的 agent 定义列表，让模型知道可以 spawn 哪些子代理</div>
+      </div>
+      <div class="card">
+        <div class="card-name">MCP 指令重注入</div>
+        <div class="card-sub">getMcpInstructionsDeltaAttachment</div>
+        <div class="card-desc">重新宣布 MCP 服务器的使用指令，确保外部工具的使用说明不丢失</div>
+      </div>
+      <div class="card">
+        <div class="card-name">会话启动 Hook</div>
+        <div class="card-sub">processSessionStartHooks('compact')</div>
+        <div class="card-desc">重新执行 session_start 类型的 hook，相当于"模拟一次新会话启动"</div>
+      </div>
+      <div class="card">
+        <div class="card-name">异步代理附件</div>
+        <div class="card-sub">createAsyncAgentAttachments</div>
+        <div class="card-desc">恢复后台运行的异步代理（如 Dream Task）的状态</div>
+      </div>
+    </div>
+
+    <div class="quote reveal">
+      <p>"压缩后的上下文不是一个孤立的摘要，而是一个精心重建的状态快照 &mdash; 包含了模型继续工作所需的一切：对话记忆、文件上下文、可用工具、代理能力和系统配置。"</p>
+      <cite>架构观察</cite>
+    </div>
+  </div>
+</section>
+
+<!-- Section 9: Pipeline -->
+<section id="pipeline">
+  <div class="wrap-wide">
+    <div class="sn reveal">09</div>
+    <h2 class="reveal">查询管道完整集成</h2>
+    <p class="reveal" style="max-width:65ch">每次用户发送消息后，消息在到达 API 之前会经过一条精密的处理管道。压缩逻辑散布在这条管道的多个节点中：</p>
+
+    <div class="diagram reveal">
+<pre>
+  <span class="d-muted">用户输入</span>
+      <span class="d-muted">│</span>
+      <span class="d-muted">▼</span>
+  <span class="d-accent">getMessagesAfterCompactBoundary()</span>  <span class="d-muted">← 只取最后边界之后的消息</span>
+      <span class="d-muted">│</span>
+      <span class="d-muted">▼</span>
+  applyToolResultBudget()              <span class="d-muted">← 强制单消息工具结果大小限制</span>
+      <span class="d-muted">│</span>
+      <span class="d-muted">▼</span>
+  <span class="d-accent">snipCompactIfNeeded()</span>               <span class="d-muted">← HISTORY_SNIP: 裁剪最旧的消息</span>
+      <span class="d-muted">│</span>                                        <span class="d-muted">记录 snipTokensFreed</span>
+      <span class="d-muted">▼</span>
+  <span class="d-accent">microcompactMessages()</span>              <span class="d-muted">← Layer 1: 清除旧工具结果内容</span>
+      <span class="d-muted">│</span>
+      <span class="d-muted">▼</span>
+  contextCollapse.applyIfNeeded()      <span class="d-muted">← 可选: 上下文折叠（CONTEXT_COLLAPSE）</span>
+      <span class="d-muted">│</span>
+      <span class="d-muted">▼</span>
+  <span class="d-accent">shouldAutoCompact()</span>                 <span class="d-muted">← tokenCount - snipTokensFreed > threshold?</span>
+      <span class="d-muted">│</span>
+      <span class="d-muted">├──</span> <span class="d-green">YES</span> ──▶ <span class="d-accent">autoCompactIfNeeded()</span>
+      <span class="d-muted">│</span>            <span class="d-muted">├──</span> trySessionMemoryCompaction()  <span class="d-muted">← Layer 2: 优先</span>
+      <span class="d-muted">│</span>            <span class="d-muted">└──</span> compactConversation()         <span class="d-muted">← Layer 3: 回退</span>
+      <span class="d-muted">│</span>
+      <span class="d-muted">└──</span> NO
+      <span class="d-muted">│</span>
+      <span class="d-muted">▼</span>
+  normalizeMessagesForAPI()            <span class="d-muted">← 规范化消息格式</span>
+      <span class="d-muted">│</span>
+      <span class="d-muted">▼</span>
+  <span class="d-green">queryModelWithStreaming()</span>            <span class="d-muted">← 发送到 Anthropic API</span>
+</pre>
+    </div>
+
+    <h3 class="reveal" style="margin-top:2rem">边界标记的作用</h3>
+    <p class="reveal" style="max-width:65ch">压缩边界（<code>compact_boundary</code>）是整个系统的锚点。它是一条特殊的系统消息，携带丰富的元数据：</p>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead>
+          <tr>
+            <th>元数据字段</th>
+            <th>类型</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>trigger</td>
+            <td><code>'manual' | 'auto'</code></td>
+            <td>标识压缩是用户手动触发还是自动触发</td>
+          </tr>
+          <tr>
+            <td>preTokens</td>
+            <td><code>number</code></td>
+            <td>压缩前的 token 总数，用于分析和监控</td>
+          </tr>
+          <tr>
+            <td>preCompactDiscoveredTools</td>
+            <td><code>string[]</code></td>
+            <td>压缩前已通过 ToolSearch 发现的工具列表</td>
+          </tr>
+          <tr>
+            <td>preservedSegment</td>
+            <td><code>{head, anchor, tail}</code></td>
+            <td>部分压缩时保留的消息段的 UUID 范围</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="reveal" style="max-width:65ch"><code>getMessagesAfterCompactBoundary()</code> 函数通过 <code>findLastCompactBoundaryIndex()</code> 找到最后一个边界标记，只返回其后的消息 &mdash; 这意味着边界之前的所有原始消息对后续查询来说都是"不可见"的。</p>
+  </div>
+</section>
+
+<!-- Section 10: Resilience -->
+<section id="resilience">
+  <div class="wrap">
+    <div class="sn reveal">10</div>
+    <h2 class="reveal">容错与弹性设计</h2>
+    <p class="reveal">生产环境中的压缩不可能总是成功。Claude Code 的压缩系统包含多层容错机制：</p>
+
+    <div class="card-grid reveal">
+      <div class="card">
+        <div class="card-name">断路器模式</div>
+        <div class="card-sub">MAX_CONSECUTIVE_FAILURES = 3</div>
+        <div class="card-desc">连续 3 次自动压缩失败后停止重试，防止无限循环浪费 API 调用。据内部数据，此前有会话累计达 3,272 次失败，每天全球浪费约 250K API 调用</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Prompt-too-long 重试</div>
+        <div class="card-sub">MAX_PTL_RETRIES = 3</div>
+        <div class="card-desc">API 返回 413 时，按轮次分组逐步删除最旧的消息。计算删除量基于响应中的 token 间隙，无法解析时删除 20% 的组</div>
+      </div>
+      <div class="card">
+        <div class="card-name">流式重试</div>
+        <div class="card-sub">MAX_STREAMING_RETRIES</div>
+        <div class="card-desc">流式响应中断时自动重试，带指数退避延迟。通过 feature flag 控制是否启用</div>
+      </div>
+      <div class="card">
+        <div class="card-name">缓存共享降级</div>
+        <div class="card-sub">fork agent fallback</div>
+        <div class="card-desc">fork 代理（复用缓存前缀）失败时，自动降级到常规流式路径，确保压缩总能完成</div>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="margin-top:1.5rem">压缩后清理</h3>
+    <p class="reveal"><code>runPostCompactCleanup()</code> 在每次成功压缩后执行全局状态清理：</p>
+
+    <div class="code-block reveal">
+      <div class="code-label">postCompactCleanup.ts &mdash; 状态重置</div>
+<pre><span class="code-fn">resetMicrocompactState</span>()        <span class="code-comment">// 重置微压缩追踪</span>
+<span class="code-fn">resetContextCollapse</span>()          <span class="code-comment">// 重置上下文折叠</span>
+<span class="code-fn">getUserContext</span>.cache.<span class="code-fn">clear</span>()    <span class="code-comment">// 清理用户上下文缓存</span>
+<span class="code-fn">clearSystemPromptSections</span>()     <span class="code-comment">// 清空系统提示词段落</span>
+<span class="code-fn">clearClassifierApprovals</span>()      <span class="code-comment">// 清除权限分类器状态</span>
+<span class="code-fn">clearSpeculativeChecks</span>()        <span class="code-comment">// 清除推测执行状态</span>
+<span class="code-fn">clearBetaTracingState</span>()         <span class="code-comment">// 清除追踪状态</span>
+<span class="code-fn">sweepFileContentCache</span>()         <span class="code-comment">// 清理文件内容缓存</span>
+<span class="code-fn">clearSessionMessagesCache</span>()     <span class="code-comment">// 清除会话消息缓存</span></pre>
+    </div>
+
+    <div class="callout callout-accent reveal">
+      <strong>设计哲学：</strong>每次压缩等同于一次"软重启"。系统不仅替换消息，还重置几乎所有模块级状态，确保压缩后的行为与新会话开始时一致。这解释了为什么压缩后会重新运行 session_start hook。
+    </div>
+  </div>
+</section>
+
+<!-- Section 11: Verdict -->
+<section id="verdict">
+  <div class="wrap">
+    <div class="sn reveal">11</div>
+    <h2 class="reveal">总结与评价</h2>
+
+    <div class="two-col reveal">
+      <div class="col pros">
+        <h4>设计亮点</h4>
+        <ul>
+          <li>三层递进策略，成本从零到高逐级升级</li>
+          <li>会话内存优先，避免不必要的 API 调用</li>
+          <li>结构化摘要提示词，信息保留率极高</li>
+          <li>API 不变量保护，确保工具对完整性</li>
+          <li>断路器 + 重试组合，兼顾弹性和成本</li>
+          <li>压缩后六类恢复注入，上下文无缝延续</li>
+          <li>边界标记元数据丰富，支持分析和调试</li>
+        </ul>
+      </div>
+      <div class="col cons">
+        <h4>复杂度代价</h4>
+        <ul>
+          <li>4000+ 行压缩代码，认知负担极高</li>
+          <li>多个 feature flag 交织，测试矩阵庞大</li>
+          <li>缓存微压缩仅限内部构建，外部用户无法受益</li>
+          <li>完整压缩的 API 调用本身消耗大量 token</li>
+          <li>摘要质量依赖模型能力，存在信息损失风险</li>
+          <li>断路器触发后无自动恢复，需用户干预</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="verdict reveal">
+      <h3>核心判断</h3>
+      <p>Claude Code 的上下文压缩系统是目前业界最成熟的 LLM 对话状态管理实现之一。它不是简单的"截断 + 摘要"，而是一套完整的状态机 &mdash; 从令牌感知的智能触发、三层递进的压缩策略、到精心设计的上下文恢复，每个环节都经过深思熟虑的工程优化。</p>
+      <p style="margin-top:0.8rem">对于想要在自己的 AI 应用中实现类似机制的开发者，最值得借鉴的三个设计：<strong>1)</strong> 微压缩作为零成本的第一道防线；<strong>2)</strong> 结构化摘要提示词的 9 部分框架；<strong>3)</strong> 压缩后作为"软重启"的状态恢复逻辑。</p>
+    </div>
+
+    <h3 class="reveal" style="margin-top:2rem">关键源文件索引</h3>
+    <div class="files reveal">
+      <div class="file">
+        <div class="file-name">compact/autoCompact.ts</div>
+        <div class="file-desc">触发决策、阈值计算、断路器</div>
+      </div>
+      <div class="file">
+        <div class="file-name">compact/compact.ts</div>
+        <div class="file-desc">完整压缩核心流程</div>
+      </div>
+      <div class="file">
+        <div class="file-name">compact/microCompact.ts</div>
+        <div class="file-desc">微压缩、时间/缓存路径</div>
+      </div>
+      <div class="file">
+        <div class="file-name">compact/prompt.ts</div>
+        <div class="file-desc">摘要提示词模板</div>
+      </div>
+      <div class="file">
+        <div class="file-name">compact/sessionMemoryCompact.ts</div>
+        <div class="file-desc">会话内存压缩路径</div>
+      </div>
+      <div class="file">
+        <div class="file-name">compact/postCompactCleanup.ts</div>
+        <div class="file-desc">压缩后状态清理</div>
+      </div>
+      <div class="file">
+        <div class="file-name">compact/grouping.ts</div>
+        <div class="file-desc">消息分组、PTL 重试</div>
+      </div>
+      <div class="file">
+        <div class="file-name">query.ts</div>
+        <div class="file-desc">查询管道集成点</div>
+      </div>
+      <div class="file">
+        <div class="file-name">commands/compact/</div>
+        <div class="file-desc">用户 /compact 命令</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer style="padding:3rem 0;text-align:center;border-top:1px solid var(--border)">
+  <div class="wrap">
+    <p style="font-size:0.78rem;color:var(--fg-3)">Based on source code snapshot from <a href="https://github.com/instructkr/claude-code" style="color:var(--fg-3)">instructkr/claude-code</a> &middot; Analysis by Claude Code</p>
+  </div>
+</footer>
+
+<script>
+// Theme toggle
+const toggle=document.getElementById('themeToggle'),icon=document.getElementById('themeIcon')
+function getTheme(){return document.documentElement.getAttribute('data-theme')||
+(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);icon.textContent=t==='dark'?'\u263C':'\u263D'}
+toggle.addEventListener('click',()=>{setTheme(getTheme()==='dark'?'light':'dark')})
+
+// Progress bar
+const bar=document.getElementById('progressBar')
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement.scrollHeight-innerHeight
+  bar.style.width=h>0?(scrollY/h*100)+'%':'0%'
+},{passive:true})
+
+// Scroll reveal
+const reveals=document.querySelectorAll('.reveal')
+const io=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target)}})
+},{threshold:0.08,rootMargin:'0px 0px -40px 0px'})
+reveals.forEach(el=>io.observe(el))
+
+// Nav active tracking
+const navLinks=document.querySelectorAll('.nav-inner a')
+const sections=document.querySelectorAll('section[id]')
+const navIO=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      navLinks.forEach(l=>l.classList.remove('active'))
+      const a=document.querySelector('.nav-inner a[href="#'+e.target.id+'"]')
+      if(a)a.classList.add('active')
+    }
+  })
+},{threshold:0.15,rootMargin:'-60px 0px -50% 0px'})
+sections.forEach(s=>navIO.observe(s))
+
+// Stat counter animation
+const statVals=document.querySelectorAll('.stat-val')
+const statIO=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(!e.isIntersecting)return
+    const el=e.target,text=el.textContent.trim()
+    const m=text.match(/^~?(\d[\d,]*)([KkMm]?)$/)
+    if(!m){statIO.unobserve(el);return}
+    const target=parseInt(m[1].replace(/,/g,''),10),suffix=m[2],prefix=text.startsWith('~')?'~':''
+    let start=0;const dur=800,s=performance.now()
+    function tick(now){
+      const p=Math.min((now-s)/dur,1),ease=1-Math.pow(1-p,4)
+      const v=Math.round(start+(target-start)*ease)
+      el.textContent=prefix+(v>999?v.toLocaleString():v)+suffix
+      if(p<1)requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+    statIO.unobserve(el)
+  })
+},{threshold:0.5})
+statVals.forEach(el=>statIO.observe(el))
+</script>
+</body>
+</html>

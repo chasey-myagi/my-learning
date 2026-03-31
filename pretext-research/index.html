@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pretext 深度研究 — DOM-Free 多行文本排版引擎</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;
+  --fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;
+  --accent:#dc4a1a;--accent-2:#9a3412;
+  --green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;
+  --border:#d6d0c8;
+  --tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);
+  --quote-bg:rgba(28,25,23,0.03);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;
+    --fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;
+    --accent:#fb923c;--accent-2:#fdba74;
+    --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);
+    --border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);
+    --quote-bg:rgba(255,255,255,0.03);
+  }
+}
+[data-theme="dark"]{
+  --bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;
+  --fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;
+  --accent:#fb923c;--accent-2:#fdba74;
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);
+  --border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);
+  --quote-bg:rgba(255,255,255,0.03);
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:system-ui,-apple-system,'Segoe UI','PingFang SC','Noto Sans SC','Microsoft YaHei',sans-serif;
+  font-size:17px;line-height:1.72;color:var(--fg-2);background:var(--bg);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+h1,h2,h3,h4{color:var(--fg);line-height:1.25}
+h1{font-size:clamp(2.6rem,6vw,4rem);font-weight:900;letter-spacing:-0.02em}
+h2{font-size:clamp(1.7rem,3.5vw,2.3rem);font-weight:800;margin-bottom:1.2rem}
+h3{font-size:1.08rem;font-weight:700;margin-bottom:0.6rem}
+h4{font-family:'SF Mono',ui-monospace,'Cascadia Code',monospace;font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);margin-bottom:0.6rem}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .2s}
+a:hover{border-bottom-color:var(--accent)}
+p{margin-bottom:1rem;max-width:65ch}
+code{font-family:'SF Mono',ui-monospace,'Cascadia Code',monospace;font-size:0.82em;background:var(--tag-bg);color:var(--tag-fg);padding:0.15em 0.4em;border-radius:4px}
+
+/* Progress bar */
+.progress{position:fixed;top:0;left:0;height:2px;background:var(--accent);z-index:1000;transition:width 50ms linear;will-change:width}
+
+/* Theme toggle */
+.theme-toggle{
+  position:fixed;top:16px;right:16px;z-index:999;
+  width:36px;height:36px;border-radius:50%;border:1px solid var(--border);
+  background:var(--bg-alt);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:16px;transition:all .2s;
+}
+.theme-toggle:hover{transform:scale(1.1)}
+
+/* Nav */
+.nav{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.nav-inner{max-width:960px;margin:0 auto;padding:0 2rem;display:flex;gap:0.2rem;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.nav-inner::-webkit-scrollbar{display:none}
+.nav a{
+  display:block;padding:0.65rem 0.7rem;font-size:0.72rem;font-weight:500;
+  white-space:nowrap;color:var(--fg-3);border-bottom:2px solid transparent;
+  transition:all .2s;text-transform:uppercase;letter-spacing:0.04em;
+  font-family:'SF Mono',ui-monospace,monospace;
+}
+.nav a:hover{color:var(--fg)}
+.nav a.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Wrap */
+.wrap{max-width:780px;margin:0 auto;padding:0 2rem}
+.wrap-wide{max-width:960px;margin:0 auto;padding:0 2rem}
+
+/* Hero */
+.hero{padding:6rem 0 3.5rem;background:var(--bg)}
+.hero-tag{
+  display:inline-block;font-family:'SF Mono',ui-monospace,monospace;
+  font-size:0.7rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--accent);background:var(--tag-bg);padding:0.3em 0.8em;border-radius:100px;
+  margin-bottom:1.5rem;animation:fadeUp .6s ease both;
+}
+.hero h1{margin-bottom:1rem;animation:fadeUp .6s ease .1s both}
+.hero .highlight{color:var(--accent)}
+.hero-deck{font-size:1.18rem;color:var(--fg-2);max-width:58ch;margin-bottom:2rem;animation:fadeUp .6s ease .2s both}
+.hero-meta{
+  display:flex;flex-wrap:wrap;gap:1.2rem 2rem;font-size:0.82rem;color:var(--fg-3);
+  animation:fadeUp .6s ease .3s both;
+}
+.hero-meta b{color:var(--fg);font-weight:600;margin-right:0.3em}
+
+/* Section */
+section{padding:4rem 0 3.5rem}
+section:nth-child(even){background:var(--bg-alt)}
+section:nth-child(odd){background:var(--bg)}
+.sn{font-size:4.5rem;font-weight:900;color:var(--accent);opacity:0.18;line-height:1;margin-bottom:-0.4rem;font-family:'SF Mono',ui-monospace,monospace}
+
+/* Stats */
+.stats{display:flex;flex-wrap:wrap;gap:1.5rem 2.5rem;margin:2rem 0}
+.stat{flex:1;min-width:120px}
+.stat-val{font-size:2.2rem;font-weight:900;color:var(--accent);line-height:1.1;transition:transform .2s}
+.stat-val:hover{transform:scale(1.08)}
+.stat-lbl{font-size:0.72rem;font-weight:500;color:var(--fg-3);text-transform:uppercase;letter-spacing:0.06em;margin-top:0.3rem;font-family:'SF Mono',ui-monospace,monospace}
+
+/* Flow diagram */
+.flow{margin:2rem 0}
+.flow-step{display:flex;gap:1.2rem;margin-bottom:0}
+.flow-rail{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0}
+.flow-dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px}
+.flow-line{width:2px;flex:1;background:var(--border);min-height:24px}
+.flow-body{padding-bottom:1.5rem;flex:1}
+.flow-title{font-weight:700;color:var(--fg);margin-bottom:0.25rem}
+.flow-desc{font-size:0.92rem;color:var(--fg-2);max-width:55ch}
+
+/* Quote */
+.quote{border-left:3px solid var(--accent);padding:1.2rem 1.5rem;background:var(--quote-bg);border-radius:0 8px 8px 0;margin:1.8rem 0}
+.quote p{font-style:italic;font-size:1.05rem;color:var(--fg-2);margin-bottom:0.5rem}
+.quote cite{font-size:0.78rem;color:var(--fg-3);font-style:normal;font-weight:500}
+
+/* Callout */
+.callout{padding:1rem 1.3rem;border-radius:8px;margin:1.5rem 0;font-size:0.95rem;border:1px solid var(--border)}
+.callout-green{background:var(--green-bg);border-color:transparent}
+.callout-green strong{color:var(--green)}
+.callout-accent{background:var(--tag-bg);border-color:transparent}
+.callout-accent strong{color:var(--accent)}
+
+/* Table */
+.table-wrap{overflow-x:auto;margin:1.5rem 0;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:0.88rem}
+th{text-align:left;padding:0.7rem 1rem;font-weight:600;color:var(--fg);background:var(--bg-alt);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:0.6rem 1rem;border-bottom:1px solid var(--border);color:var(--fg-2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.row-hl{background:var(--tag-bg)}
+.row-hl td{color:var(--fg);font-weight:600}
+
+/* Card grid */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin:1.5rem 0}
+.card{background:var(--bg-alt);border:1px solid var(--border);border-radius:10px;padding:1.3rem 1.4rem}
+.card-name{font-weight:700;color:var(--fg);margin-bottom:0.2rem;font-size:1rem}
+.card-name a{color:var(--fg);border-bottom-color:var(--border)}
+.card-name a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.card-sub{font-size:0.72rem;color:var(--fg-3);margin-bottom:0.5rem;font-family:'SF Mono',ui-monospace,monospace}
+.card-desc{font-size:0.88rem;color:var(--fg-2);line-height:1.55}
+
+/* Timeline */
+.timeline{margin:1.8rem 0}
+.tl{display:flex;gap:1.5rem;padding:1rem 0;border-bottom:1px solid var(--border)}
+.tl:last-child{border-bottom:none}
+.tl-date{font-family:'SF Mono',ui-monospace,monospace;font-size:0.75rem;font-weight:600;color:var(--accent);min-width:90px;padding-top:0.15rem;flex-shrink:0}
+.tl-body{flex:1}
+.tl-label{font-weight:700;color:var(--fg);margin-bottom:0.15rem}
+.tl-text{font-size:0.88rem;color:var(--fg-2)}
+
+/* Two-column */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+.col h4{margin-bottom:0.7rem}
+.col ul{list-style:none;padding:0}
+.col.pros li::before{content:"+";color:var(--green);font-weight:700;margin-right:0.5em}
+.col.cons li::before{content:"-";color:var(--accent);font-weight:700;margin-right:0.5em}
+.col li{font-size:0.92rem;color:var(--fg-2);margin-bottom:0.45rem;padding-left:0.2rem}
+
+/* Media list */
+.media-list{margin:1.5rem 0}
+.media-item{display:flex;gap:1rem;padding:0.9rem 0;border-bottom:1px solid var(--border)}
+.media-item:last-child{border-bottom:none}
+.media-src{font-family:'SF Mono',ui-monospace,monospace;font-size:0.68rem;font-weight:600;text-transform:uppercase;color:var(--accent);min-width:80px;padding-top:0.15rem;flex-shrink:0;letter-spacing:0.04em}
+.media-body{flex:1}
+.media-title{font-weight:600;color:var(--fg);margin-bottom:0.15rem;font-size:0.95rem}
+.media-note{font-size:0.82rem;color:var(--fg-3)}
+
+/* Verdict */
+.verdict{border:2px solid var(--accent);border-radius:12px;padding:2rem 2.2rem;margin:2rem 0}
+.verdict h3{color:var(--accent);margin-bottom:0.8rem;font-size:1.2rem}
+.verdict p{color:var(--fg-2);margin-bottom:0.6rem}
+
+/* Files display */
+.files{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.8rem;margin:1.5rem 0}
+.file{background:var(--bg-code);border-radius:8px;padding:0.9rem 1rem}
+.file-name{font-family:'SF Mono',ui-monospace,monospace;font-size:0.78rem;font-weight:600;color:var(--accent-2);margin-bottom:0.25rem}
+.file-desc{font-size:0.72rem;color:var(--fg-3)}
+
+/* Reveal animation */
+.reveal{opacity:0.08;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal:nth-child(2){transition-delay:.08s}
+.reveal:nth-child(3){transition-delay:.16s}
+.reveal:nth-child(4){transition-delay:.24s}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(24px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* Reduced motion */
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .hero *{animation:none!important}
+  .stat-val:hover{transform:none}
+}
+
+/* Mobile */
+@media(max-width:640px){
+  .hero{padding:4rem 0 2.5rem}
+  section{padding:3rem 0 2.5rem}
+  .wrap,.wrap-wide{padding:0 1.2rem}
+  .hero-meta{gap:0.6rem 1.4rem}
+  .stats{gap:1rem 1.5rem}
+  .stat{min-width:100px}
+  .sn{font-size:3rem}
+  .nav-inner{padding:0 1.2rem}
+  .card-grid{grid-template-columns:1fr}
+  .tl{flex-direction:column;gap:0.3rem}
+}
+
+/* Footer */
+.footer{padding:2.5rem 0;text-align:center;font-size:0.75rem;color:var(--fg-3);border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+  <span id="themeIcon">&#9790;</span>
+</button>
+
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#overview">概述</a>
+    <a href="#architecture">架构</a>
+    <a href="#features">能力</a>
+    <a href="#performance">性能</a>
+    <a href="#source">源码</a>
+    <a href="#author">作者</a>
+    <a href="#reception">社区</a>
+    <a href="#comparison">对比</a>
+    <a href="#verdict">结论</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-tag">深度研究 &middot; 2026.03.29</div>
+    <h1>Pretext: <span class="highlight">Zero-Reflow</span> 文本排版引擎</h1>
+    <p class="hero-deck">一个纯 TypeScript 库，用 Canvas measureText 取代 DOM 回流，让多行文本的高度预测和换行计算变成纯数学运算。两天内获得 6,000+ Stars。</p>
+    <div class="hero-meta">
+      <span><b>作者</b> Cheng Lou (chenglou)</span>
+      <span><b>语言</b> TypeScript</span>
+      <span><b>协议</b> MIT</span>
+      <span><b>版本</b> v0.0.3</span>
+      <span><b>依赖</b> 零运行时依赖</span>
+    </div>
+  </div>
+</header>
+
+<!-- 01 OVERVIEW -->
+<section id="overview">
+  <div class="wrap">
+    <div class="sn reveal">01</div>
+    <h2 class="reveal">它是什么</h2>
+    <p class="reveal"><strong>Pretext</strong> 是一个浏览器端的多行文本测量与布局库，发布为 npm 包 <code>@chenglou/pretext</code>。它的核心洞察是：浏览器的 Canvas <code>measureText()</code> API 可以作为字体引擎的"真相来源"（ground truth），完全绕过昂贵的 DOM 回流操作。</p>
+    <p class="reveal">在传统 Web 开发中，每次需要知道"这段文字有多高"或"在哪里换行"，都必须调用 <code>getBoundingClientRect()</code> 或读取 <code>offsetHeight</code>，触发浏览器的 layout reflow。当页面有数百个组件时，这会导致严重的性能瓶颈。</p>
+    <p class="reveal">Pretext 将这个问题分解为两个独立的阶段：一次性的文本分析（expensive），和纯算术的布局计算（cheap）。这意味着窗口 resize 时不需要任何 DOM 读取。</p>
+
+    <div class="stats reveal">
+      <div class="stat">
+        <div class="stat-val" data-count="6000">~6,000</div>
+        <div class="stat-lbl">GitHub Stars (2天内)</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">7,680</div>
+        <div class="stat-lbl">浏览器测试用例</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">100%</div>
+        <div class="stat-lbl">三大浏览器精度</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">0</div>
+        <div class="stat-lbl">运行时依赖</div>
+      </div>
+    </div>
+
+    <div class="callout callout-green reveal">
+      <strong>核心价值：</strong>将文本排版从"每次 resize 都要回流"变为"一次 prepare、无限次纯数学 layout"。500 段文字的重新排版只需 0.09ms。
+    </div>
+  </div>
+</section>
+
+<!-- 02 ARCHITECTURE -->
+<section id="architecture">
+  <div class="wrap">
+    <div class="sn reveal">02</div>
+    <h2 class="reveal">两阶段架构</h2>
+    <p class="reveal">Pretext 的架构优雅地分离了"昂贵但只做一次"和"便宜且频繁调用"两种操作。这是理解整个库的关键。</p>
+
+    <div class="flow reveal">
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">prepare(text, font) — 预处理阶段</div>
+          <div class="flow-desc">一次性工作。规范化空白字符、用 <code>Intl.Segmenter</code> 分割词段、应用 CJK/阿拉伯语/Emoji 的特殊规则、用 Canvas <code>measureText()</code> 测量每个词段宽度、缓存所有度量信息。约 18ms / 500段文字。返回不透明的 <code>PreparedText</code> handle。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">layout(prepared, maxWidth, lineHeight) — 布局阶段</div>
+          <div class="flow-desc">热路径。纯算术运算，零 DOM 读取、零 Canvas 调用。遍历缓存的宽度数据，累加比较，返回行数和高度。约 0.09ms / 500段文字。每次 resize 只需调用这个函数。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">layoutNextLine(prepared, cursor, maxWidth) — 逐行流式布局</div>
+          <div class="flow-desc">进阶 API。每次调用返回一行的文本、宽度和光标位置。每行可以指定不同的可用宽度，实现文字环绕任意形状障碍物、多栏连续流动等高级排版。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">walkLineRanges(prepared, maxWidth, onLine) — 批量几何计算</div>
+          <div class="flow-desc">高性能批量 API。获取每行的宽度和光标位置，但不构建文本字符串。适用于 shrinkwrap（二分搜索最紧凑宽度）等场景。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-accent reveal">
+      <strong>设计哲学：</strong>opaque fast path + rich escape hatch。<code>prepare()</code> 返回不透明 handle 防止 API 僵化，<code>prepareWithSegments()</code> 是给高级用户的逃生通道。
+    </div>
+  </div>
+</section>
+
+<!-- 03 FEATURES -->
+<section id="features">
+  <div class="wrap">
+    <div class="sn reveal">03</div>
+    <h2 class="reveal">核心能力</h2>
+    <p class="reveal">Pretext 不只是一个测量工具，它是一个完整的文本布局引擎，覆盖了从简单高度预测到复杂编辑排版的全部场景。</p>
+
+    <div class="card-grid reveal">
+      <div class="card">
+        <div class="card-name">DOM-Free 测量</div>
+        <div class="card-sub">零回流 / 零 getBoundingClientRect</div>
+        <div class="card-desc">用 Canvas measureText 替代所有 DOM 度量操作。组件级 UI 中消除 layout thrashing，resize 时仅执行纯数学运算。</div>
+      </div>
+      <div class="card">
+        <div class="card-name">全语言支持</div>
+        <div class="card-sub">CJK / Arabic / Thai / Emoji</div>
+        <div class="card-desc">基于 <code>Intl.Segmenter</code> 的国际化分词。CJK 逐字换行 + 禁则处理（kinsoku），阿拉伯语双向文本，东南亚语系（泰/高棉/缅甸），Emoji ZWJ 序列。</div>
+      </div>
+      <div class="card">
+        <div class="card-name">变宽排版</div>
+        <div class="card-sub">layoutNextLine API</div>
+        <div class="card-desc">每行可以指定不同的可用宽度。文字可以像水一样流过任意形状的障碍物，实现杂志般的多栏流动和 obstacle-aware 路由。</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Shrinkwrap 测量</div>
+        <div class="card-sub">walkLineRanges + 二分搜索</div>
+        <div class="card-desc">找到保持相同行数的最窄容器宽度。CSS <code>fit-content</code> 无法做到这一点。适用于聊天气泡、卡片等需要紧凑排列的场景。</div>
+      </div>
+      <div class="card">
+        <div class="card-name">CSS 行为匹配</div>
+        <div class="card-sub">white-space: normal / pre-wrap</div>
+        <div class="card-desc">精确匹配浏览器的文本换行行为。支持 <code>overflow-wrap: break-word</code>，trailing spaces hang past line edge，soft hyphen 断行时显示连字符。</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Emoji 自动校正</div>
+        <div class="card-sub">Canvas vs DOM 宽度差异</div>
+        <div class="card-desc">Chrome/Firefox 在 macOS 上 Canvas 测量 emoji 比 DOM 更宽。Pretext 自动检测并校正这个差异，每字体只需一次 DOM 读取。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 PERFORMANCE -->
+<section id="performance">
+  <div class="wrap-wide">
+    <div class="wrap">
+      <div class="sn reveal">04</div>
+      <h2 class="reveal">性能基准</h2>
+      <p class="reveal">所有数据来自官方 benchmark（500 段混合文本，4 种字体，8 种字号，8 种宽度）。</p>
+    </div>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead>
+          <tr>
+            <th>操作</th>
+            <th>Chrome</th>
+            <th>Safari</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>prepare()</code></td>
+            <td>18.85ms</td>
+            <td>18.00ms</td>
+            <td>一次性成本，包含 Canvas 测量</td>
+          </tr>
+          <tr class="row-hl">
+            <td><code>layout()</code></td>
+            <td>0.09ms</td>
+            <td>0.12ms</td>
+            <td>热路径：纯数学，零 DOM/Canvas</td>
+          </tr>
+          <tr>
+            <td><code>layoutWithLines()</code></td>
+            <td>0.05ms</td>
+            <td>0.05ms</td>
+            <td>返回每行文本和宽度</td>
+          </tr>
+          <tr>
+            <td><code>walkLineRanges()</code></td>
+            <td>0.03ms</td>
+            <td>0.03ms</td>
+            <td>批量几何，不构建字符串</td>
+          </tr>
+          <tr>
+            <td><code>layoutNextLine()</code></td>
+            <td>0.07ms</td>
+            <td>0.07ms</td>
+            <td>流式逐行布局</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="wrap">
+      <div class="stats reveal">
+        <div class="stat">
+          <div class="stat-val">0.09ms</div>
+          <div class="stat-lbl">500 段文字的 Layout 耗时</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">~200x</div>
+          <div class="stat-lbl">比 DOM Reflow 快</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">60fps</div>
+          <div class="stat-lbl">Resize 帧率</div>
+        </div>
+      </div>
+
+      <div class="callout callout-green reveal">
+        <strong>关键洞察：</strong><code>layout()</code> 是 resize 热路径。它不读取 DOM、不调用 Canvas、不分配字符串——只做加法和比较。这就是为什么 500 段文字的重排只需 0.09ms。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 SOURCE -->
+<section id="source">
+  <div class="wrap">
+    <div class="sn reveal">05</div>
+    <h2 class="reveal">源码架构</h2>
+    <p class="reveal">核心引擎仅 4 个 TypeScript 文件，总计约 3,200 行。职责清晰分离，无运行时依赖。</p>
+
+    <div class="files reveal">
+      <div class="file">
+        <div class="file-name">layout.ts</div>
+        <div class="file-desc">718 行 &middot; 公共 API 入口，两阶段模型</div>
+      </div>
+      <div class="file">
+        <div class="file-name">analysis.ts</div>
+        <div class="file-desc">1,007 行 &middot; 文本分析、分词、规范化</div>
+      </div>
+      <div class="file">
+        <div class="file-name">line-break.ts</div>
+        <div class="file-desc">1,056 行 &middot; 换行算法、break 策略</div>
+      </div>
+      <div class="file">
+        <div class="file-name">measurement.ts</div>
+        <div class="file-desc">231 行 &middot; Canvas 测量、缓存、Emoji 校正</div>
+      </div>
+      <div class="file">
+        <div class="file-name">bidi.ts</div>
+        <div class="file-desc">173 行 &middot; 双向文本元数据</div>
+      </div>
+      <div class="file">
+        <div class="file-name">layout.test.ts</div>
+        <div class="file-desc">627 行 &middot; 不变性测试套件</div>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="margin-top:2rem">内部 Break Kind 分类</h3>
+    <p class="reveal">分析阶段将文本切分为 8 种 break kind，每种有不同的换行策略：</p>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>类型</th><th>说明</th><th>示例</th></tr></thead>
+        <tbody>
+          <tr><td><code>text</code></td><td>普通词段</td><td>hello, 世界</td></tr>
+          <tr><td><code>space</code></td><td>可折叠空白</td><td>CSS normal 模式下的空格</td></tr>
+          <tr><td><code>preserved-space</code></td><td>保留空格</td><td>pre-wrap 模式</td></tr>
+          <tr><td><code>tab</code></td><td>制表符</td><td>pre-wrap 模式下的 \t</td></tr>
+          <tr><td><code>glue</code></td><td>不换行粘合</td><td>NBSP, NNBSP, Word Joiner</td></tr>
+          <tr><td><code>zero-width-break</code></td><td>零宽换行机会</td><td>ZWSP, ZWJ</td></tr>
+          <tr><td><code>soft-hyphen</code></td><td>条件连字符</td><td>\u00AD</td></tr>
+          <tr><td><code>hard-break</code></td><td>硬换行</td><td>pre-wrap 模式下的 \n</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 06 AUTHOR -->
+<section id="author">
+  <div class="wrap">
+    <div class="sn reveal">06</div>
+    <h2 class="reveal">作者：Cheng Lou</h2>
+    <p class="reveal">Cheng Lou（陈骆）是 JavaScript/前端生态中最有影响力的工程师之一。他的每个项目都体现了对底层问题的深入思考和对原则性设计的执着追求。</p>
+
+    <div class="timeline reveal">
+      <div class="tl">
+        <div class="tl-date">早期</div>
+        <div class="tl-body">
+          <div class="tl-label">React 核心贡献者</div>
+          <div class="tl-text">Facebook/Meta 工程师，参与 React 框架的早期核心开发和架构设计。</div>
+        </div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2015</div>
+        <div class="tl-body">
+          <div class="tl-label">react-motion 发布</div>
+          <div class="tl-text">21,700+ Stars。"A spring that solves your animation problems"——用弹簧物理模型替代 CSS transition，成为 React 生态最有影响力的动画库之一。</div>
+        </div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2016</div>
+        <div class="tl-body">
+          <div class="tl-label">"On the Spectrum of Abstraction" 演讲</div>
+          <div class="tl-text">React Europe 经典演讲。建立了关于抽象层级的统一心智模型，至今被广泛引用。</div>
+        </div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2016-2020</div>
+        <div class="tl-body">
+          <div class="tl-label">ReasonML / ReScript</div>
+          <div class="tl-text">在 OCaml 之上构建的新语法和工具层。为 Facebook Messenger.com 所采用。Cheng Lou 是核心推动者。</div>
+        </div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">当前</div>
+        <div class="tl-body">
+          <div class="tl-label">Midjourney 工程师</div>
+          <div class="tl-text">加入 Midjourney 团队。Midjourney 首页标志性的 ASCII 旋涡动画即出自他手。</div>
+        </div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2026.03</div>
+        <div class="tl-body">
+          <div class="tl-label">Pretext 发布</div>
+          <div class="tl-text">开源 DOM-Free 文本排版引擎。两天内获得 6,000+ Stars，引发前端社区广泛讨论。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote reveal">
+      <p>"We're often not seeking for more power. We're seeking for more principled ways to use our existing power."</p>
+      <cite>Cheng Lou, Reactiflux Q&amp;A, 2017</cite>
+    </div>
+
+    <div class="quote reveal">
+      <p>"Right now I'm betting it on Reason and it's still getting me laughed at."</p>
+      <cite>Cheng Lou — 在主流之外下注，注重学习和理解而非即时生产力</cite>
+    </div>
+  </div>
+</section>
+
+<!-- 07 RECEPTION -->
+<section id="reception">
+  <div class="wrap">
+    <div class="sn reveal">07</div>
+    <h2 class="reveal">社区反响</h2>
+    <p class="reveal">Pretext 于 2026 年 3 月 27 日前后公开发布。不到 48 小时内获得约 6,000 Stars，在 Twitter/X 上引发了广泛的讨论和传播。</p>
+
+    <div class="stats reveal">
+      <div class="stat">
+        <div class="stat-val">138K+</div>
+        <div class="stat-lbl">推文浏览量</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">829</div>
+        <div class="stat-lbl">转推数</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">223</div>
+        <div class="stat-lbl">GitHub Forks</div>
+      </div>
+    </div>
+
+    <div class="quote reveal">
+      <p>"Every website you've ever used is broken in a way you never noticed and it's been this way for 30 years... A Midjourney engineer finally just fixed it. It's called Pretext: A tiny library that lets websites lay out text the way magazines and newspapers do."</p>
+      <cite>Josh Kale (@JoshKale) — Viral tweet</cite>
+    </div>
+
+    <div class="quote reveal">
+      <p>"PURE GENIUS. 这个工程师解决了一个困扰 Web 开发者 30 年的问题。Pretext 不读 DOM，不触发回流，纯数学算高度。"</p>
+      <cite>@byteHumi — Twitter/X</cite>
+    </div>
+
+    <h3 class="reveal" style="margin-top:2rem">传播渠道</h3>
+    <div class="media-list reveal">
+      <div class="media-item">
+        <div class="media-src">Twitter</div>
+        <div class="media-body">
+          <div class="media-title">chenglou 官方推文</div>
+          <div class="media-note">138K+ 浏览，829 转推，多位知名开发者转发讨论</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">HN</div>
+        <div class="media-body">
+          <div class="media-title">Pretext | Hacker News</div>
+          <div class="media-note">已上榜，讨论正在积累中</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">daily.dev</div>
+        <div class="media-body">
+          <div class="media-title">GitHub - chenglou/pretext</div>
+          <div class="media-note">5 upvotes，被收录为推荐阅读</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">Demo</div>
+        <div class="media-body">
+          <div class="media-title">社区复刻 Demo</div>
+          <div class="media-note">somnai-dreams 等开发者制作了 Fluid Smoke、Wireframe Torus 等酷炫 Demo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 COMPARISON -->
+<section id="comparison">
+  <div class="wrap-wide">
+    <div class="wrap">
+      <div class="sn reveal">08</div>
+      <h2 class="reveal">方案对比</h2>
+      <p class="reveal">将 Pretext 与现有的文本排版/测量方案进行横向比较。</p>
+    </div>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>Pretext</th>
+            <th>DOM 测量</th>
+            <th>Canvas measureText</th>
+            <th>CSS text-wrap: balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>触发回流</td>
+            <td><strong style="color:var(--green)">否（layout 阶段）</strong></td>
+            <td>是</td>
+            <td>否（仅单行）</td>
+            <td>是（浏览器内部）</td>
+          </tr>
+          <tr>
+            <td>多行布局</td>
+            <td><strong>完整支持</strong></td>
+            <td>完整</td>
+            <td>需自行实现</td>
+            <td>仅 6-10 行</td>
+          </tr>
+          <tr>
+            <td>多语言 / Bidi</td>
+            <td><strong>完整</strong></td>
+            <td>完整</td>
+            <td>需自行实现</td>
+            <td>完整</td>
+          </tr>
+          <tr>
+            <td>渲染目标</td>
+            <td><strong>DOM / Canvas / SVG / WebGL</strong></td>
+            <td>仅 DOM</td>
+            <td>Canvas</td>
+            <td>仅 DOM</td>
+          </tr>
+          <tr>
+            <td>变宽布局</td>
+            <td><strong style="color:var(--green)">layoutNextLine</strong></td>
+            <td>不支持</td>
+            <td>不支持</td>
+            <td>不支持</td>
+          </tr>
+          <tr>
+            <td>Shrinkwrap</td>
+            <td><strong style="color:var(--green)">walkLineRanges</strong></td>
+            <td>不支持</td>
+            <td>不支持</td>
+            <td>不支持</td>
+          </tr>
+          <tr class="row-hl">
+            <td>Resize 性能</td>
+            <td><strong>~0.09ms / 500段</strong></td>
+            <td>昂贵（30ms+）</td>
+            <td>快但不完整</td>
+            <td>浏览器控制</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="wrap">
+      <h3 class="reveal" style="margin-top:2rem">优势与局限</h3>
+      <div class="two-col reveal">
+        <div class="col pros">
+          <h4>优势</h4>
+          <ul>
+            <li>零 DOM 回流的文本高度预测</li>
+            <li>完整的国际化换行支持</li>
+            <li>变宽排版 / 障碍物环绕</li>
+            <li>零运行时依赖，纯 TypeScript</li>
+            <li>三大浏览器 100% 精度测试</li>
+            <li>Shrinkwrap 聊天气泡优化</li>
+          </ul>
+        </div>
+        <div class="col cons">
+          <h4>局限</h4>
+          <ul>
+            <li>仅支持 white-space: normal / pre-wrap</li>
+            <li>不支持 break-all / keep-all 等 CSS 属性</li>
+            <li>system-ui 字体在 macOS 上不安全</li>
+            <li>Tab 固定为 8 字符宽度</li>
+            <li>服务端渲染尚在规划中</li>
+            <li>版本 v0.0.3，API 可能变动</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 VERDICT -->
+<section id="verdict">
+  <div class="wrap">
+    <div class="sn reveal">09</div>
+    <h2 class="reveal">结论</h2>
+
+    <div class="verdict reveal">
+      <h3>一个解决了 30 年老问题的优雅方案</h3>
+      <p>Pretext 不是一个增量改进——它从根本上重新思考了 Web 上文本排版的工作方式。通过将测量与布局分离为两个独立阶段，它让一个长期困扰前端开发者的性能瓶颈变得不再存在。</p>
+      <p>项目的爆发式增长（48 小时 6K Stars）反映了三件事：需求真实存在、解决方案足够优雅、作者的技术信誉深厚。Cheng Lou 用 react-motion 改变了 React 动画的思维方式，用 ReasonML 证明了类型系统在前端的价值。现在，Pretext 正在改变我们思考文本排版的方式。</p>
+      <p>对于需要精细文本布局的应用——编辑器、阅读器、消息应用、数据可视化、虚拟列表——Pretext 很可能会成为基础设施级别的存在。它现在是 v0.0.3，但底层的工程质量（7,680 项跨浏览器测试、详尽的语料库验证、生产级的性能数据）已经远超这个版本号暗示的成熟度。</p>
+    </div>
+
+    <div class="quote reveal">
+      <p>"We're often not seeking for more power. We're seeking for more principled ways to use our existing power."</p>
+      <cite>Cheng Lou — 这句话完美概括了 Pretext 的设计哲学：不追求更多功能，而追求更有原则的方式来使用浏览器已有的能力。</cite>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    Generated on 2026-03-29 &middot; Data sourced from GitHub, Twitter/X, Hacker News, and codebase analysis
+  </div>
+</footer>
+
+<script>
+// Theme toggle
+const html = document.documentElement
+const toggle = document.getElementById('themeToggle')
+const icon = document.getElementById('themeIcon')
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)')
+
+function getTheme() {
+  const stored = localStorage.getItem('theme')
+  if (stored) return stored
+  return prefersDark.matches ? 'dark' : 'light'
+}
+
+function applyTheme(theme) {
+  html.setAttribute('data-theme', theme)
+  icon.textContent = theme === 'dark' ? '\u2600' : '\u263E'
+  localStorage.setItem('theme', theme)
+}
+
+applyTheme(getTheme())
+toggle.addEventListener('click', () => {
+  applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark')
+})
+
+// Progress bar
+const progressBar = document.getElementById('progress')
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight
+  const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0
+  progressBar.style.width = pct + '%'
+}, { passive: true })
+
+// Scroll reveal
+const reveals = document.querySelectorAll('.reveal')
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible')
+      revealObserver.unobserve(entry.target)
+    }
+  })
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' })
+reveals.forEach(el => revealObserver.observe(el))
+
+// Nav active tracking
+const navLinks = document.querySelectorAll('.nav a')
+const sections = document.querySelectorAll('section[id]')
+const navObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id)
+      })
+    }
+  })
+}, { threshold: 0.3, rootMargin: '-80px 0px -50% 0px' })
+sections.forEach(sec => navObserver.observe(sec))
+
+// Stat counter animation
+const statVals = document.querySelectorAll('.stat-val[data-count]')
+const statObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return
+    const el = entry.target
+    const target = parseInt(el.getAttribute('data-count'))
+    const prefix = el.textContent.startsWith('~') ? '~' : ''
+    const suffix = el.textContent.replace(/[~\d,]/g, '')
+    let start = 0
+    const duration = 1200
+    const startTime = performance.now()
+    function tick(now) {
+      const elapsed = now - startTime
+      const t = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 4) // ease-out-quart
+      const current = Math.round(start + (target - start) * eased)
+      el.textContent = prefix + current.toLocaleString() + suffix
+      if (t < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+    statObserver.unobserve(el)
+  })
+}, { threshold: 0.5 })
+statVals.forEach(el => statObserver.observe(el))
+</script>
+</body>
+</html>

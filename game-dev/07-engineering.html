@@ -1,0 +1,3333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 — 工程实践与项目管理 | 游戏开发完全指南</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-page: #08080f;
+  --bg-surface: #0d0d17;
+  --bg-card: #141425;
+  --bg-code: #0a0a18;
+  --border: #1e1e3a;
+  --border-bright: #2a2a4a;
+  --text-primary: #ffffff;
+  --text-body: #c8c8d8;
+  --text-muted: #7878a0;
+  --accent: #0abde3;
+  --accent-dim: rgba(10,189,227,0.1);
+  --accent-mid: rgba(10,189,227,0.25);
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --max-width: 880px;
+  --nav-height: 60px;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+[data-theme="light"] {
+  --bg-page: #f5f6fa;
+  --bg-surface: #ffffff;
+  --bg-card: #eeeef6;
+  --bg-code: #e6e6f0;
+  --border: #d5d5e2;
+  --border-bright: #c5c5d5;
+  --text-body: #3a3a50;
+  --text-primary: #1a1a2e;
+  --text-muted: #6a6a85;
+}
+
+[data-theme="light"] nav,
+[data-theme="light"] .navbar {
+  background: rgba(245,246,250,0.88);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .hero-number {
+  color: rgba(0,0,0,0.03);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+/* ── 日间模式组件修复 ── */
+[data-theme="light"] .hero::before {
+  color: rgba(0,0,0,0.03);
+}
+[data-theme="light"] code {
+  background: var(--bg-card);
+  color: #c0392b;
+}
+[data-theme="light"] pre {
+  background: var(--bg-code);
+  border-color: var(--border);
+}
+[data-theme="light"] pre code {
+  background: none;
+  color: #2d2d3a;
+}
+[data-theme="light"] pre .comment { color: #8888a0; }
+[data-theme="light"] pre .keyword { color: #8959a8; }
+[data-theme="light"] pre .string { color: #50a14f; }
+[data-theme="light"] pre .function { color: #4078f2; }
+[data-theme="light"] pre .type { color: #c18401; }
+[data-theme="light"] pre .number { color: #d75f00; }
+[data-theme="light"] pre .accent { color: #0184bc; }
+[data-theme="light"] pre .tag { color: #c0392b; }
+[data-theme="light"] pre .attr { color: #c18401; }
+[data-theme="light"] .code-label {
+  background: var(--bg-card);
+}
+[data-theme="light"] .tree {
+  background: var(--bg-code);
+  color: #4a4a65;
+}
+[data-theme="light"] .tree .dir { color: #0184bc; }
+[data-theme="light"] .tree .file { color: #4a4a65; }
+[data-theme="light"] .tree .comment { color: #8888a0; }
+[data-theme="light"] table {
+  border: 1px solid var(--border);
+}
+[data-theme="light"] th {
+  background: var(--bg-card);
+  border-bottom: 2px solid var(--accent);
+}
+[data-theme="light"] td {
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="light"] tr:nth-child(even) td {
+  background: rgba(0,0,0,0.025);
+}
+[data-theme="light"] tr:hover {
+  background: rgba(0,0,0,0.03);
+}
+[data-theme="light"] .tip {
+  background: rgba(10,189,227,0.06);
+  border-color: rgba(10,189,227,0.2);
+}
+[data-theme="light"] .warn {
+  background: rgba(200,150,50,0.06);
+  border-color: rgba(200,150,50,0.25);
+}
+[data-theme="light"] .diagram {
+  background: var(--bg-card);
+}
+[data-theme="light"] .tag {
+  border-color: rgba(10,189,227,0.25);
+}
+
+#theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+#theme-toggle:hover {
+  border-color: var(--accent);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.85;
+  color: var(--text-body);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 滚动条 ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── 导航栏 ── */
+.navbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(8,8,15,0.88);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: var(--nav-height);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.navbar a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+.navbar a:hover { color: var(--accent); }
+.navbar .nav-center {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+}
+
+/* ── 底部翻页 ── */
+.page-nav {
+  max-width: var(--max-width);
+  margin: 60px auto 0;
+  padding: 0 24px;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px;
+}
+.page-nav a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: all 0.25s;
+}
+.page-nav a:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* ── Hero ── */
+.hero {
+  padding: 140px 24px 80px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '07';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -55%);
+  font-size: 28rem;
+  font-weight: 900;
+  color: rgba(10,189,227,0.04);
+  pointer-events: none;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+.hero-label {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  padding: 6px 18px;
+  border: 1px solid rgba(10,189,227,0.3);
+  border-radius: 20px;
+  background: var(--accent-dim);
+}
+.hero h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+}
+.hero p {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ── 目录 ── */
+.toc {
+  max-width: var(--max-width);
+  margin: 0 auto 60px;
+  padding: 0 24px;
+}
+.toc-inner {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 36px;
+}
+.toc h2 {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.toc ol {
+  list-style: none;
+  counter-reset: toc-counter;
+}
+.toc ol li {
+  counter-increment: toc-counter;
+  margin-bottom: 8px;
+}
+.toc ol li a {
+  color: var(--text-body);
+  text-decoration: none;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+.toc ol li a::before {
+  content: counter(toc-counter, decimal-leading-zero);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 24px;
+}
+.toc ol li a:hover { color: var(--accent); }
+
+/* ── 主内容 ── */
+.content {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ── 章节 ── */
+.section {
+  margin-bottom: 72px;
+}
+.section-anchor {
+  display: block;
+  position: relative;
+  top: -80px;
+  visibility: hidden;
+}
+
+h2 {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 28px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--border);
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 36px 0 16px;
+}
+
+h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 24px 0 12px;
+}
+
+p { margin-bottom: 16px; }
+
+strong { color: var(--text-primary); font-weight: 600; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+ul, ol {
+  margin: 0 0 20px 20px;
+}
+ul li, ol li {
+  margin-bottom: 6px;
+}
+
+/* ── 卡片 ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  margin: 24px 0;
+}
+.card-accent {
+  border-left: 3px solid var(--accent);
+}
+
+/* ── 代码 ── */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: rgba(10,189,227,0.08);
+  color: #e0e0f0;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px 24px;
+  overflow-x: auto;
+  margin: 16px 0 24px;
+  line-height: 1.6;
+  position: relative;
+}
+pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85rem;
+  color: #c8c8e0;
+}
+pre .comment { color: #5a5a80; }
+pre .keyword { color: #c792ea; }
+pre .string { color: #c3e88d; }
+pre .function { color: #82aaff; }
+pre .type { color: #ffcb6b; }
+pre .number { color: #f78c6c; }
+pre .accent { color: #0abde3; }
+pre .tag { color: #f07178; }
+pre .attr { color: #ffcb6b; }
+
+.code-label {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(10,189,227,0.12);
+  padding: 3px 10px;
+  border-radius: 4px 4px 0 0;
+  margin-bottom: -1px;
+  position: relative;
+  top: 1px;
+  letter-spacing: 0.03em;
+}
+
+/* ── 目录树 ── */
+.tree {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px 24px;
+  margin: 16px 0 24px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: #a0a0c0;
+  white-space: pre;
+  overflow-x: auto;
+}
+.tree .dir { color: #0abde3; font-weight: 600; }
+.tree .file { color: #c8c8e0; }
+.tree .comment { color: #5a5a80; }
+
+/* ── 表格 ── */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 16px 0 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+th {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(30,30,58,0.5);
+  vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover { background: rgba(10,189,227,0.03); }
+
+/* ── 提示框 ── */
+.tip {
+  background: var(--accent-dim);
+  border: 1px solid rgba(10,189,227,0.2);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  margin: 20px 0;
+  font-size: 0.92rem;
+}
+.tip-title {
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.warn {
+  background: rgba(255,203,107,0.06);
+  border: 1px solid rgba(255,203,107,0.15);
+  border-left: 3px solid #ffcb6b;
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  margin: 20px 0;
+  font-size: 0.92rem;
+}
+.warn .tip-title { color: #ffcb6b; }
+
+/* ── 流程图容器 ── */
+.diagram {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 28px;
+  margin: 20px 0 24px;
+  text-align: center;
+  overflow-x: auto;
+}
+.diagram-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.diagram-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.diagram-box.accent-box {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.diagram-arrow {
+  color: var(--accent);
+  font-size: 1.2rem;
+  padding: 0 8px;
+  font-weight: 300;
+}
+
+/* ── 标签 ── */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+.tag {
+  font-size: 0.78rem;
+  padding: 4px 12px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-radius: 14px;
+  border: 1px solid rgba(10,189,227,0.2);
+}
+
+/* ── 编号列表 ── */
+.numbered-list {
+  counter-reset: item;
+  list-style: none;
+  margin-left: 0;
+  padding-left: 0;
+}
+.numbered-list li {
+  counter-increment: item;
+  padding: 8px 0 8px 36px;
+  position: relative;
+}
+.numbered-list li::before {
+  content: counter(item);
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 24px;
+  height: 24px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* ── 网格 ── */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+/* ── 分隔线 ── */
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 40px 0;
+}
+
+/* ── 页脚 ── */
+.footer {
+  text-align: center;
+  padding: 60px 24px 40px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border);
+  max-width: var(--max-width);
+  margin: 80px auto 0;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2rem; }
+  .hero::before { font-size: 16rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.15rem; }
+  pre { padding: 14px 16px; }
+  .card { padding: 20px; }
+  .toc-inner { padding: 20px 24px; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .navbar .nav-center { display: none; }
+  .diagram-flow { flex-direction: column; }
+  .diagram-arrow { transform: rotate(90deg); }
+}
+
+@media (max-width: 480px) {
+  .hero h1 { font-size: 1.6rem; }
+  .hero { padding: 120px 16px 60px; }
+  .content { padding: 0 16px 60px; }
+  pre code { font-size: 0.78rem; }
+}
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: Focus Styles ── */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar">
+  <a href="index.html">&larr; 索引</a>
+  <span class="nav-center">工程实践</span>
+  <a href="08-publishing.html">发布与运营 &rarr;</a>
+  <button id="theme-toggle" aria-label="切换主题">☀️</button>
+</nav>
+
+<!-- Hero -->
+<header class="hero">
+  <span class="hero-label">Chapter 07</span>
+  <h1>工程实践与项目管理</h1>
+  <p>从代码组织到团队协作，从持续集成到性能优化 —— 将游戏从原型推进到可发布产品的全栈工程指南。</p>
+</header>
+
+<!-- 目录 -->
+<nav class="toc">
+  <div class="toc-inner">
+    <h2>目录</h2>
+    <ol>
+      <li><a href="#project-structure">项目结构与文件组织</a></li>
+      <li><a href="#version-control">版本控制</a></li>
+      <li><a href="#build-cicd">构建系统与 CI/CD</a></li>
+      <li><a href="#testing">测试策略</a></li>
+      <li><a href="#profiling">性能分析与优化</a></li>
+      <li><a href="#memory">内存管理</a></li>
+      <li><a href="#cross-platform">跨平台开发</a></li>
+      <li><a href="#debugging">调试技巧</a></li>
+      <li><a href="#project-management">项目管理</a></li>
+      <li><a href="#teamwork">团队协作</a></li>
+      <li><a href="#scaffold">实践：搭建游戏项目脚手架</a></li>
+    </ol>
+  </div>
+</nav>
+
+<!-- 主内容 -->
+<main class="content">
+
+<!-- ===== 第 1 节：项目结构与文件组织 ===== -->
+<div class="section">
+  <span class="section-anchor" id="project-structure"></span>
+  <h2>01 / 项目结构与文件组织</h2>
+
+  <p>良好的项目结构是工程效率的基础。一个组织清晰的项目能让新成员快速上手、减少合并冲突、加速构建流程。混乱的文件组织则会随着项目规模增长而不断拖慢开发节奏。</p>
+
+  <h3>通用目录结构原则</h3>
+
+  <p>无论使用什么引擎，游戏项目的目录结构都应遵循几个核心原则：</p>
+
+  <ul>
+    <li><strong>按功能/模块分类</strong>，而不是按文件类型分类</li>
+    <li><strong>分离源码与资源</strong>，构建时明确哪些需要编译、哪些需要打包</li>
+    <li><strong>配置与数据外置</strong>，不硬编码在代码中</li>
+    <li><strong>第三方依赖隔离</strong>，明确哪些是外部代码</li>
+    <li><strong>文档就近放置</strong>，模块的文档跟着模块走</li>
+  </ul>
+
+  <h3>推荐的通用项目结构</h3>
+
+  <div class="tree"><span class="dir">my-game/</span>
+├── <span class="dir">assets/</span>                    <span class="comment"># 游戏资源（美术、音频等）</span>
+│   ├── <span class="dir">textures/</span>
+│   │   ├── <span class="dir">characters/</span>
+│   │   ├── <span class="dir">environment/</span>
+│   │   ├── <span class="dir">ui/</span>
+│   │   └── <span class="dir">effects/</span>
+│   ├── <span class="dir">models/</span>
+│   │   ├── <span class="dir">characters/</span>
+│   │   ├── <span class="dir">props/</span>
+│   │   └── <span class="dir">environment/</span>
+│   ├── <span class="dir">audio/</span>
+│   │   ├── <span class="dir">music/</span>
+│   │   ├── <span class="dir">sfx/</span>
+│   │   └── <span class="dir">voice/</span>
+│   ├── <span class="dir">animations/</span>
+│   ├── <span class="dir">fonts/</span>
+│   ├── <span class="dir">shaders/</span>
+│   └── <span class="dir">ui/</span>
+├── <span class="dir">src/</span>                       <span class="comment"># 源代码</span>
+│   ├── <span class="dir">core/</span>                   <span class="comment"># 核心系统（引擎层）</span>
+│   │   ├── <span class="file">engine.cpp</span>
+│   │   ├── <span class="file">renderer.cpp</span>
+│   │   ├── <span class="file">audio_system.cpp</span>
+│   │   └── <span class="file">input_system.cpp</span>
+│   ├── <span class="dir">gameplay/</span>              <span class="comment"># 游戏逻辑</span>
+│   │   ├── <span class="dir">player/</span>
+│   │   ├── <span class="dir">enemies/</span>
+│   │   ├── <span class="dir">items/</span>
+│   │   └── <span class="dir">combat/</span>
+│   ├── <span class="dir">ui/</span>                    <span class="comment"># UI 系统</span>
+│   │   ├── <span class="dir">screens/</span>
+│   │   ├── <span class="dir">widgets/</span>
+│   │   └── <span class="dir">hud/</span>
+│   ├── <span class="dir">systems/</span>               <span class="comment"># ECS 系统或通用系统</span>
+│   ├── <span class="dir">utils/</span>                 <span class="comment"># 工具函数</span>
+│   └── <span class="dir">platform/</span>              <span class="comment"># 平台特定代码</span>
+│       ├── <span class="dir">windows/</span>
+│       ├── <span class="dir">macos/</span>
+│       ├── <span class="dir">linux/</span>
+│       └── <span class="dir">web/</span>
+├── <span class="dir">data/</span>                      <span class="comment"># 游戏数据（配置、关卡定义）</span>
+│   ├── <span class="dir">levels/</span>
+│   ├── <span class="dir">configs/</span>
+│   ├── <span class="dir">localization/</span>
+│   └── <span class="dir">balance/</span>               <span class="comment"># 数值平衡表</span>
+├── <span class="dir">scenes/</span>                    <span class="comment"># 场景文件（引擎特定）</span>
+├── <span class="dir">tests/</span>                     <span class="comment"># 测试代码</span>
+│   ├── <span class="dir">unit/</span>
+│   ├── <span class="dir">integration/</span>
+│   └── <span class="dir">fixtures/</span>
+├── <span class="dir">tools/</span>                     <span class="comment"># 构建/编辑器工具</span>
+│   ├── <span class="dir">scripts/</span>
+│   └── <span class="dir">editor_plugins/</span>
+├── <span class="dir">docs/</span>                      <span class="comment"># 项目文档</span>
+├── <span class="dir">third_party/</span>               <span class="comment"># 第三方库</span>
+├── <span class="dir">build/</span>                     <span class="comment"># 构建输出（gitignore）</span>
+├── <span class="file">.gitignore</span>
+├── <span class="file">.gitattributes</span>
+├── <span class="file">CMakeLists.txt</span>             <span class="comment"># 或引擎对应的项目文件</span>
+└── <span class="file">README.md</span></div>
+
+  <h3>资源命名规范</h3>
+
+  <p>一致的命名规范可以大幅减少团队协作中的混乱。以下是业界常用的命名约定：</p>
+
+  <div class="card">
+    <h4>通用命名规则</h4>
+    <ul>
+      <li><strong>小写 + 下划线</strong>（snake_case）：<code>player_idle_01.png</code>，这是最安全的跨平台方案</li>
+      <li><strong>前缀标识类型</strong>：<code>T_</code> 贴图，<code>M_</code> 材质，<code>SM_</code> 静态模型，<code>SK_</code> 骨骼模型</li>
+      <li><strong>后缀标识变体</strong>：<code>_diffuse</code>，<code>_normal</code>，<code>_01</code>，<code>_lod2</code></li>
+      <li><strong>禁止空格和特殊字符</strong>：会在命令行和脚本中造成问题</li>
+      <li><strong>禁止中文路径</strong>：很多工具链不兼容</li>
+    </ul>
+  </div>
+
+  <div class="code-label">命名示例</div>
+  <pre><code><span class="comment"># 贴图</span>
+<span class="string">T_player_body_diffuse.png</span>
+<span class="string">T_player_body_normal.png</span>
+<span class="string">T_env_grass_01_diffuse.png</span>
+
+<span class="comment"># 模型</span>
+<span class="string">SM_prop_barrel_01.fbx</span>
+<span class="string">SK_character_warrior.fbx</span>
+
+<span class="comment"># 音频</span>
+<span class="string">SFX_footstep_grass_01.wav</span>
+<span class="string">MUS_battle_theme_loop.ogg</span>
+<span class="string">VO_npc_merchant_greeting_01.ogg</span>
+
+<span class="comment"># 动画</span>
+<span class="string">A_player_run_forward.anim</span>
+<span class="string">A_player_attack_slash_01.anim</span>
+
+<span class="comment"># UI</span>
+<span class="string">UI_btn_start_normal.png</span>
+<span class="string">UI_btn_start_pressed.png</span>
+<span class="string">UI_icon_health_potion.png</span></code></pre>
+
+  <h3>场景/关卡文件组织</h3>
+
+  <p>关卡文件的组织取决于游戏类型和引擎，但有一些通用原则：</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>线性关卡游戏</h4>
+      <div class="tree" style="margin:8px 0 0;border:none;padding:8px 0;background:none"><span class="dir">levels/</span>
+├── <span class="dir">chapter_01/</span>
+│   ├── <span class="file">level_01_tutorial.scene</span>
+│   ├── <span class="file">level_02_forest.scene</span>
+│   └── <span class="file">level_01_cutscene.scene</span>
+├── <span class="dir">chapter_02/</span>
+│   └── ...
+└── <span class="dir">shared/</span>
+    ├── <span class="file">main_menu.scene</span>
+    └── <span class="file">loading_screen.scene</span></div>
+    </div>
+    <div class="card">
+      <h4>开放世界游戏</h4>
+      <div class="tree" style="margin:8px 0 0;border:none;padding:8px 0;background:none"><span class="dir">world/</span>
+├── <span class="dir">terrain/</span>
+│   ├── <span class="file">chunk_0_0.scene</span>
+│   ├── <span class="file">chunk_0_1.scene</span>
+│   └── ...
+├── <span class="dir">dungeons/</span>
+│   ├── <span class="file">dungeon_cave_01.scene</span>
+│   └── <span class="file">dungeon_ruins_01.scene</span>
+├── <span class="dir">interiors/</span>
+│   └── <span class="file">tavern_01.scene</span>
+└── <span class="file">world_config.json</span></div>
+    </div>
+  </div>
+
+  <h3>配置与数据文件管理</h3>
+
+  <p>游戏数据应该与代码分离，采用数据驱动的设计。常见的数据格式选择：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>格式</th><th>适用场景</th><th>优点</th><th>缺点</th></tr></thead>
+      <tbody>
+        <tr><td><code>JSON</code></td><td>配置、UI 布局、关卡数据</td><td>通用、可读性好</td><td>不支持注释、冗余大</td></tr>
+        <tr><td><code>YAML</code></td><td>配置文件、CI/CD</td><td>支持注释、简洁</td><td>缩进敏感</td></tr>
+        <tr><td><code>TOML</code></td><td>项目配置</td><td>简洁、类型明确</td><td>不适合深层嵌套</td></tr>
+        <tr><td><code>CSV</code></td><td>数值平衡表</td><td>策划友好、Excel 兼容</td><td>类型信息弱</td></tr>
+        <tr><td><code>SQLite</code></td><td>存档、大量结构化数据</td><td>查询高效、事务安全</td><td>二进制，不方便 diff</td></tr>
+        <tr><td><code>Protobuf</code></td><td>网络通信、高性能序列化</td><td>高性能、强类型</td><td>需要编译、不可读</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="code-label">game_config.json 示例</div>
+  <pre><code>{
+  <span class="attr">"game"</span>: {
+    <span class="attr">"title"</span>: <span class="string">"My RPG"</span>,
+    <span class="attr">"version"</span>: <span class="string">"0.3.1"</span>,
+    <span class="attr">"default_language"</span>: <span class="string">"zh-CN"</span>
+  },
+  <span class="attr">"display"</span>: {
+    <span class="attr">"resolution"</span>: [<span class="number">1920</span>, <span class="number">1080</span>],
+    <span class="attr">"fullscreen"</span>: <span class="keyword">true</span>,
+    <span class="attr">"vsync"</span>: <span class="keyword">true</span>,
+    <span class="attr">"target_fps"</span>: <span class="number">60</span>
+  },
+  <span class="attr">"audio"</span>: {
+    <span class="attr">"master_volume"</span>: <span class="number">0.8</span>,
+    <span class="attr">"music_volume"</span>: <span class="number">0.6</span>,
+    <span class="attr">"sfx_volume"</span>: <span class="number">1.0</span>
+  },
+  <span class="attr">"debug"</span>: {
+    <span class="attr">"show_fps"</span>: <span class="keyword">false</span>,
+    <span class="attr">"show_colliders"</span>: <span class="keyword">false</span>,
+    <span class="attr">"god_mode"</span>: <span class="keyword">false</span>
+  }
+}</code></pre>
+
+  <h3>不同引擎的项目结构对比</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>特性</th><th>Unity</th><th>Unreal Engine</th><th>Godot</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>资源目录</td>
+          <td><code>Assets/</code></td>
+          <td><code>Content/</code></td>
+          <td>项目根目录</td>
+        </tr>
+        <tr>
+          <td>代码位置</td>
+          <td><code>Assets/Scripts/</code></td>
+          <td><code>Source/</code></td>
+          <td>与场景同目录或 <code>scripts/</code></td>
+        </tr>
+        <tr>
+          <td>场景格式</td>
+          <td><code>.unity</code> (YAML)</td>
+          <td><code>.umap</code> (Binary)</td>
+          <td><code>.tscn</code> (文本) / <code>.scn</code></td>
+        </tr>
+        <tr>
+          <td>配置</td>
+          <td><code>ProjectSettings/</code></td>
+          <td><code>Config/</code></td>
+          <td><code>project.godot</code></td>
+        </tr>
+        <tr>
+          <td>插件</td>
+          <td><code>Assets/Plugins/</code></td>
+          <td><code>Plugins/</code></td>
+          <td><code>addons/</code></td>
+        </tr>
+        <tr>
+          <td>构建输出</td>
+          <td><code>Builds/</code></td>
+          <td><code>Binaries/</code></td>
+          <td><code>export/</code></td>
+        </tr>
+        <tr>
+          <td>Meta 文件</td>
+          <td>每个文件 <code>.meta</code></td>
+          <td>无</td>
+          <td><code>.import</code> 文件</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tip">
+    <div class="tip-title">实践建议</div>
+    Unity 的 <code>.meta</code> 文件必须提交到版本控制，否则会丢失引用。Godot 的 <code>.tscn</code> 是文本格式，对 Git diff 非常友好，适合版本控制。Unreal 的二进制格式则需要特殊处理。
+  </div>
+</div>
+
+<!-- ===== 第 2 节：版本控制 ===== -->
+<div class="section">
+  <span class="section-anchor" id="version-control"></span>
+  <h2>02 / 版本控制</h2>
+
+  <p>版本控制是现代游戏开发的基石。即使是独立开发者，也必须使用版本控制 —— 它不仅能防止灾难性的数据丢失，还是理解代码演变、回退错误改动、多设备协作的基础设施。</p>
+
+  <h3>Git 在游戏开发中的使用</h3>
+
+  <p>Git 是最主流的版本控制系统，但游戏项目有一些特殊挑战：大量二进制文件、大文件、美术资源的频繁变更。以下是针对游戏项目的 Git 使用建议。</p>
+
+  <h4>基础配置</h4>
+
+  <div class="code-label">.gitattributes（关键配置）</div>
+  <pre><code><span class="comment"># 自动检测文本文件，统一换行符</span>
+<span class="attr">*</span>               text=auto
+
+<span class="comment"># 源码文件</span>
+<span class="attr">*.cs</span>            text diff
+<span class="attr">*.cpp</span>           text diff
+<span class="attr">*.h</span>             text diff
+<span class="attr">*.gd</span>            text diff
+<span class="attr">*.shader</span>        text diff
+<span class="attr">*.json</span>          text diff
+<span class="attr">*.yaml</span>          text diff
+<span class="attr">*.xml</span>           text diff
+
+<span class="comment"># Unity 场景文件（文本格式，需要特殊 merge）</span>
+<span class="attr">*.unity</span>         merge=unityyamlmerge
+<span class="attr">*.prefab</span>       merge=unityyamlmerge
+<span class="attr">*.asset</span>        merge=unityyamlmerge
+
+<span class="comment"># 二进制文件 —— 使用 Git LFS</span>
+<span class="attr">*.png</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.jpg</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.psd</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.tga</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.tif</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.exr</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.fbx</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.obj</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.blend</span>         filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.wav</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.mp3</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.ogg</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.mp4</span>           filter=lfs diff=lfs merge=lfs -text
+<span class="attr">*.mov</span>           filter=lfs diff=lfs merge=lfs -text</code></pre>
+
+  <h3>Git LFS 处理大文件</h3>
+
+  <p>Git LFS（Large File Storage）是游戏项目使用 Git 的必备扩展。它将大文件的实际内容存储在专用服务器上，Git 仓库中只保存指针文件。</p>
+
+  <div class="code-label">Git LFS 常用操作</div>
+  <pre><code><span class="comment"># 安装 Git LFS</span>
+$ git lfs install
+
+<span class="comment"># 追踪特定文件类型</span>
+$ git lfs track <span class="string">"*.png"</span>
+$ git lfs track <span class="string">"*.fbx"</span>
+$ git lfs track <span class="string">"*.wav"</span>
+
+<span class="comment"># 查看 LFS 追踪的文件</span>
+$ git lfs ls-files
+
+<span class="comment"># 查看 LFS 存储状态</span>
+$ git lfs status
+
+<span class="comment"># 迁移已有仓库的大文件到 LFS</span>
+$ git lfs migrate import --include=<span class="string">"*.png,*.fbx,*.wav"</span>
+
+<span class="comment"># 只拉取需要的 LFS 文件（节省带宽）</span>
+$ git lfs fetch --include=<span class="string">"assets/textures/**"</span>
+
+<span class="comment"># 清理旧的 LFS 缓存</span>
+$ git lfs prune</code></pre>
+
+  <div class="warn">
+    <div class="tip-title">注意</div>
+    Git LFS 有存储和带宽限制（GitHub 免费版每月 1GB 带宽、1GB 存储）。大型项目建议使用自托管的 LFS 服务器或 GitLab。考虑使用 <code>git lfs fetch --recent</code> 只拉取近期文件。
+  </div>
+
+  <h3>.gitignore 最佳实践</h3>
+
+  <div class="code-label">.gitignore（游戏项目通用模板）</div>
+  <pre><code><span class="comment"># ===== 操作系统 =====</span>
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+
+<span class="comment"># ===== IDE =====</span>
+.vs/
+.vscode/settings.json
+.idea/
+*.suo
+*.user
+*.sln.docstates
+
+<span class="comment"># ===== 构建产物 =====</span>
+build/
+Builds/
+Binaries/
+export/
+dist/
+*.exe
+*.app
+*.dmg
+
+<span class="comment"># ===== 临时文件 =====</span>
+Temp/
+tmp/
+*.tmp
+*.log
+
+<span class="comment"># ===== Unity 特定 =====</span>
+Library/
+obj/
+Logs/
+UserSettings/
+MemoryCaptures/
+Recordings/
+
+<span class="comment"># ===== Unreal 特定 =====</span>
+Intermediate/
+Saved/
+DerivedDataCache/
+
+<span class="comment"># ===== Godot 特定 =====</span>
+.godot/
+*.translation
+
+<span class="comment"># ===== 源文件（不提交工程源文件，只提交导出结果）=====</span>
+<span class="comment"># *.psd       # Photoshop 源文件 —— 考虑是否纳入 LFS</span>
+<span class="comment"># *.blend     # Blender 源文件</span>
+<span class="comment"># *.max       # 3ds Max 源文件</span>
+
+<span class="comment"># ===== 依赖（用包管理器管理）=====</span>
+node_modules/
+.venv/
+__pycache__/
+
+<span class="comment"># ===== 敏感信息 =====</span>
+*.env
+*.key
+*.pem
+secrets/</code></pre>
+
+  <h3>分支策略</h3>
+
+  <p>游戏项目的分支策略取决于团队规模和发布节奏。两种主流策略的对比：</p>
+
+  <div class="grid-2">
+    <div class="card card-accent">
+      <h4>Git Flow</h4>
+      <p>适合有明确发布周期的项目。</p>
+      <ul>
+        <li><code>main</code> - 发布版本</li>
+        <li><code>develop</code> - 开发主线</li>
+        <li><code>feature/*</code> - 功能分支</li>
+        <li><code>release/*</code> - 发布准备</li>
+        <li><code>hotfix/*</code> - 紧急修复</li>
+      </ul>
+      <p style="margin-top:12px"><strong>优点：</strong>版本清晰、适合同时维护多个版本<br>
+      <strong>缺点：</strong>分支多、合并复杂、流程重</p>
+    </div>
+    <div class="card card-accent">
+      <h4>Trunk-Based Development</h4>
+      <p>适合持续交付和小团队。</p>
+      <ul>
+        <li><code>main</code> - 唯一主线</li>
+        <li>短生命周期的功能分支</li>
+        <li>Feature Flag 控制功能开关</li>
+        <li>频繁合并，保持主线可用</li>
+      </ul>
+      <p style="margin-top:12px"><strong>优点：</strong>简单、减少合并冲突、快速反馈<br>
+      <strong>缺点：</strong>需要更好的测试覆盖、CI/CD 支持</p>
+    </div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-title">独立开发者建议</div>
+    独立开发者或 2-3 人小团队推荐 Trunk-Based。保持 <code>main</code> 分支始终可运行，需要实验性功能时开短期分支，完成后立即合并。不要过度设计分支策略。
+  </div>
+
+  <h3>美术资源的版本控制</h3>
+
+  <p>美术资源是游戏版本控制中最棘手的部分。核心挑战：</p>
+
+  <ul>
+    <li><strong>文件体积大</strong>：一个 PSD 源文件可能几百 MB</li>
+    <li><strong>二进制格式</strong>：无法 diff，无法 merge</li>
+    <li><strong>更新频繁</strong>：美术迭代快，历史版本占用大量空间</li>
+    <li><strong>源文件 vs 导出文件</strong>：需要决定哪些入库</li>
+  </ul>
+
+  <div class="card">
+    <h4>推荐方案</h4>
+    <ol>
+      <li><strong>导出文件入 Git LFS</strong>：.png, .fbx, .wav 等导出结果，通过 LFS 管理</li>
+      <li><strong>源文件独立存储</strong>：.psd, .blend, .max 等源文件放在 NAS / 云盘 / 专用 Perforce 服务器</li>
+      <li><strong>建立资产管线</strong>：明确从源文件到游戏引擎的导出流程，最好自动化</li>
+      <li><strong>文件锁定</strong>：使用 <code>git lfs lock</code> 防止多人同时修改同一个二进制文件</li>
+    </ol>
+  </div>
+
+  <div class="code-label">文件锁定操作</div>
+  <pre><code><span class="comment"># 锁定文件，防止他人修改</span>
+$ git lfs lock <span class="string">"assets/textures/T_player_body_diffuse.png"</span>
+
+<span class="comment"># 查看当前锁定的文件</span>
+$ git lfs locks
+
+<span class="comment"># 解锁文件</span>
+$ git lfs unlock <span class="string">"assets/textures/T_player_body_diffuse.png"</span></code></pre>
+
+  <h3>Perforce vs Git</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>维度</th><th>Git (+LFS)</th><th>Perforce (Helix Core)</th></tr></thead>
+      <tbody>
+        <tr><td>成本</td><td>免费 / GitHub 付费 LFS</td><td>5 用户免费，之后按席位付费</td></tr>
+        <tr><td>大文件支持</td><td>需要 LFS 扩展，有局限</td><td>原生支持，专为大文件设计</td></tr>
+        <tr><td>文件锁定</td><td>LFS lock（基础）</td><td>原生强制锁定</td></tr>
+        <tr><td>分布式</td><td>完全分布式</td><td>集中式（有 P4 Streams）</td></tr>
+        <tr><td>学习曲线</td><td>较陡（概念多）</td><td>对美术友好（类似网盘）</td></tr>
+        <tr><td>工具链</td><td>生态丰富（GitHub/GitLab）</td><td>与 UE、Houdini 深度集成</td></tr>
+        <tr><td>离线工作</td><td>完全支持</td><td>受限</td></tr>
+        <tr><td>行业使用</td><td>独立/中小团队主流</td><td>AAA 工作室标配</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tip">
+    <div class="tip-title">实践选择</div>
+    10 人以下团队用 Git + LFS 即可。如果团队中有大量美术/TA，且资产体量巨大（数十 GB 以上），认真考虑 Perforce。有些团队会混用：代码用 Git，美术资源用 Perforce。
+  </div>
+</div>
+
+<!-- ===== 第 3 节：构建系统与 CI/CD ===== -->
+<div class="section">
+  <span class="section-anchor" id="build-cicd"></span>
+  <h2>03 / 构建系统与 CI/CD</h2>
+
+  <p>持续集成/持续部署（CI/CD）在游戏开发中被低估了。自动化构建不仅能尽早发现问题，还能让团队始终有一个可运行的最新版本用于测试。</p>
+
+  <h3>自动化构建的价值</h3>
+
+  <ul>
+    <li><strong>早发现问题</strong>：每次提交自动编译，编译错误立即暴露</li>
+    <li><strong>随时可测试</strong>：QA 团队和策划可以随时获取最新版本</li>
+    <li><strong>一致的构建环境</strong>：消除"在我机器上能跑"的问题</li>
+    <li><strong>多平台同时构建</strong>：一次提交，PC / 移动 / Web 同步出包</li>
+    <li><strong>自动化测试门禁</strong>：测试不通过就不能合并</li>
+    <li><strong>发布流程标准化</strong>：一键出正式包，杜绝手工操作失误</li>
+  </ul>
+
+  <h3>构建流水线架构</h3>
+
+  <div class="diagram">
+    <div class="diagram-flow">
+      <div class="diagram-box">代码提交</div>
+      <span class="diagram-arrow">&rarr;</span>
+      <div class="diagram-box">代码检查</div>
+      <span class="diagram-arrow">&rarr;</span>
+      <div class="diagram-box">编译构建</div>
+      <span class="diagram-arrow">&rarr;</span>
+      <div class="diagram-box accent-box">自动化测试</div>
+      <span class="diagram-arrow">&rarr;</span>
+      <div class="diagram-box">打包</div>
+      <span class="diagram-arrow">&rarr;</span>
+      <div class="diagram-box">上传产物</div>
+      <span class="diagram-arrow">&rarr;</span>
+      <div class="diagram-box accent-box">部署/分发</div>
+    </div>
+  </div>
+
+  <h3>GitHub Actions 配置示例</h3>
+
+  <div class="code-label">.github/workflows/build.yml — Unity 项目</div>
+  <pre><code><span class="keyword">name</span>: Build & Test
+
+<span class="keyword">on</span>:
+  <span class="keyword">push</span>:
+    <span class="attr">branches</span>: [main, develop]
+  <span class="keyword">pull_request</span>:
+    <span class="attr">branches</span>: [main]
+
+<span class="keyword">env</span>:
+  <span class="attr">UNITY_LICENSE</span>: ${{ secrets.UNITY_LICENSE }}
+  <span class="attr">UNITY_VERSION</span>: <span class="string">2022.3.20f1</span>
+
+<span class="keyword">jobs</span>:
+  <span class="function">test</span>:
+    <span class="attr">name</span>: Run Tests
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/checkout@v4
+        <span class="keyword">with</span>:
+          <span class="attr">lfs</span>: <span class="keyword">true</span>
+
+      - <span class="attr">uses</span>: game-ci/unity-test-runner@v4
+        <span class="keyword">with</span>:
+          <span class="attr">unityVersion</span>: ${{ env.UNITY_VERSION }}
+          <span class="attr">testMode</span>: all
+          <span class="attr">artifactsPath</span>: test-results
+
+      - <span class="attr">uses</span>: actions/upload-artifact@v4
+        <span class="keyword">if</span>: always()
+        <span class="keyword">with</span>:
+          <span class="attr">name</span>: test-results
+          <span class="attr">path</span>: test-results
+
+  <span class="function">build-windows</span>:
+    <span class="attr">name</span>: Build Windows
+    <span class="attr">needs</span>: test
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/checkout@v4
+        <span class="keyword">with</span>:
+          <span class="attr">lfs</span>: <span class="keyword">true</span>
+
+      - <span class="attr">uses</span>: game-ci/unity-builder@v4
+        <span class="keyword">with</span>:
+          <span class="attr">targetPlatform</span>: StandaloneWindows64
+          <span class="attr">unityVersion</span>: ${{ env.UNITY_VERSION }}
+
+      - <span class="attr">uses</span>: actions/upload-artifact@v4
+        <span class="keyword">with</span>:
+          <span class="attr">name</span>: build-windows
+          <span class="attr">path</span>: build/StandaloneWindows64
+
+  <span class="function">build-webgl</span>:
+    <span class="attr">name</span>: Build WebGL
+    <span class="attr">needs</span>: test
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/checkout@v4
+        <span class="keyword">with</span>:
+          <span class="attr">lfs</span>: <span class="keyword">true</span>
+
+      - <span class="attr">uses</span>: game-ci/unity-builder@v4
+        <span class="keyword">with</span>:
+          <span class="attr">targetPlatform</span>: WebGL
+          <span class="attr">unityVersion</span>: ${{ env.UNITY_VERSION }}
+
+      <span class="comment"># 自动部署到 GitHub Pages</span>
+      - <span class="attr">uses</span>: peaceiris/actions-gh-pages@v3
+        <span class="keyword">with</span>:
+          <span class="attr">github_token</span>: ${{ secrets.GITHUB_TOKEN }}
+          <span class="attr">publish_dir</span>: build/WebGL/WebGL</code></pre>
+
+  <div class="code-label">.github/workflows/build.yml — Godot 项目</div>
+  <pre><code><span class="keyword">name</span>: Godot Build
+
+<span class="keyword">on</span>:
+  <span class="keyword">push</span>:
+    <span class="attr">tags</span>: [<span class="string">'v*'</span>]
+
+<span class="keyword">jobs</span>:
+  <span class="function">export</span>:
+    <span class="attr">name</span>: Export ${{ matrix.platform }}
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">strategy</span>:
+      <span class="keyword">matrix</span>:
+        <span class="attr">platform</span>: [windows, linux, web, android]
+        <span class="keyword">include</span>:
+          - <span class="attr">platform</span>: windows
+            <span class="attr">export_preset</span>: <span class="string">"Windows Desktop"</span>
+          - <span class="attr">platform</span>: linux
+            <span class="attr">export_preset</span>: <span class="string">"Linux/X11"</span>
+          - <span class="attr">platform</span>: web
+            <span class="attr">export_preset</span>: <span class="string">"Web"</span>
+          - <span class="attr">platform</span>: android
+            <span class="attr">export_preset</span>: <span class="string">"Android"</span>
+
+    <span class="keyword">container</span>:
+      <span class="attr">image</span>: barichello/godot-ci:4.2.1
+
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/checkout@v4
+        <span class="keyword">with</span>:
+          <span class="attr">lfs</span>: <span class="keyword">true</span>
+
+      - <span class="attr">name</span>: Setup export templates
+        <span class="attr">run</span>: |
+          mkdir -p ~/.local/share/godot/export_templates/4.2.1.stable
+          mv /root/.local/share/godot/templates/4.2.1.stable/* \
+             ~/.local/share/godot/export_templates/4.2.1.stable/
+
+      - <span class="attr">name</span>: Export ${{ matrix.platform }}
+        <span class="attr">run</span>: |
+          mkdir -p build/${{ matrix.platform }}
+          godot --headless --export-release \
+            "${{ matrix.export_preset }}" \
+            build/${{ matrix.platform }}/game
+
+      - <span class="attr">uses</span>: actions/upload-artifact@v4
+        <span class="keyword">with</span>:
+          <span class="attr">name</span>: ${{ matrix.platform }}-build
+          <span class="attr">path</span>: build/${{ matrix.platform }}/
+
+  <span class="function">create-release</span>:
+    <span class="attr">needs</span>: export
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/download-artifact@v4
+      - <span class="attr">uses</span>: softprops/action-gh-release@v1
+        <span class="keyword">with</span>:
+          <span class="attr">files</span>: |
+            windows-build/*
+            linux-build/*
+            web-build/*
+            android-build/*</code></pre>
+
+  <h3>GitLab CI 配置示例</h3>
+
+  <div class="code-label">.gitlab-ci.yml</div>
+  <pre><code><span class="keyword">stages</span>:
+  - test
+  - build
+  - deploy
+
+<span class="keyword">variables</span>:
+  <span class="attr">GIT_LFS_SKIP_SMUDGE</span>: <span class="string">"1"</span>  <span class="comment"># 按需拉取 LFS</span>
+
+<span class="function">unit-tests</span>:
+  <span class="keyword">stage</span>: test
+  <span class="keyword">script</span>:
+    - git lfs pull --include=<span class="string">"assets/test/**"</span>
+    - ./run_tests.sh
+  <span class="keyword">artifacts</span>:
+    <span class="keyword">reports</span>:
+      <span class="attr">junit</span>: test-results/*.xml
+
+<span class="function">build-release</span>:
+  <span class="keyword">stage</span>: build
+  <span class="keyword">script</span>:
+    - git lfs pull
+    - ./build.sh --release --platform=all
+  <span class="keyword">artifacts</span>:
+    <span class="attr">paths</span>:
+      - build/
+    <span class="attr">expire_in</span>: 30 days
+  <span class="keyword">only</span>:
+    - tags</code></pre>
+
+  <h3>版本号管理策略</h3>
+
+  <p>推荐使用<strong>语义化版本号</strong>（Semantic Versioning）：<code>MAJOR.MINOR.PATCH</code></p>
+
+  <div class="card">
+    <h4>版本号约定</h4>
+    <ul>
+      <li><code>0.x.x</code> — 开发阶段，API 可能频繁变化</li>
+      <li><code>1.0.0</code> — 首次正式发布</li>
+      <li><code>MAJOR</code> — 重大更新、DLC、资料片</li>
+      <li><code>MINOR</code> — 新功能、新内容</li>
+      <li><code>PATCH</code> — Bug 修复、小调整</li>
+    </ul>
+    <p style="margin-top:12px">额外信息：</p>
+    <ul>
+      <li><strong>Build Number</strong>：自动递增，标识具体构建，如 <code>1.2.3+456</code></li>
+      <li><strong>Git Hash</strong>：在构建信息中嵌入 commit hash，方便追溯</li>
+      <li><strong>渠道标识</strong>：<code>1.2.3-beta</code>，<code>1.2.3-rc.1</code></li>
+    </ul>
+  </div>
+
+  <div class="code-label">自动版本号注入脚本</div>
+  <pre><code><span class="comment">#!/bin/bash</span>
+<span class="comment"># version.sh - 从 Git tag 生成版本信息</span>
+
+<span class="function">VERSION</span>=$(git describe --tags --always --dirty)
+<span class="function">COMMIT</span>=$(git rev-parse --short HEAD)
+<span class="function">BUILD_DATE</span>=$(date -u +<span class="string">"%Y-%m-%dT%H:%M:%SZ"</span>)
+<span class="function">BUILD_NUMBER</span>=${CI_PIPELINE_ID:-<span class="string">"local"</span>}
+
+<span class="comment"># 写入版本文件</span>
+cat > src/version_info.h << <span class="keyword">EOF</span>
+<span class="keyword">#pragma once</span>
+<span class="keyword">#define</span> <span class="function">GAME_VERSION</span>     <span class="string">"${VERSION}"</span>
+<span class="keyword">#define</span> <span class="function">GAME_COMMIT</span>      <span class="string">"${COMMIT}"</span>
+<span class="keyword">#define</span> <span class="function">GAME_BUILD_DATE</span>  <span class="string">"${BUILD_DATE}"</span>
+<span class="keyword">#define</span> <span class="function">GAME_BUILD_NUM</span>   <span class="string">"${BUILD_NUMBER}"</span>
+<span class="keyword">EOF</span>
+
+echo <span class="string">"Version: ${VERSION} (${COMMIT}) Build: ${BUILD_NUMBER}"</span></code></pre>
+
+  <h3>构建产物管理</h3>
+
+  <p>构建产物的管理策略直接影响团队的工作效率：</p>
+
+  <ul>
+    <li><strong>Artifact 保留策略</strong>：开发版保留 7-14 天，里程碑版本永久保留</li>
+    <li><strong>产物命名规范</strong>：<code>game-name_v1.2.3_windows_x64_build456.zip</code></li>
+    <li><strong>分发渠道</strong>：内部用 S3/Minio/共享盘，外部用 itch.io / Steam Upload</li>
+    <li><strong>符号文件归档</strong>：保留 .pdb / .dSYM 文件用于 crash dump 分析</li>
+  </ul>
+</div>
+
+<!-- ===== 第 4 节：测试策略 ===== -->
+<div class="section">
+  <span class="section-anchor" id="testing"></span>
+  <h2>04 / 测试策略</h2>
+
+  <p>游戏测试比传统软件测试更具挑战性：输出不确定（随机性）、依赖实时交互（帧率、输入时序）、"正确"的定义模糊（手感、体验）。但这并不意味着游戏不能测试 —— 而是需要更聪明的测试策略。</p>
+
+  <h3>游戏测试的特殊挑战</h3>
+
+  <div class="card">
+    <ul>
+      <li><strong>不确定性</strong>：随机数、物理模拟、AI 行为导致每次运行结果不同</li>
+      <li><strong>实时性</strong>：60fps 意味着 16.67ms 的帧时间窗口，时序敏感</li>
+      <li><strong>主观性</strong>：手感好不好、画面美不美、难度是否合适无法自动化判断</li>
+      <li><strong>组合爆炸</strong>：装备 x 技能 x 地形 x 敌人的组合难以穷举</li>
+      <li><strong>状态空间巨大</strong>：玩家可以在任何时候做任何事</li>
+      <li><strong>视觉回归</strong>：渲染改动的正确性验证需要视觉比对</li>
+    </ul>
+  </div>
+
+  <h3>测试金字塔（游戏版）</h3>
+
+  <div class="diagram">
+    <pre style="background:none;border:none;color:#c8c8d8;text-align:center;font-size:0.85rem;padding:0;margin:0">
+        <span style="color:#f78c6c">  /\</span>          <span class="comment">手动 Playtest / QA</span>
+       <span style="color:#f78c6c">/  \</span>         少量但高价值
+      <span style="color:#f78c6c">/    \</span>
+     <span style="color:#ffcb6b">/------\</span>       <span class="comment">集成测试 / 场景测试</span>
+    <span style="color:#ffcb6b">/        \</span>      中等数量
+   <span style="color:#ffcb6b">/          \</span>
+  <span style="color:#0abde3">/------------\</span>    <span class="comment">单元测试</span>
+ <span style="color:#0abde3">/              \</span>   大量，快速，自动化
+<span style="color:#0abde3">/________________\</span></pre>
+  </div>
+
+  <h3>单元测试（游戏逻辑）</h3>
+
+  <p>单元测试的核心是<strong>隔离测试纯逻辑</strong>，不依赖渲染、输入、文件系统。适合单元测试的部分：</p>
+
+  <ul>
+    <li>伤害计算公式</li>
+    <li>背包/库存系统</li>
+    <li>技能冷却逻辑</li>
+    <li>寻路算法</li>
+    <li>状态机转换</li>
+    <li>存档序列化/反序列化</li>
+    <li>数学工具函数</li>
+  </ul>
+
+  <div class="code-label">C# (Unity) — NUnit 单元测试示例</div>
+  <pre><code><span class="keyword">using</span> NUnit.Framework;
+
+[<span class="type">TestFixture</span>]
+<span class="keyword">public class</span> <span class="type">DamageCalculatorTests</span>
+{
+    <span class="keyword">private</span> <span class="type">DamageCalculator</span> _calculator;
+
+    [<span class="type">SetUp</span>]
+    <span class="keyword">public void</span> <span class="function">Setup</span>()
+    {
+        _calculator = <span class="keyword">new</span> <span class="type">DamageCalculator</span>();
+    }
+
+    [<span class="type">Test</span>]
+    <span class="keyword">public void</span> <span class="function">PhysicalDamage_WithArmor_ReducesDamage</span>()
+    {
+        <span class="keyword">var</span> attacker = <span class="keyword">new</span> <span class="type">CombatStats</span> { Attack = <span class="number">100</span> };
+        <span class="keyword">var</span> defender = <span class="keyword">new</span> <span class="type">CombatStats</span> { Defense = <span class="number">50</span>, MaxHp = <span class="number">1000</span> };
+
+        <span class="keyword">int</span> damage = _calculator.<span class="function">CalculatePhysical</span>(attacker, defender);
+
+        Assert.<span class="function">Greater</span>(damage, <span class="number">0</span>);
+        Assert.<span class="function">Less</span>(damage, <span class="number">100</span>); <span class="comment">// 有护甲，伤害应小于攻击力</span>
+    }
+
+    [<span class="type">Test</span>]
+    <span class="keyword">public void</span> <span class="function">CriticalHit_DoublesBaseDamage</span>()
+    {
+        <span class="keyword">var</span> attacker = <span class="keyword">new</span> <span class="type">CombatStats</span> { Attack = <span class="number">100</span>, CritMultiplier = <span class="number">2.0f</span> };
+        <span class="keyword">var</span> defender = <span class="keyword">new</span> <span class="type">CombatStats</span> { Defense = <span class="number">0</span> };
+
+        <span class="keyword">int</span> normal = _calculator.<span class="function">CalculatePhysical</span>(attacker, defender);
+        <span class="keyword">int</span> crit = _calculator.<span class="function">CalculateCritical</span>(attacker, defender);
+
+        Assert.<span class="function">AreEqual</span>(normal * <span class="number">2</span>, crit);
+    }
+
+    [<span class="type">Test</span>]
+    <span class="keyword">public void</span> <span class="function">Damage_NeverNegative</span>()
+    {
+        <span class="keyword">var</span> attacker = <span class="keyword">new</span> <span class="type">CombatStats</span> { Attack = <span class="number">1</span> };
+        <span class="keyword">var</span> defender = <span class="keyword">new</span> <span class="type">CombatStats</span> { Defense = <span class="number">9999</span> };
+
+        <span class="keyword">int</span> damage = _calculator.<span class="function">CalculatePhysical</span>(attacker, defender);
+
+        Assert.<span class="function">GreaterOrEqual</span>(damage, <span class="number">0</span>);
+    }
+
+    [<span class="type">TestCase</span>(<span class="number">100</span>, <span class="number">0</span>, <span class="number">100</span>)]
+    [<span class="type">TestCase</span>(<span class="number">100</span>, <span class="number">50</span>, <span class="number">67</span>)]   <span class="comment">// 护甲减伤公式</span>
+    [<span class="type">TestCase</span>(<span class="number">100</span>, <span class="number">100</span>, <span class="number">50</span>)]
+    [<span class="type">TestCase</span>(<span class="number">100</span>, <span class="number">200</span>, <span class="number">33</span>)]
+    <span class="keyword">public void</span> <span class="function">ArmorFormula_MatchesDesignSpec</span>(<span class="keyword">int</span> atk, <span class="keyword">int</span> def, <span class="keyword">int</span> expected)
+    {
+        <span class="keyword">var</span> attacker = <span class="keyword">new</span> <span class="type">CombatStats</span> { Attack = atk };
+        <span class="keyword">var</span> defender = <span class="keyword">new</span> <span class="type">CombatStats</span> { Defense = def };
+
+        <span class="keyword">int</span> damage = _calculator.<span class="function">CalculatePhysical</span>(attacker, defender);
+
+        Assert.<span class="function">AreEqual</span>(expected, damage, <span class="number">1</span>); <span class="comment">// 允许±1误差</span>
+    }
+}</code></pre>
+
+  <div class="code-label">GDScript (Godot) — GUT 单元测试示例</div>
+  <pre><code><span class="keyword">extends</span> <span class="type">GutTest</span>
+
+<span class="keyword">var</span> inventory: <span class="type">Inventory</span>
+
+<span class="keyword">func</span> <span class="function">before_each</span>():
+    inventory = <span class="type">Inventory</span>.new(<span class="number">20</span>)  <span class="comment"># 20 格背包</span>
+
+<span class="keyword">func</span> <span class="function">test_add_item_success</span>():
+    <span class="keyword">var</span> item = <span class="type">ItemData</span>.new(<span class="string">"health_potion"</span>, <span class="number">1</span>)
+    <span class="keyword">var</span> result = inventory.add_item(item)
+    assert_true(result, <span class="string">"应该能添加物品到空背包"</span>)
+    assert_eq(inventory.get_item_count(), <span class="number">1</span>)
+
+<span class="keyword">func</span> <span class="function">test_add_item_full_inventory</span>():
+    <span class="comment"># 填满背包</span>
+    <span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">20</span>):
+        inventory.add_item(<span class="type">ItemData</span>.new(<span class="string">"item_%d"</span> % i, <span class="number">1</span>))
+    <span class="comment"># 再添加应该失败</span>
+    <span class="keyword">var</span> result = inventory.add_item(<span class="type">ItemData</span>.new(<span class="string">"overflow"</span>, <span class="number">1</span>))
+    assert_false(result, <span class="string">"背包满时不应该能添加"</span>)
+
+<span class="keyword">func</span> <span class="function">test_stackable_items</span>():
+    <span class="keyword">var</span> potion_1 = <span class="type">ItemData</span>.new(<span class="string">"health_potion"</span>, <span class="number">5</span>)
+    <span class="keyword">var</span> potion_2 = <span class="type">ItemData</span>.new(<span class="string">"health_potion"</span>, <span class="number">3</span>)
+    inventory.add_item(potion_1)
+    inventory.add_item(potion_2)
+    <span class="comment"># 应该堆叠，只占一格</span>
+    assert_eq(inventory.get_slot_count_used(), <span class="number">1</span>)
+    assert_eq(inventory.get_item_quantity(<span class="string">"health_potion"</span>), <span class="number">8</span>)
+
+<span class="keyword">func</span> <span class="function">test_remove_item</span>():
+    inventory.add_item(<span class="type">ItemData</span>.new(<span class="string">"sword"</span>, <span class="number">1</span>))
+    inventory.remove_item(<span class="string">"sword"</span>, <span class="number">1</span>)
+    assert_eq(inventory.get_item_count(), <span class="number">0</span>)
+
+<span class="keyword">func</span> <span class="function">test_save_load_roundtrip</span>():
+    inventory.add_item(<span class="type">ItemData</span>.new(<span class="string">"sword"</span>, <span class="number">1</span>))
+    inventory.add_item(<span class="type">ItemData</span>.new(<span class="string">"health_potion"</span>, <span class="number">10</span>))
+    <span class="keyword">var</span> save_data = inventory.serialize()
+    <span class="keyword">var</span> loaded = <span class="type">Inventory</span>.deserialize(save_data)
+    assert_eq(loaded.get_item_count(), <span class="number">2</span>)
+    assert_eq(loaded.get_item_quantity(<span class="string">"health_potion"</span>), <span class="number">10</span>)</code></pre>
+
+  <h3>集成测试</h3>
+
+  <p>集成测试验证多个系统协同工作的正确性。游戏中典型的集成测试：</p>
+
+  <ul>
+    <li><strong>场景加载测试</strong>：确保所有场景能正常加载不报错</li>
+    <li><strong>存档系统端到端</strong>：创建存档 → 修改状态 → 加载存档 → 验证还原</li>
+    <li><strong>战斗流程</strong>：进入战斗 → 执行技能 → 验证伤害 → 结束战斗 → 获得经验</li>
+    <li><strong>UI 流程</strong>：主菜单 → 新游戏 → 暂停 → 设置 → 返回</li>
+  </ul>
+
+  <div class="code-label">场景加载冒烟测试（Unity）</div>
+  <pre><code>[<span class="type">UnityTest</span>]
+<span class="keyword">public</span> IEnumerator <span class="function">AllScenesCanLoad</span>()
+{
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i < SceneManager.sceneCountInBuildSettings; i++)
+    {
+        <span class="keyword">string</span> scenePath = SceneUtility.<span class="function">GetScenePathByBuildIndex</span>(i);
+        <span class="type">AsyncOperation</span> op = SceneManager.<span class="function">LoadSceneAsync</span>(i);
+        <span class="keyword">yield return</span> op;
+
+        Assert.<span class="function">IsTrue</span>(op.isDone,
+            $<span class="string">"场景 {scenePath} 加载失败"</span>);
+
+        <span class="comment">// 等一帧，确保 Start() 都执行了</span>
+        <span class="keyword">yield return</span> <span class="keyword">null</span>;
+
+        <span class="comment">// 检查没有错误日志</span>
+        <span class="function">LogAssert</span>.<span class="function">NoUnexpectedReceived</span>();
+    }
+}</code></pre>
+
+  <h3>自动化 QA</h3>
+
+  <p>全自动化的 QA 手段可以持续守护游戏质量：</p>
+
+  <div class="card">
+    <h4>自动化 QA 技术</h4>
+    <ul>
+      <li><strong>Monkey Testing</strong>：随机输入轰炸，发现 crash 和异常状态</li>
+      <li><strong>截图回归测试</strong>：自动截图与基准图对比，发现视觉回归</li>
+      <li><strong>Bot 自动游玩</strong>：AI 驱动的机器人自动探索关卡、完成任务</li>
+      <li><strong>性能基准测试</strong>：固定场景跑 benchmark，追踪帧率变化趋势</li>
+      <li><strong>内存泄漏检测</strong>：长时间运行，监控内存是否持续增长</li>
+    </ul>
+  </div>
+
+  <div class="code-label">简单的 Monkey Test 实现</div>
+  <pre><code><span class="keyword">class</span> <span class="type">MonkeyTester</span>:
+    <span class="keyword">var</span> duration: <span class="type">float</span> = <span class="number">300.0</span>  <span class="comment"># 跑 5 分钟</span>
+    <span class="keyword">var</span> elapsed: <span class="type">float</span> = <span class="number">0.0</span>
+    <span class="keyword">var</span> actions_log: <span class="type">Array</span> = []
+    <span class="keyword">var</span> rng := <span class="type">RandomNumberGenerator</span>.new()
+
+    <span class="keyword">func</span> <span class="function">_process</span>(delta: <span class="type">float</span>) -> void:
+        elapsed += delta
+        <span class="keyword">if</span> elapsed >= duration:
+            <span class="function">_save_log</span>()
+            <span class="keyword">return</span>
+
+        <span class="comment"># 每帧随机执行一个操作</span>
+        <span class="keyword">var</span> action = rng.randi_range(<span class="number">0</span>, <span class="number">5</span>)
+        <span class="keyword">match</span> action:
+            <span class="number">0</span>: <span class="function">_random_move</span>()
+            <span class="number">1</span>: <span class="function">_random_click</span>()
+            <span class="number">2</span>: <span class="function">_random_key_press</span>()
+            <span class="number">3</span>: <span class="function">_random_ui_interaction</span>()
+            <span class="number">4</span>: <span class="function">_random_menu_navigation</span>()
+            <span class="number">5</span>: <span class="function">_do_nothing</span>()
+
+        actions_log.append({
+            <span class="string">"time"</span>: elapsed,
+            <span class="string">"action"</span>: action,
+            <span class="string">"frame"</span>: Engine.get_frames_drawn()
+        })</code></pre>
+
+  <h3>Playtest 组织</h3>
+
+  <p>自动化测试无法替代真人试玩。Playtest 是获取真实玩家反馈的核心方式：</p>
+
+  <ol class="numbered-list">
+    <li><strong>明确测试目标</strong>：这次 Playtest 要验证什么？新手引导清晰度？战斗难度曲线？</li>
+    <li><strong>准备测试版本</strong>：稳定的构建版本，包含数据收集功能</li>
+    <li><strong>选择测试者</strong>：目标玩家画像、混合新老用户</li>
+    <li><strong>设计观察记录</strong>：不干预玩家，观察并记录行为</li>
+    <li><strong>收集量化数据</strong>：完成时间、死亡次数、放弃位置、操作路径</li>
+    <li><strong>测后访谈</strong>：结构化问卷 + 开放讨论</li>
+    <li><strong>整理 Action Items</strong>：按优先级输出改进清单</li>
+  </ol>
+
+  <h3>Bug 追踪与管理</h3>
+
+  <p>一个好的 Bug 报告应包含：</p>
+
+  <div class="card card-accent">
+    <h4>Bug 报告模板</h4>
+    <pre><code><span class="accent">标题</span>: [系统] 简明描述 —— 如 [战斗] 火球术对 Boss 伤害为 0
+
+<span class="accent">严重程度</span>: S1-阻塞 / S2-严重 / S3-一般 / S4-轻微
+<span class="accent">复现频率</span>: 必现 / 高频 / 偶现 / 仅一次
+<span class="accent">版本</span>: v0.3.1 build 456
+<span class="accent">平台</span>: Windows 11 / RTX 4060
+
+<span class="accent">复现步骤</span>:
+1. 进入第三关 "火山洞穴"
+2. 装备火球术（等级 3）
+3. 对 Boss "熔岩巨人" 释放火球术
+4. 观察伤害数字
+
+<span class="accent">预期结果</span>: 显示正常火属性伤害
+<span class="accent">实际结果</span>: 伤害显示为 0，Boss 血量不变
+
+<span class="accent">附件</span>: screenshot.png, player.log
+<span class="accent">备注</span>: 可能与火属性抗性计算有关</code></pre>
+  </div>
+</div>
+
+<!-- ===== 第 5 节：性能分析与优化 ===== -->
+<div class="section">
+  <span class="section-anchor" id="profiling"></span>
+  <h2>05 / 性能分析与优化</h2>
+
+  <p>性能优化的第一定律：<strong>不要猜，要量</strong>。在没有 Profiler 数据之前做的任何优化都是在碰运气。先分析，找到真正的瓶颈，再针对性优化。</p>
+
+  <h3>Profiler 使用指南</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>引擎/平台</th><th>内置 Profiler</th><th>外部工具</th></tr></thead>
+      <tbody>
+        <tr><td>Unity</td><td>Unity Profiler, Frame Debugger, Memory Profiler</td><td>RenderDoc, PIX, Instruments</td></tr>
+        <tr><td>Unreal</td><td>Unreal Insights, Stat 命令</td><td>RenderDoc, PIX, VTune</td></tr>
+        <tr><td>Godot</td><td>内置 Profiler, 监视器</td><td>Valgrind, perf</td></tr>
+        <tr><td>自研/Web</td><td>自建 Profiler</td><td>Chrome DevTools, Tracy, Optick</td></tr>
+        <tr><td>通用 GPU</td><td>—</td><td>RenderDoc, NSight, GPU PerfStudio</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>帧时间预算分配</h3>
+
+  <p>以 60fps 为目标，每帧预算 <strong>16.67ms</strong>。典型分配：</p>
+
+  <div class="card">
+    <div class="table-wrapper" style="border:none;margin:0">
+      <table>
+        <thead><tr><th>系统</th><th>预算 (ms)</th><th>占比</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>游戏逻辑</td><td>2-3</td><td>~15%</td><td>状态更新、AI、物理</td></tr>
+          <tr><td>渲染准备</td><td>2-3</td><td>~15%</td><td>剔除、排序、批处理</td></tr>
+          <tr><td>GPU 渲染</td><td>8-10</td><td>~55%</td><td>Draw Call、后处理</td></tr>
+          <tr><td>UI 更新</td><td>1-2</td><td>~8%</td><td>布局、动画</td></tr>
+          <tr><td>音频</td><td>0.5-1</td><td>~5%</td><td>混音、DSP</td></tr>
+          <tr><td>预留缓冲</td><td>1</td><td>~5%</td><td>应对峰值</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>CPU 性能分析</h3>
+
+  <p>CPU 侧的常见瓶颈与对策：</p>
+
+  <div class="card">
+    <h4>常见 CPU 瓶颈</h4>
+    <ul>
+      <li><strong>大量 GC 分配</strong>：每帧创建临时对象，触发垃圾回收 → 用对象池、struct 代替 class</li>
+      <li><strong>复杂的 AI 计算</strong>：每帧跑寻路和决策树 → 分帧计算、LOD AI</li>
+      <li><strong>物理模拟</strong>：过多碰撞体 → 简化碰撞形状、分组过滤</li>
+      <li><strong>字符串操作</strong>：频繁拼接字符串 → StringBuilder、缓存</li>
+      <li><strong>序列化</strong>：每帧序列化大数据 → 增量更新、异步处理</li>
+      <li><strong>不合理的更新频率</strong>：不需要每帧更新的逻辑放在 Update → 降低频率或事件驱动</li>
+    </ul>
+  </div>
+
+  <div class="code-label">分帧处理示例（避免单帧卡顿）</div>
+  <pre><code><span class="comment">// 将大量工作分散到多帧执行</span>
+<span class="keyword">public class</span> <span class="type">FrameDistributor</span>
+{
+    <span class="keyword">private</span> Queue&lt;Action&gt; _workQueue = <span class="keyword">new</span>();
+    <span class="keyword">private</span> <span class="keyword">const float</span> MAX_MS_PER_FRAME = <span class="number">2.0f</span>;
+
+    <span class="keyword">public void</span> <span class="function">EnqueueWork</span>(IEnumerable&lt;Action&gt; tasks)
+    {
+        <span class="keyword">foreach</span> (<span class="keyword">var</span> task <span class="keyword">in</span> tasks)
+            _workQueue.<span class="function">Enqueue</span>(task);
+    }
+
+    <span class="keyword">public void</span> <span class="function">ProcessFrame</span>()
+    {
+        <span class="keyword">var</span> sw = <span class="type">Stopwatch</span>.<span class="function">StartNew</span>();
+
+        <span class="keyword">while</span> (_workQueue.Count > <span class="number">0</span>
+            && sw.Elapsed.TotalMilliseconds < MAX_MS_PER_FRAME)
+        {
+            <span class="keyword">var</span> task = _workQueue.<span class="function">Dequeue</span>();
+            task.<span class="function">Invoke</span>();
+        }
+    }
+}</code></pre>
+
+  <h3>GPU 性能分析</h3>
+
+  <p>GPU 瓶颈通常表现为：CPU 空闲但帧率上不去。关键指标：</p>
+
+  <ul>
+    <li><strong>Draw Call 数量</strong>：每个 Draw Call 都有 CPU 开销，目标控制在 1000 以内（移动端 200-300）</li>
+    <li><strong>Overdraw</strong>：同一像素被重复绘制 → 合理排序、遮挡剔除</li>
+    <li><strong>Shader 复杂度</strong>：复杂的片段着色器 → LOD 材质、简化远处效果</li>
+    <li><strong>纹理带宽</strong>：大量高分辨率纹理 → Mipmap、纹理压缩、纹理集</li>
+    <li><strong>后处理</strong>：全屏后处理效果消耗大 → 合并 Pass、降低分辨率</li>
+  </ul>
+
+  <div class="card">
+    <h4>GPU 优化清单</h4>
+    <ol>
+      <li>开启<strong>静态/动态合批</strong>（Batching）减少 Draw Call</li>
+      <li>使用 <strong>GPU Instancing</strong> 渲染大量相同物体</li>
+      <li>实现<strong>视锥体剔除</strong>和<strong>遮挡剔除</strong>（Frustum/Occlusion Culling）</li>
+      <li>使用 <strong>LOD</strong>（Level of Detail）减少远处物体面数</li>
+      <li>纹理使用 <strong>ASTC</strong>（移动）/ <strong>BC7</strong>（PC）压缩格式</li>
+      <li><strong>Atlas</strong> 合并小纹理，减少纹理切换</li>
+      <li>后处理合并为更少的 Pass</li>
+      <li>阴影使用<strong>级联阴影贴图</strong>（Cascaded Shadow Maps）</li>
+    </ol>
+  </div>
+
+  <h3>内存分析</h3>
+
+  <p>内存问题往往隐蔽但致命。关键关注点：</p>
+
+  <ul>
+    <li><strong>峰值内存</strong>：在内存最紧张的场景（通常是内容最丰富的关卡）测量</li>
+    <li><strong>泄漏检测</strong>：反复进出场景，观察内存是否持续上涨</li>
+    <li><strong>大头分析</strong>：排序 top N 的内存消耗者，通常纹理占 60-80%</li>
+    <li><strong>碎片化</strong>：长时间运行后分配/释放效率下降</li>
+  </ul>
+
+  <div class="code-label">内存使用追踪器</div>
+  <pre><code><span class="keyword">class</span> <span class="type">MemoryTracker</span>:
+    <span class="keyword">static var</span> instance: <span class="type">MemoryTracker</span>
+    <span class="keyword">var</span> snapshots: <span class="type">Array</span>[<span class="type">Dictionary</span>] = []
+
+    <span class="keyword">func</span> <span class="function">take_snapshot</span>(label: <span class="type">String</span>) -> <span class="type">Dictionary</span>:
+        <span class="keyword">var</span> snapshot = {
+            <span class="string">"label"</span>: label,
+            <span class="string">"time"</span>: Time.get_ticks_msec(),
+            <span class="string">"static_mem"</span>: OS.get_static_memory_usage(),
+            <span class="string">"dynamic_mem"</span>: OS.get_dynamic_memory_usage(),
+            <span class="string">"video_mem"</span>: Performance.get_monitor(
+                Performance.RENDER_VIDEO_MEM_USED),
+            <span class="string">"objects"</span>: Performance.get_monitor(
+                Performance.OBJECT_COUNT),
+            <span class="string">"resources"</span>: Performance.get_monitor(
+                Performance.OBJECT_RESOURCE_COUNT),
+        }
+        snapshots.append(snapshot)
+        <span class="keyword">return</span> snapshot
+
+    <span class="keyword">func</span> <span class="function">compare</span>(a: <span class="type">String</span>, b: <span class="type">String</span>) -> void:
+        <span class="keyword">var</span> snap_a = snapshots.filter(
+            <span class="keyword">func</span>(s): <span class="keyword">return</span> s[<span class="string">"label"</span>] == a).front()
+        <span class="keyword">var</span> snap_b = snapshots.filter(
+            <span class="keyword">func</span>(s): <span class="keyword">return</span> s[<span class="string">"label"</span>] == b).front()
+
+        <span class="keyword">var</span> delta_static = snap_b[<span class="string">"static_mem"</span>] - snap_a[<span class="string">"static_mem"</span>]
+        <span class="keyword">var</span> delta_objects = snap_b[<span class="string">"objects"</span>] - snap_a[<span class="string">"objects"</span>]
+
+        print(<span class="string">"Memory delta [%s -> %s]:"</span> % [a, b])
+        print(<span class="string">"  Static: %s bytes"</span> % delta_static)
+        print(<span class="string">"  Objects: %s"</span> % delta_objects)</code></pre>
+
+  <h3>常见性能陷阱</h3>
+
+  <div class="card">
+    <ol>
+      <li><strong>在循环中查找节点</strong>：<code>find_node()</code> / <code>GetComponent()</code> 每帧调用 → 缓存引用</li>
+      <li><strong>过度使用 Raycast</strong>：大量射线检测 → 合理设置频率和距离</li>
+      <li><strong>透明物体排序</strong>：大量半透明粒子 → 减少粒子数量、使用不透明替代</li>
+      <li><strong>实时光源过多</strong>：多个动态光源 → 烘焙静态光照、限制动态光源数量</li>
+      <li><strong>高面数模型无 LOD</strong>：远处物体和近处一样多的三角面 → 设置 LOD Group</li>
+      <li><strong>不必要的物理计算</strong>：屏幕外物体仍在模拟 → 睡眠/禁用远处物理体</li>
+      <li><strong>Log 输出</strong>：发布版本仍有大量 Debug.Log → 条件编译或 log level 控制</li>
+      <li><strong>每帧创建 Lambda/闭包</strong>：产生 GC 压力 → 提升到类级别</li>
+    </ol>
+  </div>
+
+  <h3>优化优先级决策</h3>
+
+  <p>不是所有性能问题都值得花同样的精力。决策框架：</p>
+
+  <ol class="numbered-list">
+    <li><strong>先确认目标</strong>：目标平台的目标帧率（60fps? 30fps?），目标分辨率</li>
+    <li><strong>量化瓶颈</strong>：Profiler 数据驱动，找到耗时 top 5</li>
+    <li><strong>评估投入产出</strong>：某优化能省 5ms 但需要重写整个系统 → 先做能快速生效的</li>
+    <li><strong>平台优先级</strong>：如果移动端是主要平台，先优化移动端</li>
+    <li><strong>用户感知优先</strong>：掉帧/卡顿 > 加载慢 > 内存占用高</li>
+  </ol>
+</div>
+
+<!-- ===== 第 6 节：内存管理 ===== -->
+<div class="section">
+  <span class="section-anchor" id="memory"></span>
+  <h2>06 / 内存管理</h2>
+
+  <p>内存是游戏开发中最珍贵的资源之一，尤其在移动端和主机平台。主机有固定的内存上限，移动端系统会在内存紧张时直接杀掉你的应用。理解和管理内存分配模式是高级游戏工程师的必备技能。</p>
+
+  <h3>游戏中的内存模式</h3>
+
+  <div class="card">
+    <h4>内存类型与用途</h4>
+    <div class="table-wrapper" style="border:none;margin:0">
+      <table>
+        <thead><tr><th>类别</th><th>典型占比</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td>纹理</td><td>40-60%</td><td>环境贴图、角色贴图、UI 图集</td></tr>
+          <tr><td>模型/网格</td><td>10-20%</td><td>顶点数据、骨骼数据</td></tr>
+          <tr><td>音频</td><td>5-15%</td><td>音效（解压后）、音乐流</td></tr>
+          <tr><td>动画</td><td>5-10%</td><td>动画曲线、骨骼动画数据</td></tr>
+          <tr><td>脚本/逻辑</td><td>5-10%</td><td>游戏对象、组件、数据结构</td></tr>
+          <tr><td>引擎运行时</td><td>5-10%</td><td>渲染管线、物理引擎、粒子系统</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>资源加载与卸载策略</h3>
+
+  <h4>预加载（Pre-loading）</h4>
+  <p>在场景转换的 Loading Screen 期间一次性加载所有需要的资源。适用于关卡制游戏。</p>
+
+  <h4>懒加载（Lazy Loading）</h4>
+  <p>资源在首次使用时才加载。适用于 UI 资源、不确定是否会用到的内容。</p>
+
+  <h4>引用计数卸载</h4>
+  <p>追踪每个资源被多少对象引用，引用归零时卸载。防止正在使用的资源被意外释放。</p>
+
+  <div class="code-label">资源管理器实现</div>
+  <pre><code><span class="keyword">class</span> <span class="type">ResourceManager</span>:
+    <span class="keyword">var</span> _cache: <span class="type">Dictionary</span> = {}    <span class="comment"># path -> { resource, ref_count }</span>
+    <span class="keyword">var</span> _loading: <span class="type">Dictionary</span> = {}  <span class="comment"># path -> Array[callback]</span>
+
+    <span class="comment">## 同步加载（小资源）</span>
+    <span class="keyword">func</span> <span class="function">load_sync</span>(path: <span class="type">String</span>) -> <span class="type">Resource</span>:
+        <span class="keyword">if</span> _cache.has(path):
+            _cache[path][<span class="string">"ref_count"</span>] += <span class="number">1</span>
+            <span class="keyword">return</span> _cache[path][<span class="string">"resource"</span>]
+
+        <span class="keyword">var</span> res = load(path)
+        <span class="keyword">if</span> res:
+            _cache[path] = {
+                <span class="string">"resource"</span>: res,
+                <span class="string">"ref_count"</span>: <span class="number">1</span>,
+                <span class="string">"size_bytes"</span>: <span class="function">_estimate_size</span>(res)
+            }
+        <span class="keyword">return</span> res
+
+    <span class="comment">## 异步加载（大资源）</span>
+    <span class="keyword">func</span> <span class="function">load_async</span>(path: <span class="type">String</span>, callback: <span class="type">Callable</span>) -> void:
+        <span class="keyword">if</span> _cache.has(path):
+            _cache[path][<span class="string">"ref_count"</span>] += <span class="number">1</span>
+            callback.call(_cache[path][<span class="string">"resource"</span>])
+            <span class="keyword">return</span>
+
+        <span class="keyword">if</span> _loading.has(path):
+            _loading[path].append(callback)
+            <span class="keyword">return</span>
+
+        _loading[path] = [callback]
+        ResourceLoader.load_threaded_request(path)
+        <span class="comment"># 在 _process 中检查加载状态</span>
+
+    <span class="comment">## 释放引用</span>
+    <span class="keyword">func</span> <span class="function">release</span>(path: <span class="type">String</span>) -> void:
+        <span class="keyword">if</span> <span class="keyword">not</span> _cache.has(path):
+            <span class="keyword">return</span>
+        _cache[path][<span class="string">"ref_count"</span>] -= <span class="number">1</span>
+        <span class="keyword">if</span> _cache[path][<span class="string">"ref_count"</span>] <= <span class="number">0</span>:
+            _cache.erase(path)  <span class="comment"># 引用归零，释放</span>
+
+    <span class="comment">## 强制清理所有无引用资源</span>
+    <span class="keyword">func</span> <span class="function">purge_unused</span>() -> <span class="type">int</span>:
+        <span class="keyword">var</span> freed = <span class="number">0</span>
+        <span class="keyword">var</span> to_remove: <span class="type">Array</span> = []
+        <span class="keyword">for</span> path <span class="keyword">in</span> _cache:
+            <span class="keyword">if</span> _cache[path][<span class="string">"ref_count"</span>] <= <span class="number">0</span>:
+                freed += _cache[path][<span class="string">"size_bytes"</span>]
+                to_remove.append(path)
+        <span class="keyword">for</span> path <span class="keyword">in</span> to_remove:
+            _cache.erase(path)
+        <span class="keyword">return</span> freed</code></pre>
+
+  <h3>流式加载（Streaming）</h3>
+
+  <p>大型开放世界游戏无法一次加载所有内容。流式加载的核心思想是<strong>只加载玩家附近的内容</strong>。</p>
+
+  <div class="card card-accent">
+    <h4>流式加载策略</h4>
+    <ul>
+      <li><strong>基于距离</strong>：以玩家为中心，加载 N 格范围内的区块（Chunk），卸载远处区块</li>
+      <li><strong>基于视线</strong>：加载玩家朝向的区域，背后的可以延迟加载</li>
+      <li><strong>分层加载</strong>：地形先加载低精度，靠近后替换为高精度</li>
+      <li><strong>优先级队列</strong>：玩家移动方向的区块优先加载</li>
+    </ul>
+  </div>
+
+  <div class="code-label">区块流式加载示例</div>
+  <pre><code><span class="keyword">class</span> <span class="type">WorldStreamer</span>:
+    <span class="keyword">const</span> CHUNK_SIZE = <span class="number">64.0</span>       <span class="comment"># 每个区块 64x64 单位</span>
+    <span class="keyword">const</span> LOAD_RADIUS = <span class="number">3</span>        <span class="comment"># 加载周围 3x3 区块</span>
+    <span class="keyword">const</span> UNLOAD_RADIUS = <span class="number">5</span>      <span class="comment"># 超出 5 格卸载</span>
+
+    <span class="keyword">var</span> loaded_chunks: <span class="type">Dictionary</span> = {}  <span class="comment"># Vector2i -> ChunkData</span>
+    <span class="keyword">var</span> player_chunk: <span class="type">Vector2i</span>
+
+    <span class="keyword">func</span> <span class="function">update</span>(player_pos: <span class="type">Vector3</span>) -> void:
+        <span class="keyword">var</span> new_chunk = <span class="type">Vector2i</span>(
+            <span class="function">floori</span>(player_pos.x / CHUNK_SIZE),
+            <span class="function">floori</span>(player_pos.z / CHUNK_SIZE)
+        )
+
+        <span class="keyword">if</span> new_chunk == player_chunk:
+            <span class="keyword">return</span>
+
+        player_chunk = new_chunk
+
+        <span class="comment"># 加载需要的区块</span>
+        <span class="keyword">for</span> x <span class="keyword">in</span> range(-LOAD_RADIUS, LOAD_RADIUS + <span class="number">1</span>):
+            <span class="keyword">for</span> z <span class="keyword">in</span> range(-LOAD_RADIUS, LOAD_RADIUS + <span class="number">1</span>):
+                <span class="keyword">var</span> coord = player_chunk + <span class="type">Vector2i</span>(x, z)
+                <span class="keyword">if</span> <span class="keyword">not</span> loaded_chunks.has(coord):
+                    <span class="function">_load_chunk_async</span>(coord)
+
+        <span class="comment"># 卸载远处的区块</span>
+        <span class="keyword">var</span> to_unload: <span class="type">Array</span> = []
+        <span class="keyword">for</span> coord <span class="keyword">in</span> loaded_chunks:
+            <span class="keyword">var</span> dist = (coord - player_chunk).length()
+            <span class="keyword">if</span> dist > UNLOAD_RADIUS:
+                to_unload.append(coord)
+
+        <span class="keyword">for</span> coord <span class="keyword">in</span> to_unload:
+            <span class="function">_unload_chunk</span>(coord)</code></pre>
+
+  <h3>内存碎片化</h3>
+
+  <p>频繁的 malloc/free 会导致内存碎片化 —— 总空闲内存够用，但找不到连续的大块空间。在 C/C++ 游戏引擎中尤为突出。</p>
+
+  <div class="card">
+    <h4>减少碎片化的策略</h4>
+    <ul>
+      <li><strong>固定大小分配器</strong>（Pool Allocator）：相同大小的对象从同一个池分配</li>
+      <li><strong>栈分配器</strong>（Stack Allocator）：LIFO 顺序，适合每帧临时数据</li>
+      <li><strong>双端栈分配器</strong>（Double-Ended Stack）：一端放持久数据，一端放临时数据</li>
+      <li><strong>预分配大块内存</strong>：启动时分配好，运行时内部管理</li>
+      <li><strong>避免运行时 new/delete</strong>：游戏循环中尽量零分配</li>
+    </ul>
+  </div>
+
+  <h3>对象池实现</h3>
+
+  <p>对象池是游戏开发中最常用的内存优化模式。核心思想：<strong>预先创建一批对象，用完不销毁而是回收，需要时取出复用</strong>。</p>
+
+  <div class="code-label">通用对象池（C#）</div>
+  <pre><code><span class="keyword">public class</span> <span class="type">ObjectPool</span>&lt;<span class="type">T</span>&gt; <span class="keyword">where</span> <span class="type">T</span> : <span class="keyword">class</span>, <span class="type">IPoolable</span>, <span class="keyword">new</span>()
+{
+    <span class="keyword">private readonly</span> Stack&lt;<span class="type">T</span>&gt; _pool;
+    <span class="keyword">private readonly int</span> _maxSize;
+    <span class="keyword">private int</span> _totalCreated;
+
+    <span class="keyword">public</span> <span class="function">ObjectPool</span>(<span class="keyword">int</span> initialSize, <span class="keyword">int</span> maxSize = <span class="number">1000</span>)
+    {
+        _maxSize = maxSize;
+        _pool = <span class="keyword">new</span> Stack&lt;<span class="type">T</span>&gt;(initialSize);
+
+        <span class="comment">// 预热：创建初始对象</span>
+        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i < initialSize; i++)
+        {
+            <span class="keyword">var</span> obj = <span class="keyword">new</span> <span class="type">T</span>();
+            obj.<span class="function">OnCreated</span>();
+            _pool.<span class="function">Push</span>(obj);
+            _totalCreated++;
+        }
+    }
+
+    <span class="keyword">public</span> <span class="type">T</span> <span class="function">Get</span>()
+    {
+        <span class="type">T</span> obj;
+        <span class="keyword">if</span> (_pool.Count > <span class="number">0</span>)
+        {
+            obj = _pool.<span class="function">Pop</span>();
+        }
+        <span class="keyword">else if</span> (_totalCreated < _maxSize)
+        {
+            obj = <span class="keyword">new</span> <span class="type">T</span>();
+            obj.<span class="function">OnCreated</span>();
+            _totalCreated++;
+        }
+        <span class="keyword">else</span>
+        {
+            <span class="keyword">return null</span>; <span class="comment">// 池已满</span>
+        }
+
+        obj.<span class="function">OnGetFromPool</span>();
+        <span class="keyword">return</span> obj;
+    }
+
+    <span class="keyword">public void</span> <span class="function">Return</span>(<span class="type">T</span> obj)
+    {
+        obj.<span class="function">OnReturnToPool</span>();
+        _pool.<span class="function">Push</span>(obj);
+    }
+
+    <span class="keyword">public int</span> AvailableCount => _pool.Count;
+    <span class="keyword">public int</span> TotalCreated => _totalCreated;
+}
+
+<span class="keyword">public interface</span> <span class="type">IPoolable</span>
+{
+    <span class="keyword">void</span> <span class="function">OnCreated</span>();         <span class="comment">// 首次创建</span>
+    <span class="keyword">void</span> <span class="function">OnGetFromPool</span>();    <span class="comment">// 从池中取出时重置</span>
+    <span class="keyword">void</span> <span class="function">OnReturnToPool</span>();   <span class="comment">// 回收时清理</span>
+}
+
+<span class="comment">// 使用示例：子弹对象池</span>
+<span class="keyword">public class</span> <span class="type">BulletManager</span>
+{
+    <span class="keyword">private</span> ObjectPool&lt;<span class="type">Bullet</span>&gt; _bulletPool =
+        <span class="keyword">new</span>(initialSize: <span class="number">200</span>, maxSize: <span class="number">2000</span>);
+
+    <span class="keyword">public</span> <span class="type">Bullet</span> <span class="function">SpawnBullet</span>(<span class="type">Vector3</span> pos, <span class="type">Vector3</span> dir)
+    {
+        <span class="keyword">var</span> bullet = _bulletPool.<span class="function">Get</span>();
+        <span class="keyword">if</span> (bullet == <span class="keyword">null</span>) <span class="keyword">return null</span>;
+        bullet.<span class="function">Init</span>(pos, dir);
+        <span class="keyword">return</span> bullet;
+    }
+
+    <span class="keyword">public void</span> <span class="function">DespawnBullet</span>(<span class="type">Bullet</span> bullet)
+    {
+        _bulletPool.<span class="function">Return</span>(bullet);
+    }
+}</code></pre>
+
+  <div class="tip">
+    <div class="tip-title">何时使用对象池</div>
+    频繁创建和销毁的对象：子弹、粒子、伤害数字、敌人、拾取物。如果对象创建频率低于每秒一次，对象池可能是过度优化。
+  </div>
+</div>
+
+<!-- ===== 第 7 节：跨平台开发 ===== -->
+<div class="section">
+  <span class="section-anchor" id="cross-platform"></span>
+  <h2>07 / 跨平台开发</h2>
+
+  <p>一款游戏可能需要运行在 PC、主机、移动端、Web 等多个平台上。每个平台有不同的硬件能力、输入方式、分辨率、API 限制。跨平台开发的核心是<strong>抽象平台差异、共享核心逻辑</strong>。</p>
+
+  <h3>平台差异概览</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>维度</th><th>PC</th><th>主机</th><th>移动</th><th>Web</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>输入</td>
+          <td>键鼠 + 手柄</td>
+          <td>手柄</td>
+          <td>触屏 + 陀螺仪</td>
+          <td>键鼠 + 触屏</td>
+        </tr>
+        <tr>
+          <td>分辨率</td>
+          <td>可变，多显示器</td>
+          <td>固定（4K/1080p）</td>
+          <td>极度碎片化</td>
+          <td>可变（浏览器窗口）</td>
+        </tr>
+        <tr>
+          <td>性能</td>
+          <td>差异巨大</td>
+          <td>固定硬件</td>
+          <td>受限（发热限制）</td>
+          <td>受限（WASM 开销）</td>
+        </tr>
+        <tr>
+          <td>内存</td>
+          <td>8-64GB</td>
+          <td>固定 8-16GB</td>
+          <td>2-8GB（共享）</td>
+          <td>受浏览器限制</td>
+        </tr>
+        <tr>
+          <td>图形 API</td>
+          <td>DirectX/Vulkan/OpenGL</td>
+          <td>专有 API</td>
+          <td>OpenGL ES/Vulkan/Metal</td>
+          <td>WebGL/WebGPU</td>
+        </tr>
+        <tr>
+          <td>存储</td>
+          <td>SSD，快速</td>
+          <td>SSD（新世代）</td>
+          <td>闪存，有限</td>
+          <td>IndexedDB/LocalStorage</td>
+        </tr>
+        <tr>
+          <td>发布</td>
+          <td>自由分发</td>
+          <td>认证流程严格</td>
+          <td>商店审核</td>
+          <td>即时可用</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>输入适配</h3>
+
+  <p>不同平台的输入方式差异是最直接影响玩家体验的因素。推荐使用<strong>Action-Based Input System</strong>：</p>
+
+  <div class="code-label">跨平台输入抽象层</div>
+  <pre><code><span class="comment">/// 输入动作定义，与具体设备无关</span>
+<span class="keyword">enum</span> <span class="type">InputAction</span>
+{
+    MoveHorizontal,
+    MoveVertical,
+    Jump,
+    Attack,
+    Interact,
+    Pause,
+    UIConfirm,
+    UICancel,
+}
+
+<span class="comment">/// 输入管理器 —— 统一不同平台的输入</span>
+<span class="keyword">public class</span> <span class="type">CrossPlatformInput</span>
+{
+    <span class="keyword">private</span> <span class="type">IInputProvider</span> _provider;
+
+    <span class="keyword">public void</span> <span class="function">Initialize</span>()
+    {
+        <span class="keyword">#if</span> UNITY_STANDALONE || UNITY_EDITOR
+        _provider = <span class="keyword">new</span> <span class="type">DesktopInputProvider</span>();
+        <span class="keyword">#elif</span> UNITY_IOS || UNITY_ANDROID
+        _provider = <span class="keyword">new</span> <span class="type">MobileInputProvider</span>();
+        <span class="keyword">#elif</span> UNITY_WEBGL
+        _provider = <span class="keyword">new</span> <span class="type">WebInputProvider</span>();
+        <span class="keyword">#elif</span> UNITY_PS5 || UNITY_SWITCH
+        _provider = <span class="keyword">new</span> <span class="type">ConsoleInputProvider</span>();
+        <span class="keyword">#endif</span>
+
+        <span class="comment">// 检测手柄连接，动态切换</span>
+        <span class="type">Input</span>.onControllerConnected += <span class="function">OnControllerChange</span>;
+    }
+
+    <span class="keyword">public float</span> <span class="function">GetAxis</span>(<span class="type">InputAction</span> action) =>
+        _provider.<span class="function">GetAxis</span>(action);
+
+    <span class="keyword">public bool</span> <span class="function">IsActionPressed</span>(<span class="type">InputAction</span> action) =>
+        _provider.<span class="function">IsPressed</span>(action);
+
+    <span class="keyword">public bool</span> <span class="function">IsActionJustPressed</span>(<span class="type">InputAction</span> action) =>
+        _provider.<span class="function">IsJustPressed</span>(action);
+
+    <span class="keyword">public</span> <span class="type">InputDeviceType</span> CurrentDevice =>
+        _provider.ActiveDevice;
+}</code></pre>
+
+  <h3>分辨率与屏幕适配</h3>
+
+  <p>屏幕适配策略取决于游戏类型：</p>
+
+  <div class="card">
+    <h4>2D 游戏适配策略</h4>
+    <ul>
+      <li><strong>固定宽度</strong>：保证水平视野一致，上下可能有黑边或额外可视区域</li>
+      <li><strong>固定高度</strong>：保证垂直视野一致，常用于竖屏游戏</li>
+      <li><strong>信封模式</strong>：设定最小和最大可视区域，在此范围内自适应</li>
+      <li><strong>像素完美</strong>：像素游戏必须保证整数倍缩放</li>
+    </ul>
+    <h4 style="margin-top:20px">3D 游戏适配策略</h4>
+    <ul>
+      <li><strong>固定 FOV</strong>：水平 FOV 固定，垂直 FOV 随宽高比变化</li>
+      <li><strong>动态分辨率</strong>：根据帧率动态调整渲染分辨率</li>
+      <li><strong>UI 锚点系统</strong>：UI 元素锚定到屏幕边缘/角落</li>
+    </ul>
+  </div>
+
+  <h3>抽象层设计</h3>
+
+  <p>好的跨平台架构的关键是<strong>平台抽象层</strong>（Platform Abstraction Layer, PAL）。将所有平台特定的行为隐藏在接口后面。</p>
+
+  <div class="code-label">平台抽象层接口设计</div>
+  <pre><code><span class="comment">/// 平台服务接口</span>
+<span class="keyword">public interface</span> <span class="type">IPlatformServices</span>
+{
+    <span class="comment">// 文件系统</span>
+    <span class="keyword">string</span> <span class="function">GetSavePath</span>();
+    <span class="keyword">string</span> <span class="function">GetCachePath</span>();
+    <span class="keyword">long</span> <span class="function">GetAvailableStorage</span>();
+
+    <span class="comment">// 系统信息</span>
+    <span class="keyword">int</span> <span class="function">GetSystemMemoryMB</span>();
+    <span class="keyword">string</span> <span class="function">GetDeviceModel</span>();
+    <span class="type">QualityTier</span> <span class="function">GetRecommendedQuality</span>();
+
+    <span class="comment">// 社交</span>
+    <span class="keyword">void</span> <span class="function">UnlockAchievement</span>(<span class="keyword">string</span> id);
+    <span class="keyword">void</span> <span class="function">SubmitLeaderboard</span>(<span class="keyword">string</span> id, <span class="keyword">int</span> score);
+    <span class="keyword">void</span> <span class="function">ShowLeaderboard</span>();
+
+    <span class="comment">// 通知</span>
+    <span class="keyword">void</span> <span class="function">ShowNotification</span>(<span class="keyword">string</span> title, <span class="keyword">string</span> body, <span class="keyword">int</span> delaySec);
+
+    <span class="comment">// 振动/触觉反馈</span>
+    <span class="keyword">void</span> <span class="function">TriggerHaptic</span>(<span class="type">HapticType</span> type, <span class="keyword">float</span> intensity);
+
+    <span class="comment">// 应用生命周期</span>
+    <span class="keyword">event</span> Action OnAppPause;
+    <span class="keyword">event</span> Action OnAppResume;
+    <span class="keyword">event</span> Action OnLowMemory;
+}
+
+<span class="comment">/// Steam 平台实现</span>
+<span class="keyword">public class</span> <span class="type">SteamPlatform</span> : <span class="type">IPlatformServices</span>
+{
+    <span class="keyword">public string</span> <span class="function">GetSavePath</span>() =>
+        <span class="type">SteamRemoteStorage</span>.<span class="function">GetCloudSavePath</span>();
+
+    <span class="keyword">public void</span> <span class="function">UnlockAchievement</span>(<span class="keyword">string</span> id) =>
+        <span class="type">SteamUserStats</span>.<span class="function">SetAchievement</span>(id);
+    <span class="comment">// ... 其他实现</span>
+}
+
+<span class="comment">/// 移动端实现</span>
+<span class="keyword">public class</span> <span class="type">MobilePlatform</span> : <span class="type">IPlatformServices</span>
+{
+    <span class="keyword">public string</span> <span class="function">GetSavePath</span>() =>
+        <span class="type">Application</span>.persistentDataPath;
+
+    <span class="keyword">public void</span> <span class="function">TriggerHaptic</span>(<span class="type">HapticType</span> type, <span class="keyword">float</span> intensity) =>
+        <span class="type">Handheld</span>.<span class="function">Vibrate</span>();
+    <span class="comment">// ... 其他实现</span>
+}</code></pre>
+
+  <h3>平台特定 API</h3>
+
+  <div class="card">
+    <h4>各平台需要特别处理的 API</h4>
+    <ul>
+      <li><strong>PC (Steam)</strong>：Workshop、Cloud Save、Overlay、Rich Presence</li>
+      <li><strong>PlayStation</strong>：Trophy、Activity、DualSense 触觉反馈、PlayStation Network</li>
+      <li><strong>Xbox</strong>：Game Pass、Smart Delivery、Quick Resume</li>
+      <li><strong>Nintendo Switch</strong>：HD Rumble、Joy-Con 分离模式、触摸屏</li>
+      <li><strong>iOS</strong>：Game Center、App Tracking Transparency、StoreKit</li>
+      <li><strong>Android</strong>：Google Play Games、权限请求、多种屏幕尺寸</li>
+      <li><strong>Web</strong>：浏览器兼容性、Focus/Blur 事件、音频自动播放限制</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== 第 8 节：调试技巧 ===== -->
+<div class="section">
+  <span class="section-anchor" id="debugging"></span>
+  <h2>08 / 调试技巧</h2>
+
+  <p>游戏 Bug 往往更难调试 —— 涉及实时交互、视觉表现、物理模拟、随机性。掌握系统化的调试方法能极大提升开发效率。</p>
+
+  <h3>调试绘制（Debug Draw）</h3>
+
+  <p>可视化是游戏调试最有力的武器。将内部状态直接绘制到游戏画面上：</p>
+
+  <div class="code-label">调试绘制系统</div>
+  <pre><code><span class="keyword">class_name</span> <span class="type">DebugDraw</span>
+<span class="keyword">extends</span> <span class="type">Node</span>
+
+<span class="keyword">static var</span> _instance: <span class="type">DebugDraw</span>
+
+<span class="keyword">var</span> _lines: <span class="type">Array</span> = []
+<span class="keyword">var</span> _spheres: <span class="type">Array</span> = []
+<span class="keyword">var</span> _labels: <span class="type">Array</span> = []
+
+<span class="comment">## 绘制射线</span>
+<span class="keyword">static func</span> <span class="function">ray</span>(origin: <span class="type">Vector3</span>, dir: <span class="type">Vector3</span>,
+                  color := <span class="type">Color</span>.RED, dur := <span class="number">0.0</span>) -> void:
+    _instance._lines.append({
+        <span class="string">"from"</span>: origin,
+        <span class="string">"to"</span>: origin + dir,
+        <span class="string">"color"</span>: color,
+        <span class="string">"expire"</span>: Time.get_ticks_msec() + dur * <span class="number">1000</span>
+    })
+
+<span class="comment">## 绘制包围盒</span>
+<span class="keyword">static func</span> <span class="function">aabb</span>(bounds: <span class="type">AABB</span>, color := <span class="type">Color</span>.GREEN,
+                   dur := <span class="number">0.0</span>) -> void:
+    <span class="keyword">var</span> corners = <span class="function">_get_aabb_corners</span>(bounds)
+    <span class="keyword">var</span> edges = [[<span class="number">0</span>,<span class="number">1</span>],[<span class="number">1</span>,<span class="number">3</span>],[<span class="number">3</span>,<span class="number">2</span>],[<span class="number">2</span>,<span class="number">0</span>],
+                 [<span class="number">4</span>,<span class="number">5</span>],[<span class="number">5</span>,<span class="number">7</span>],[<span class="number">7</span>,<span class="number">6</span>],[<span class="number">6</span>,<span class="number">4</span>],
+                 [<span class="number">0</span>,<span class="number">4</span>],[<span class="number">1</span>,<span class="number">5</span>],[<span class="number">2</span>,<span class="number">6</span>],[<span class="number">3</span>,<span class="number">7</span>]]
+    <span class="keyword">for</span> edge <span class="keyword">in</span> edges:
+        line(corners[edge[<span class="number">0</span>]], corners[edge[<span class="number">1</span>]], color, dur)
+
+<span class="comment">## 绘制世界空间文字</span>
+<span class="keyword">static func</span> <span class="function">text_3d</span>(pos: <span class="type">Vector3</span>, text: <span class="type">String</span>,
+                     color := <span class="type">Color</span>.WHITE, dur := <span class="number">0.0</span>) -> void:
+    _instance._labels.append({
+        <span class="string">"pos"</span>: pos,
+        <span class="string">"text"</span>: text,
+        <span class="string">"color"</span>: color,
+        <span class="string">"expire"</span>: Time.get_ticks_msec() + dur * <span class="number">1000</span>
+    })
+
+<span class="comment">## 使用示例</span>
+<span class="comment"># 可视化 AI 视锥</span>
+DebugDraw.ray(enemy.position, enemy.forward * view_range, <span class="type">Color</span>.YELLOW)
+
+<span class="comment"># 可视化寻路路径</span>
+<span class="keyword">for</span> i <span class="keyword">in</span> range(path.size() - <span class="number">1</span>):
+    DebugDraw.line(path[i], path[i + <span class="number">1</span>], <span class="type">Color</span>.CYAN)
+
+<span class="comment"># 显示实体状态</span>
+DebugDraw.text_3d(enemy.position + <span class="type">Vector3</span>.UP * <span class="number">2</span>,
+    <span class="string">"HP: %d | State: %s"</span> % [enemy.hp, enemy.state_name])</code></pre>
+
+  <h3>控制台系统</h3>
+
+  <p>运行时控制台让你不用重新编译就能修改游戏状态、测试功能。</p>
+
+  <div class="code-label">游戏内控制台系统</div>
+  <pre><code><span class="keyword">class</span> <span class="type">GameConsole</span>:
+    <span class="keyword">var</span> commands: <span class="type">Dictionary</span> = {}
+    <span class="keyword">var</span> history: <span class="type">Array</span>[<span class="type">String</span>] = []
+    <span class="keyword">var</span> visible: <span class="type">bool</span> = <span class="keyword">false</span>
+
+    <span class="keyword">func</span> <span class="function">_ready</span>() -> void:
+        <span class="comment"># 注册内置命令</span>
+        <span class="function">register</span>(<span class="string">"help"</span>, _cmd_help, <span class="string">"显示所有命令"</span>)
+        <span class="function">register</span>(<span class="string">"god"</span>, _cmd_god, <span class="string">"切换无敌模式"</span>)
+        <span class="function">register</span>(<span class="string">"noclip"</span>, _cmd_noclip, <span class="string">"切换穿墙模式"</span>)
+        <span class="function">register</span>(<span class="string">"tp"</span>, _cmd_teleport, <span class="string">"传送到坐标: tp x y z"</span>)
+        <span class="function">register</span>(<span class="string">"spawn"</span>, _cmd_spawn, <span class="string">"生成实体: spawn enemy_type"</span>)
+        <span class="function">register</span>(<span class="string">"give"</span>, _cmd_give, <span class="string">"给予物品: give item_id count"</span>)
+        <span class="function">register</span>(<span class="string">"speed"</span>, _cmd_speed, <span class="string">"设置游戏速度: speed 2.0"</span>)
+        <span class="function">register</span>(<span class="string">"level"</span>, _cmd_level, <span class="string">"加载关卡: level level_name"</span>)
+        <span class="function">register</span>(<span class="string">"stat"</span>, _cmd_stat, <span class="string">"显示性能统计"</span>)
+        <span class="function">register</span>(<span class="string">"screenshot"</span>, _cmd_screenshot, <span class="string">"截图并保存"</span>)
+
+    <span class="keyword">func</span> <span class="function">register</span>(name: <span class="type">String</span>, callback: <span class="type">Callable</span>,
+                  desc: <span class="type">String</span>) -> void:
+        commands[name] = { <span class="string">"fn"</span>: callback, <span class="string">"desc"</span>: desc }
+
+    <span class="keyword">func</span> <span class="function">execute</span>(input: <span class="type">String</span>) -> <span class="type">String</span>:
+        <span class="keyword">var</span> parts = input.strip_edges().split(<span class="string">" "</span>)
+        <span class="keyword">var</span> cmd = parts[<span class="number">0</span>].to_lower()
+        <span class="keyword">var</span> args = parts.slice(<span class="number">1</span>)
+
+        <span class="keyword">if</span> <span class="keyword">not</span> commands.has(cmd):
+            <span class="keyword">return</span> <span class="string">"Unknown command: %s"</span> % cmd
+
+        history.append(input)
+        <span class="keyword">return</span> commands[cmd][<span class="string">"fn"</span>].call(args)
+
+    <span class="keyword">func</span> <span class="function">_cmd_speed</span>(args: <span class="type">Array</span>) -> <span class="type">String</span>:
+        <span class="keyword">if</span> args.is_empty():
+            <span class="keyword">return</span> <span class="string">"当前速度: %.1f"</span> % Engine.time_scale
+        Engine.time_scale = args[<span class="number">0</span>].to_float()
+        <span class="keyword">return</span> <span class="string">"游戏速度设为: %.1f"</span> % Engine.time_scale</code></pre>
+
+  <h3>日志系统设计</h3>
+
+  <p>一个好的日志系统是事后分析 Bug 的关键。特别是对于无法复现的、来自玩家报告的 Bug。</p>
+
+  <div class="code-label">分级日志系统</div>
+  <pre><code><span class="keyword">enum</span> <span class="type">LogLevel</span> { TRACE, DEBUG, INFO, WARN, ERROR, FATAL }
+
+<span class="keyword">class</span> <span class="type">Logger</span>:
+    <span class="keyword">var</span> _min_level: <span class="type">LogLevel</span> = <span class="type">LogLevel</span>.INFO
+    <span class="keyword">var</span> _outputs: <span class="type">Array</span>[<span class="type">LogOutput</span>] = []
+    <span class="keyword">var</span> _category: <span class="type">String</span>
+
+    <span class="keyword">func</span> <span class="function">_init</span>(category: <span class="type">String</span>) -> void:
+        _category = category
+
+    <span class="keyword">func</span> <span class="function">trace</span>(msg: <span class="type">String</span>) -> void: <span class="function">_log</span>(<span class="type">LogLevel</span>.TRACE, msg)
+    <span class="keyword">func</span> <span class="function">debug</span>(msg: <span class="type">String</span>) -> void: <span class="function">_log</span>(<span class="type">LogLevel</span>.DEBUG, msg)
+    <span class="keyword">func</span> <span class="function">info</span>(msg: <span class="type">String</span>) -> void:  <span class="function">_log</span>(<span class="type">LogLevel</span>.INFO, msg)
+    <span class="keyword">func</span> <span class="function">warn</span>(msg: <span class="type">String</span>) -> void:  <span class="function">_log</span>(<span class="type">LogLevel</span>.WARN, msg)
+    <span class="keyword">func</span> <span class="function">error</span>(msg: <span class="type">String</span>) -> void: <span class="function">_log</span>(<span class="type">LogLevel</span>.ERROR, msg)
+
+    <span class="keyword">func</span> <span class="function">_log</span>(level: <span class="type">LogLevel</span>, msg: <span class="type">String</span>) -> void:
+        <span class="keyword">if</span> level < _min_level:
+            <span class="keyword">return</span>
+
+        <span class="keyword">var</span> entry = {
+            <span class="string">"timestamp"</span>: Time.get_datetime_string_from_system(),
+            <span class="string">"frame"</span>: Engine.get_frames_drawn(),
+            <span class="string">"level"</span>: <span class="type">LogLevel</span>.keys()[level],
+            <span class="string">"category"</span>: _category,
+            <span class="string">"message"</span>: msg,
+        }
+
+        <span class="keyword">for</span> output <span class="keyword">in</span> _outputs:
+            output.write(entry)
+
+<span class="comment"># 使用方式</span>
+<span class="keyword">var</span> log = Logger.new(<span class="string">"Combat"</span>)
+log.info(<span class="string">"Player dealt 150 damage to Goblin_03"</span>)
+log.warn(<span class="string">"Boss HP below 10%, entering rage phase"</span>)
+log.error(<span class="string">"Invalid skill ID: %s"</span> % skill_id)</code></pre>
+
+  <p>日志输出到多个目标：</p>
+  <ul>
+    <li><strong>控制台</strong>：开发时实时查看</li>
+    <li><strong>文件</strong>：滚动日志文件（按大小或日期分割）</li>
+    <li><strong>远程服务器</strong>：发布版本的崩溃日志和关键错误</li>
+    <li><strong>屏幕叠加</strong>：游戏画面上实时显示关键信息</li>
+  </ul>
+
+  <h3>重放系统（Replay）用于 Bug 复现</h3>
+
+  <p>重放系统记录玩家的所有输入，可以精确重现游戏过程，是复现偶发 Bug 的终极武器。</p>
+
+  <div class="card card-accent">
+    <h4>重放系统原理</h4>
+    <ol>
+      <li><strong>确定性</strong>：相同的输入序列 + 相同的初始状态 = 相同的结果</li>
+      <li><strong>记录</strong>：每帧记录所有输入和随机数种子</li>
+      <li><strong>回放</strong>：加载初始状态，按记录的输入重放</li>
+      <li><strong>验证</strong>：回放时校验关键状态，确保确定性</li>
+    </ol>
+  </div>
+
+  <div class="code-label">重放系统基础实现</div>
+  <pre><code><span class="keyword">class</span> <span class="type">ReplaySystem</span>:
+    <span class="keyword">var</span> _recording: <span class="type">bool</span> = <span class="keyword">false</span>
+    <span class="keyword">var</span> _replaying: <span class="type">bool</span> = <span class="keyword">false</span>
+    <span class="keyword">var</span> _frames: <span class="type">Array</span>[<span class="type">ReplayFrame</span>] = []
+    <span class="keyword">var</span> _current_frame: <span class="type">int</span> = <span class="number">0</span>
+    <span class="keyword">var</span> _initial_state: <span class="type">Dictionary</span>
+    <span class="keyword">var</span> _rng_seed: <span class="type">int</span>
+
+    <span class="keyword">func</span> <span class="function">start_recording</span>() -> void:
+        _frames.clear()
+        _recording = <span class="keyword">true</span>
+        _rng_seed = randi()
+        seed(_rng_seed)
+        _initial_state = GameState.serialize()
+
+    <span class="keyword">func</span> <span class="function">record_frame</span>(input: <span class="type">InputSnapshot</span>) -> void:
+        <span class="keyword">if</span> <span class="keyword">not</span> _recording: <span class="keyword">return</span>
+        _frames.append(<span class="type">ReplayFrame</span>.new(
+            Engine.get_frames_drawn(),
+            input,
+            <span class="comment"># 记录校验用的状态哈希</span>
+            GameState.get_hash()
+        ))
+
+    <span class="keyword">func</span> <span class="function">start_replay</span>() -> void:
+        GameState.deserialize(_initial_state)
+        seed(_rng_seed)
+        _current_frame = <span class="number">0</span>
+        _replaying = <span class="keyword">true</span>
+
+    <span class="keyword">func</span> <span class="function">get_replay_input</span>() -> <span class="type">InputSnapshot</span>:
+        <span class="keyword">if</span> <span class="keyword">not</span> _replaying: <span class="keyword">return null</span>
+        <span class="keyword">if</span> _current_frame >= _frames.size():
+            _replaying = <span class="keyword">false</span>
+            <span class="keyword">return null</span>
+        <span class="keyword">var</span> frame = _frames[_current_frame]
+        <span class="comment"># 验证确定性</span>
+        <span class="keyword">var</span> current_hash = GameState.get_hash()
+        <span class="keyword">if</span> current_hash != frame.state_hash:
+            push_error(<span class="string">"Replay desync at frame %d!"</span> % _current_frame)
+        _current_frame += <span class="number">1</span>
+        <span class="keyword">return</span> frame.input
+
+    <span class="keyword">func</span> <span class="function">save_to_file</span>(path: <span class="type">String</span>) -> void:
+        <span class="keyword">var</span> data = {
+            <span class="string">"version"</span>: <span class="string">"1.0"</span>,
+            <span class="string">"seed"</span>: _rng_seed,
+            <span class="string">"initial_state"</span>: _initial_state,
+            <span class="string">"frame_count"</span>: _frames.size(),
+            <span class="string">"frames"</span>: _frames.map(<span class="keyword">func</span>(f): <span class="keyword">return</span> f.serialize()),
+        }
+        <span class="keyword">var</span> file = FileAccess.open(path, FileAccess.WRITE)
+        file.store_string(JSON.stringify(data))</code></pre>
+
+  <h3>远程调试</h3>
+
+  <p>发布后的游戏无法直接附加调试器。远程调试工具链：</p>
+
+  <ul>
+    <li><strong>崩溃报告</strong>：Sentry、Crashlytics、Backtrace —— 自动收集 crash dump 和堆栈</li>
+    <li><strong>远程日志</strong>：将关键日志上传到服务器，按用户/设备过滤</li>
+    <li><strong>远程配置</strong>：通过服务端下发配置，无需更新客户端</li>
+    <li><strong>分析埋点</strong>：玩家行为数据、漏斗分析，发现隐性 Bug（如某关卡异常高的退出率）</li>
+    <li><strong>远程控制台</strong>：通过 WebSocket 连接到运行中的游戏，执行调试命令</li>
+  </ul>
+</div>
+
+<!-- ===== 第 9 节：项目管理 ===== -->
+<div class="section">
+  <span class="section-anchor" id="project-management"></span>
+  <h2>09 / 项目管理</h2>
+
+  <p>很多游戏项目死于管理失败而非技术问题。功能蔓延（Feature Creep）、不切实际的时间表、缺乏优先级 —— 这些是独立开发者和小团队面临的最大威胁。</p>
+
+  <h3>游戏项目的范围管理（Scope）</h3>
+
+  <p>Scope 管理是游戏项目成败的关键。核心原则：</p>
+
+  <div class="card card-accent">
+    <h4>Scope 三角形</h4>
+    <p style="text-align:center;font-size:1.1rem;margin:16px 0">
+      <strong>功能</strong> &times; <strong>质量</strong> &times; <strong>时间</strong> = 常数
+    </p>
+    <p>你不能同时要更多功能、更高质量和更短的开发时间。独立开发者通常应该固定时间和质量，灵活调整功能范围。</p>
+  </div>
+
+  <p>控制 Scope 的方法：</p>
+
+  <ol class="numbered-list">
+    <li><strong>定义 MVP（最小可玩产品）</strong>：如果游戏只能有 3 个功能，是哪 3 个？</li>
+    <li><strong>分层需求</strong>：Must Have / Should Have / Nice to Have / Won't Have（MoSCoW）</li>
+    <li><strong>时间盒</strong>：给每个功能设定时间上限，到时间没完成就砍掉或简化</li>
+    <li><strong>原型验证</strong>：大功能先做最简原型验证是否有趣，不好玩就砍</li>
+    <li><strong>定期重评估</strong>：每个里程碑重新审视剩余功能的必要性</li>
+  </ol>
+
+  <div class="warn">
+    <div class="tip-title">Feature Creep 危险信号</div>
+    <ul>
+      <li>"这个功能只需要多花一天" —— 累积效应会杀死项目</li>
+      <li>"别的游戏都有这个" —— 你不是别的游戏</li>
+      <li>"之后再砍也来得及" —— 沉没成本会让你不舍得砍</li>
+      <li>"玩家会期待这个" —— 先出 MVP 验证了再说</li>
+    </ul>
+  </div>
+
+  <h3>独立开发者的时间管理</h3>
+
+  <div class="card">
+    <h4>实用策略</h4>
+    <ul>
+      <li><strong>固定工作时间</strong>：避免 crunch，持续稳定的产出远好于偶尔的爆发</li>
+      <li><strong>番茄工作法变体</strong>：45 分钟开发 + 15 分钟休息，保持专注</li>
+      <li><strong>开发日志</strong>：每天记录做了什么、遇到什么问题、明天做什么</li>
+      <li><strong>周回顾</strong>：每周末回顾进度，调整下周计划</li>
+      <li><strong>公开承诺</strong>：Devlog、社交媒体更新 —— 外部压力帮助维持动力</li>
+      <li><strong>最难的事先做</strong>：精力最好的时候做最有挑战的工作</li>
+      <li><strong>区分创造性工作和机械性工作</strong>：状态好时做设计/编程，疲劳时做美术调整/Bug 修复</li>
+    </ul>
+  </div>
+
+  <h3>里程碑规划</h3>
+
+  <p>典型的独立游戏里程碑路线图：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>里程碑</th><th>目标</th><th>交付物</th><th>参考时间</th></tr></thead>
+      <tbody>
+        <tr><td><strong>概念阶段</strong></td><td>确定核心玩法</td><td>设计文档、参考收集</td><td>1-2 周</td></tr>
+        <tr><td><strong>原型</strong></td><td>验证核心玩法是否有趣</td><td>可玩的最简原型</td><td>2-4 周</td></tr>
+        <tr><td><strong>垂直切片</strong></td><td>证明游戏能做出来</td><td>一个完整打磨的关卡</td><td>2-3 月</td></tr>
+        <tr><td><strong>Alpha</strong></td><td>所有核心功能完成</td><td>功能完整但粗糙的版本</td><td>3-6 月</td></tr>
+        <tr><td><strong>Beta</strong></td><td>内容完成，开始打磨</td><td>内容冻结，专注 Bug 修复</td><td>1-3 月</td></tr>
+        <tr><td><strong>RC</strong></td><td>发布候选</td><td>可发布质量的版本</td><td>2-4 周</td></tr>
+        <tr><td><strong>Gold / Launch</strong></td><td>发布</td><td>正式版本</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>任务拆分与优先级</h3>
+
+  <p>好的任务拆分要做到：每个任务有明确的完成标准、可以在 1-3 天内完成、不依赖或最小化依赖其他任务。</p>
+
+  <div class="code-label">任务拆分示例 —— "实现战斗系统"</div>
+  <pre><code><span class="comment"># 错误的拆分 —— 太粗</span>
+<span class="tag">- [ ] 实现战斗系统</span>
+
+<span class="comment"># 正确的拆分</span>
+<span class="accent">## 战斗系统 - Phase 1: 基础攻击 (Must Have)</span>
+<span class="string">- [ ] 玩家近战攻击动画 + 碰撞检测     [1d]</span>
+<span class="string">- [ ] 伤害计算公式（攻击 - 防御）      [0.5d]</span>
+<span class="string">- [ ] 伤害数字 UI 显示                 [0.5d]</span>
+<span class="string">- [ ] 敌人受击反馈（闪烁 + 击退）       [1d]</span>
+<span class="string">- [ ] 死亡处理（动画 + 掉落物）         [1d]</span>
+
+<span class="accent">## 战斗系统 - Phase 2: 技能 (Should Have)</span>
+<span class="string">- [ ] 技能数据结构定义                  [0.5d]</span>
+<span class="string">- [ ] 技能冷却 UI                      [0.5d]</span>
+<span class="string">- [ ] 近战技能：旋风斩                  [1d]</span>
+<span class="string">- [ ] 远程技能：火球术                  [1d]</span>
+<span class="string">- [ ] 技能升级系统                      [2d]</span>
+
+<span class="accent">## 战斗系统 - Phase 3: 高级 (Nice to Have)</span>
+<span class="string">- [ ] 连击系统                          [2d]</span>
+<span class="string">- [ ] 格挡/弹反                        [2d]</span>
+<span class="string">- [ ] 元素克制系统                      [1d]</span>
+<span class="string">- [ ] 状态异常（中毒/燃烧/冰冻）        [2d]</span></code></pre>
+
+  <h3>敏捷/Scrum 在游戏开发中的应用</h3>
+
+  <p>传统的 Scrum 需要根据游戏开发的特点做调整：</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>适合游戏开发的实践</h4>
+      <ul>
+        <li>2 周一个 Sprint</li>
+        <li>Sprint 结束有可玩的构建版本</li>
+        <li>每日站会（远程团队异步文字也行）</li>
+        <li>Sprint 回顾关注"好不好玩"</li>
+        <li>Backlog 按核心→外围排序</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>需要调整的部分</h4>
+      <ul>
+        <li>故事点估算对创意工作不准确</li>
+        <li>美术工作难以标准化估时</li>
+        <li>不要追求过高的"速率"数字</li>
+        <li>允许探索性 Sprint（Spike）</li>
+        <li>灵活处理跨 Sprint 的大任务</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>工具推荐</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>工具</th><th>适合</th><th>亮点</th><th>价格</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Trello</strong></td><td>1-3 人小团队</td><td>看板直观、上手快</td><td>免费/付费</td></tr>
+        <tr><td><strong>Notion</strong></td><td>需要文档+任务一体化</td><td>All-in-one、模板丰富</td><td>免费/付费</td></tr>
+        <tr><td><strong>Linear</strong></td><td>偏工程的团队</td><td>快、Git 集成好</td><td>免费（小团队）</td></tr>
+        <tr><td><strong>Jira</strong></td><td>大团队/公司</td><td>功能全面</td><td>免费（10人以下）</td></tr>
+        <tr><td><strong>HacknPlan</strong></td><td>游戏开发专用</td><td>角色分工明确</td><td>免费/付费</td></tr>
+        <tr><td><strong>GitHub Projects</strong></td><td>代码在 GitHub 的项目</td><td>与 Issues/PR 深度集成</td><td>免费</td></tr>
+        <tr><td><strong>Obsidian</strong></td><td>个人知识管理/设计文档</td><td>本地、Markdown、双向链接</td><td>免费</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 第 10 节：团队协作 ===== -->
+<div class="section">
+  <span class="section-anchor" id="teamwork"></span>
+  <h2>10 / 团队协作</h2>
+
+  <p>即使是小团队，也需要清晰的协作流程。角色分工越明确，扯皮越少，效率越高。游戏开发的特殊性在于——程序、美术、策划三方的工作高度耦合。</p>
+
+  <h3>角色分工</h3>
+
+  <div class="card">
+    <h4>典型游戏团队角色</h4>
+    <div class="table-wrapper" style="border:none;margin:0">
+      <table>
+        <thead><tr><th>角色</th><th>职责</th><th>关键产出</th></tr></thead>
+        <tbody>
+          <tr><td><strong>制作人/项目经理</strong></td><td>范围、进度、资源管理</td><td>项目计划、风险报告</td></tr>
+          <tr><td><strong>游戏设计师</strong></td><td>玩法设计、关卡设计、数值平衡</td><td>设计文档、数值表、关卡</td></tr>
+          <tr><td><strong>程序员</strong></td><td>功能实现、工具开发、性能优化</td><td>代码、工具、技术文档</td></tr>
+          <tr><td><strong>美术</strong></td><td>视觉表现、角色/场景/UI 制作</td><td>模型、贴图、动画、UI 稿</td></tr>
+          <tr><td><strong>音频设计师</strong></td><td>音效、音乐、混音</td><td>音效文件、音乐、音频中间件配置</td></tr>
+          <tr><td><strong>QA</strong></td><td>测试、Bug 报告、回归验证</td><td>测试用例、Bug 报告</td></tr>
+          <tr><td><strong>技术美术 (TA)</strong></td><td>美术管线、Shader、工具</td><td>着色器、导出工具、美术规范</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:16px"><strong>独立开发者</strong>通常一人兼多职。建议专注 1-2 个核心角色，其余外包或使用 Asset Store 资源。</p>
+  </div>
+
+  <h3>策划-程序-美术协作流程</h3>
+
+  <p>三方协作的典型工作流：</p>
+
+  <div class="diagram">
+    <pre style="background:none;border:none;color:#c8c8d8;text-align:left;font-size:0.85rem;padding:0;margin:0;display:inline-block">
+<span style="color:#0abde3;font-weight:bold">策划</span>                    <span style="color:#c3e88d;font-weight:bold">程序</span>                    <span style="color:#ffcb6b;font-weight:bold">美术</span>
+  |                       |                       |
+  |-- 需求文档/原型 ------>|                       |
+  |                       |-- 技术评审/反馈 ------->|
+  |-- 视觉参考 ----------->|                       |
+  |                       |                       |-- 概念图/风格稿
+  |<-- 反馈 --------------|                       |
+  |                       |<-- 资源规格需求 --------|
+  |                       |                       |
+  |                       |-- 功能框架 ------------>|
+  |                       |                       |-- 按规格制作资源
+  |                       |<-- 资源提交 ------------|
+  |                       |-- 集成测试 ------------>|
+  |                       |                       |
+  |-- Playtest 反馈 ----->|-- 调整 + 优化 -------->|-- 资源迭代
+  |                       |                       |</pre>
+  </div>
+
+  <h3>资产交付流程</h3>
+
+  <p>清晰的资产交付规范能避免大量返工：</p>
+
+  <div class="card card-accent">
+    <h4>美术资产交付清单</h4>
+    <ol>
+      <li><strong>命名</strong>：按约定命名规范（参见第一节）</li>
+      <li><strong>格式</strong>：模型 FBX，贴图 PNG/TGA，尺寸为 2 的幂次</li>
+      <li><strong>规格检查</strong>：面数在预算内、UV 无重叠、贴图分辨率合规</li>
+      <li><strong>导入设置</strong>：附带推荐的引擎导入配置</li>
+      <li><strong>预览</strong>：渲染一张预览图，方便团队识别</li>
+      <li><strong>测试</strong>：在引擎中实际确认无异常</li>
+      <li><strong>提交</strong>：通过 PR 或指定流程提交，附带变更说明</li>
+    </ol>
+  </div>
+
+  <h3>代码审查</h3>
+
+  <p>代码审查（Code Review）在游戏团队中容易被忽视，但对代码质量至关重要。</p>
+
+  <div class="card">
+    <h4>游戏项目代码审查重点</h4>
+    <ul>
+      <li><strong>性能</strong>：是否有每帧分配内存？是否有不必要的查找？</li>
+      <li><strong>线程安全</strong>：异步加载的资源访问是否安全？</li>
+      <li><strong>平台兼容</strong>：是否使用了特定平台的 API？</li>
+      <li><strong>硬编码</strong>：Magic Number 是否提取为常量/配置？</li>
+      <li><strong>内存泄漏</strong>：事件订阅是否有对应的取消订阅？</li>
+      <li><strong>边界条件</strong>：数组越界、空引用、除零</li>
+      <li><strong>可读性</strong>：命名是否清晰、注释是否解释了"为什么"</li>
+    </ul>
+  </div>
+
+  <div class="code-label">PR 模板（游戏项目）</div>
+  <pre><code><span class="accent">## 变更内容</span>
+简要描述这次改动做了什么。
+
+<span class="accent">## 改动类型</span>
+- [ ] 新功能
+- [ ] Bug 修复
+- [ ] 性能优化
+- [ ] 重构
+- [ ] 资源更新
+
+<span class="accent">## 测试</span>
+- [ ] 本地运行通过
+- [ ] 受影响的场景已验证
+- [ ] 无新增编译警告
+
+<span class="accent">## 性能影响</span>
+这次改动是否影响性能？如果是，描述影响范围和测试结果。
+
+<span class="accent">## 截图/录屏</span>
+（如果涉及视觉变化，附上对比截图）
+
+<span class="accent">## 注意事项</span>
+审查者需要特别关注的点。</code></pre>
+</div>
+
+<!-- ===== 第 11 节：实践：搭建游戏项目脚手架 ===== -->
+<div class="section">
+  <span class="section-anchor" id="scaffold"></span>
+  <h2>11 / 实践：搭建游戏项目脚手架</h2>
+
+  <p>理论落地的时间到了。下面我们从零构建一个可直接使用的游戏项目模板，包含 CI/CD 配置和开发环境搭建清单。</p>
+
+  <h3>项目模板文件结构</h3>
+
+  <div class="tree"><span class="dir">game-template/</span>
+├── <span class="file">.gitignore</span>
+├── <span class="file">.gitattributes</span>
+├── <span class="file">.editorconfig</span>
+├── <span class="file">README.md</span>
+├── <span class="file">CHANGELOG.md</span>
+├── <span class="file">Makefile</span>                    <span class="comment"># 常用命令入口</span>
+├── <span class="dir">.github/</span>
+│   ├── <span class="dir">workflows/</span>
+│   │   ├── <span class="file">ci.yml</span>             <span class="comment"># 持续集成</span>
+│   │   ├── <span class="file">build.yml</span>          <span class="comment"># 构建发布</span>
+│   │   └── <span class="file">release.yml</span>        <span class="comment"># 自动 Release</span>
+│   ├── <span class="file">PULL_REQUEST_TEMPLATE.md</span>
+│   └── <span class="dir">ISSUE_TEMPLATE/</span>
+│       ├── <span class="file">bug_report.yml</span>
+│       └── <span class="file">feature_request.yml</span>
+├── <span class="dir">project/</span>                    <span class="comment"># 引擎项目目录</span>
+│   ├── <span class="file">project.godot</span>
+│   ├── <span class="file">export_presets.cfg</span>
+│   ├── <span class="dir">src/</span>
+│   │   ├── <span class="dir">core/</span>
+│   │   │   ├── <span class="file">game_manager.gd</span>
+│   │   │   ├── <span class="file">scene_manager.gd</span>
+│   │   │   ├── <span class="file">audio_manager.gd</span>
+│   │   │   ├── <span class="file">input_manager.gd</span>
+│   │   │   ├── <span class="file">save_manager.gd</span>
+│   │   │   └── <span class="file">event_bus.gd</span>
+│   │   ├── <span class="dir">gameplay/</span>
+│   │   │   ├── <span class="dir">player/</span>
+│   │   │   ├── <span class="dir">enemies/</span>
+│   │   │   └── <span class="dir">items/</span>
+│   │   ├── <span class="dir">ui/</span>
+│   │   │   ├── <span class="dir">screens/</span>
+│   │   │   ├── <span class="dir">widgets/</span>
+│   │   │   └── <span class="file">theme.tres</span>
+│   │   └── <span class="dir">utils/</span>
+│   │       ├── <span class="file">logger.gd</span>
+│   │       ├── <span class="file">object_pool.gd</span>
+│   │       └── <span class="file">debug_draw.gd</span>
+│   ├── <span class="dir">assets/</span>
+│   │   ├── <span class="dir">textures/</span>
+│   │   ├── <span class="dir">audio/</span>
+│   │   ├── <span class="dir">fonts/</span>
+│   │   └── <span class="dir">shaders/</span>
+│   ├── <span class="dir">scenes/</span>
+│   │   ├── <span class="dir">levels/</span>
+│   │   ├── <span class="dir">ui/</span>
+│   │   └── <span class="file">main.tscn</span>
+│   └── <span class="dir">data/</span>
+│       ├── <span class="dir">configs/</span>
+│       └── <span class="dir">localization/</span>
+├── <span class="dir">tests/</span>
+│   ├── <span class="file">test_runner.gd</span>
+│   ├── <span class="dir">unit/</span>
+│   └── <span class="dir">integration/</span>
+├── <span class="dir">tools/</span>
+│   ├── <span class="file">build.sh</span>
+│   ├── <span class="file">version.sh</span>
+│   └── <span class="file">asset_check.sh</span>
+└── <span class="dir">docs/</span>
+    ├── <span class="file">setup.md</span>
+    ├── <span class="file">coding_style.md</span>
+    └── <span class="file">art_specs.md</span></div>
+
+  <h3>关键配置文件</h3>
+
+  <div class="code-label">.editorconfig — 统一编辑器配置</div>
+  <pre><code><span class="comment"># https://editorconfig.org</span>
+root = <span class="keyword">true</span>
+
+[<span class="attr">*</span>]
+charset = utf-8
+end_of_line = lf
+indent_style = <span class="keyword">tab</span>
+indent_size = <span class="number">4</span>
+insert_final_newline = <span class="keyword">true</span>
+trim_trailing_whitespace = <span class="keyword">true</span>
+
+[<span class="attr">*.gd</span>]
+indent_style = <span class="keyword">tab</span>
+
+[<span class="attr">*.{json,yaml,yml,toml}</span>]
+indent_style = <span class="keyword">space</span>
+indent_size = <span class="number">2</span>
+
+[<span class="attr">*.md</span>]
+trim_trailing_whitespace = <span class="keyword">false</span>
+
+[<span class="attr">Makefile</span>]
+indent_style = <span class="keyword">tab</span></code></pre>
+
+  <div class="code-label">Makefile — 常用命令入口</div>
+  <pre><code><span class="attr">.PHONY</span>: run test build clean
+
+<span class="function">GODOT</span> := godot
+<span class="function">PROJECT_DIR</span> := project
+<span class="function">BUILD_DIR</span> := build
+<span class="function">VERSION</span> := $(shell git describe --tags --always --dirty <span class="number">2</span>>/dev/null || echo <span class="string">"dev"</span>)
+
+<span class="comment">## 运行游戏</span>
+<span class="attr">run</span>:
+	$(GODOT) --path $(PROJECT_DIR)
+
+<span class="comment">## 运行编辑器</span>
+<span class="attr">edit</span>:
+	$(GODOT) --path $(PROJECT_DIR) --editor
+
+<span class="comment">## 运行测试</span>
+<span class="attr">test</span>:
+	$(GODOT) --path $(PROJECT_DIR) --headless -s tests/test_runner.gd
+
+<span class="comment">## 构建所有平台</span>
+<span class="attr">build</span>: build-windows build-linux build-web
+
+<span class="attr">build-windows</span>:
+	@mkdir -p $(BUILD_DIR)/windows
+	$(GODOT) --path $(PROJECT_DIR) --headless \
+		--export-release <span class="string">"Windows Desktop"</span> \
+		../$(BUILD_DIR)/windows/game.exe
+	@echo <span class="string">"Windows build: $(BUILD_DIR)/windows/"</span>
+
+<span class="attr">build-linux</span>:
+	@mkdir -p $(BUILD_DIR)/linux
+	$(GODOT) --path $(PROJECT_DIR) --headless \
+		--export-release <span class="string">"Linux/X11"</span> \
+		../$(BUILD_DIR)/linux/game.x86_64
+	@echo <span class="string">"Linux build: $(BUILD_DIR)/linux/"</span>
+
+<span class="attr">build-web</span>:
+	@mkdir -p $(BUILD_DIR)/web
+	$(GODOT) --path $(PROJECT_DIR) --headless \
+		--export-release <span class="string">"Web"</span> \
+		../$(BUILD_DIR)/web/index.html
+	@echo <span class="string">"Web build: $(BUILD_DIR)/web/"</span>
+
+<span class="comment">## 清理构建产物</span>
+<span class="attr">clean</span>:
+	rm -rf $(BUILD_DIR)
+
+<span class="comment">## 版本信息</span>
+<span class="attr">version</span>:
+	@echo <span class="string">"Version: $(VERSION)"</span>
+
+<span class="comment">## 检查美术资源规格</span>
+<span class="attr">check-assets</span>:
+	@bash tools/asset_check.sh $(PROJECT_DIR)/assets</code></pre>
+
+  <h3>CI/CD 配置模板</h3>
+
+  <div class="code-label">.github/workflows/ci.yml — 持续集成</div>
+  <pre><code><span class="keyword">name</span>: CI
+
+<span class="keyword">on</span>:
+  <span class="keyword">push</span>:
+    <span class="attr">branches</span>: [main, develop]
+  <span class="keyword">pull_request</span>:
+    <span class="attr">branches</span>: [main]
+
+<span class="keyword">jobs</span>:
+  <span class="function">lint</span>:
+    <span class="attr">name</span>: Code Quality
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/checkout@v4
+
+      - <span class="attr">name</span>: Check file naming conventions
+        <span class="attr">run</span>: |
+          <span class="comment"># 检查是否有大写文件名或空格</span>
+          bad_files=$(find project/assets -name '* *' -o -name '*[A-Z]*' \
+            2>/dev/null | head -20)
+          if [ -n "$bad_files" ]; then
+            echo "::error::不符合命名规范的文件："
+            echo "$bad_files"
+            exit 1
+          fi
+
+      - <span class="attr">name</span>: Check for debug leftovers
+        <span class="attr">run</span>: |
+          <span class="comment"># 检查是否有遗留的调试代码</span>
+          if grep -rn "breakpoint()" project/src/ \
+            --include="*.gd" 2>/dev/null; then
+            echo "::error::发现遗留的 breakpoint()!"
+            exit 1
+          fi
+
+  <span class="function">test</span>:
+    <span class="attr">name</span>: Run Tests
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">container</span>:
+      <span class="attr">image</span>: barichello/godot-ci:4.2.1
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/checkout@v4
+        <span class="keyword">with</span>:
+          <span class="attr">lfs</span>: <span class="keyword">true</span>
+
+      - <span class="attr">name</span>: Run unit tests
+        <span class="attr">run</span>: |
+          godot --path project --headless \
+            -s tests/test_runner.gd \
+            --quit 2>&1 | tee test_output.log
+
+          if grep -q "FAILED" test_output.log; then
+            exit 1
+          fi
+
+      - <span class="attr">name</span>: Upload test results
+        <span class="keyword">if</span>: always()
+        <span class="attr">uses</span>: actions/upload-artifact@v4
+        <span class="keyword">with</span>:
+          <span class="attr">name</span>: test-results
+          <span class="attr">path</span>: test_output.log</code></pre>
+
+  <div class="code-label">.github/workflows/release.yml — 自动发布</div>
+  <pre><code><span class="keyword">name</span>: Release
+
+<span class="keyword">on</span>:
+  <span class="keyword">push</span>:
+    <span class="attr">tags</span>: [<span class="string">'v*'</span>]
+
+<span class="keyword">permissions</span>:
+  <span class="attr">contents</span>: write
+
+<span class="keyword">jobs</span>:
+  <span class="function">build-and-release</span>:
+    <span class="attr">name</span>: Build ${{ matrix.platform }}
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">strategy</span>:
+      <span class="keyword">matrix</span>:
+        <span class="keyword">include</span>:
+          - <span class="attr">platform</span>: windows
+            <span class="attr">preset</span>: <span class="string">"Windows Desktop"</span>
+            <span class="attr">ext</span>: exe
+          - <span class="attr">platform</span>: linux
+            <span class="attr">preset</span>: <span class="string">"Linux/X11"</span>
+            <span class="attr">ext</span>: x86_64
+          - <span class="attr">platform</span>: web
+            <span class="attr">preset</span>: <span class="string">"Web"</span>
+            <span class="attr">ext</span>: html
+
+    <span class="keyword">container</span>:
+      <span class="attr">image</span>: barichello/godot-ci:4.2.1
+
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/checkout@v4
+        <span class="keyword">with</span>:
+          <span class="attr">lfs</span>: <span class="keyword">true</span>
+          <span class="attr">fetch-depth</span>: <span class="number">0</span>
+
+      - <span class="attr">name</span>: Inject version
+        <span class="attr">run</span>: bash tools/version.sh
+
+      - <span class="attr">name</span>: Build
+        <span class="attr">run</span>: |
+          mkdir -p build/${{ matrix.platform }}
+          godot --path project --headless \
+            --export-release "${{ matrix.preset }}" \
+            ../build/${{ matrix.platform }}/game.${{ matrix.ext }}
+
+      - <span class="attr">name</span>: Package
+        <span class="attr">run</span>: |
+          cd build
+          zip -r ${{ matrix.platform }}.zip ${{ matrix.platform }}/
+
+      - <span class="attr">uses</span>: actions/upload-artifact@v4
+        <span class="keyword">with</span>:
+          <span class="attr">name</span>: ${{ matrix.platform }}
+          <span class="attr">path</span>: build/${{ matrix.platform }}.zip
+
+  <span class="function">create-release</span>:
+    <span class="attr">needs</span>: build-and-release
+    <span class="attr">runs-on</span>: ubuntu-latest
+    <span class="keyword">steps</span>:
+      - <span class="attr">uses</span>: actions/download-artifact@v4
+        <span class="keyword">with</span>:
+          <span class="attr">path</span>: artifacts
+
+      - <span class="attr">uses</span>: softprops/action-gh-release@v1
+        <span class="keyword">with</span>:
+          <span class="attr">generate_release_notes</span>: <span class="keyword">true</span>
+          <span class="attr">files</span>: artifacts/**/*.zip</code></pre>
+
+  <h3>开发环境搭建清单</h3>
+
+  <div class="card card-accent">
+    <h4>新成员上手清单</h4>
+    <ol class="numbered-list">
+      <li>
+        <strong>安装基础工具</strong>
+        <ul>
+          <li>Git (2.40+) + Git LFS</li>
+          <li>游戏引擎（Godot 4.2 / Unity 2022 LTS / Unreal 5.3）</li>
+          <li>代码编辑器（VS Code + 引擎插件）</li>
+        </ul>
+      </li>
+      <li>
+        <strong>克隆项目</strong>
+        <pre style="margin:8px 0"><code>git clone --recurse-submodules https://github.com/team/game.git
+cd game
+git lfs pull</code></pre>
+      </li>
+      <li>
+        <strong>验证环境</strong>
+        <pre style="margin:8px 0"><code>make run    <span class="comment"># 应该能正常运行</span>
+make test   <span class="comment"># 所有测试应该通过</span></code></pre>
+      </li>
+      <li>
+        <strong>了解项目</strong>
+        <ul>
+          <li>阅读 README.md 和 docs/ 目录</li>
+          <li>运行游戏，体验当前版本</li>
+          <li>浏览代码结构，了解模块划分</li>
+        </ul>
+      </li>
+      <li>
+        <strong>配置开发工具</strong>
+        <ul>
+          <li>安装 .editorconfig 插件（统一格式）</li>
+          <li>配置 Git hooks（pre-commit 检查）</li>
+          <li>设置引擎的 Debug 快捷键</li>
+        </ul>
+      </li>
+      <li>
+        <strong>领取第一个任务</strong>
+        <ul>
+          <li>从 "good first issue" 标签的任务开始</li>
+          <li>创建功能分支，完成后提 PR</li>
+          <li>等待代码审查，根据反馈修改</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <div class="code-label">Git hooks — pre-commit 自动检查</div>
+  <pre><code><span class="comment">#!/bin/bash</span>
+<span class="comment"># .git/hooks/pre-commit</span>
+
+echo <span class="string">"Running pre-commit checks..."</span>
+
+<span class="comment"># 1. 检查文件命名</span>
+<span class="function">bad_names</span>=$(git diff --cached --name-only --diff-filter=ACR | \
+  grep -E <span class="string">'[A-Z ]'</span> | grep -E <span class="string">'^project/assets/'</span>)
+
+<span class="keyword">if</span> [ -n <span class="string">"$bad_names"</span> ]; then
+  echo <span class="string">"ERROR: 资源文件名不符合规范（需要小写+下划线）:"</span>
+  echo <span class="string">"$bad_names"</span>
+  <span class="keyword">exit</span> <span class="number">1</span>
+<span class="keyword">fi</span>
+
+<span class="comment"># 2. 检查大文件（未通过 LFS）</span>
+<span class="function">large_files</span>=$(git diff --cached --name-only --diff-filter=ACR | \
+  <span class="keyword">while</span> read f; <span class="keyword">do</span>
+    <span class="keyword">if</span> [ -f <span class="string">"$f"</span> ]; then
+      size=$(wc -c < <span class="string">"$f"</span>)
+      <span class="keyword">if</span> [ <span class="string">"$size"</span> -gt <span class="number">5242880</span> ]; then  <span class="comment"># 5MB</span>
+        echo <span class="string">"$f ($(($size / 1048576))MB)"</span>
+      <span class="keyword">fi</span>
+    <span class="keyword">fi</span>
+  <span class="keyword">done</span>)
+
+<span class="keyword">if</span> [ -n <span class="string">"$large_files"</span> ]; then
+  echo <span class="string">"WARNING: 大文件未通过 LFS 管理:"</span>
+  echo <span class="string">"$large_files"</span>
+  echo <span class="string">"请使用 git lfs track 后再提交"</span>
+  <span class="keyword">exit</span> <span class="number">1</span>
+<span class="keyword">fi</span>
+
+<span class="comment"># 3. 检查调试代码残留</span>
+<span class="keyword">if</span> git diff --cached --name-only --diff-filter=ACM | \
+  grep -E <span class="string">'\.gd$'</span> | \
+  xargs grep -l <span class="string">'breakpoint()'</span> <span class="number">2</span>>/dev/null; then
+  echo <span class="string">"ERROR: 发现 breakpoint() 残留，请移除后再提交"</span>
+  <span class="keyword">exit</span> <span class="number">1</span>
+<span class="keyword">fi</span>
+
+echo <span class="string">"All checks passed!"</span></code></pre>
+
+  <div class="code-label">tools/asset_check.sh — 美术资源规格检查</div>
+  <pre><code><span class="comment">#!/bin/bash</span>
+<span class="comment"># 检查美术资源是否符合规格</span>
+
+<span class="function">ASSET_DIR</span>=<span class="string">"${1:-.}"</span>
+<span class="function">ERRORS</span>=<span class="number">0</span>
+
+echo <span class="string">"Checking assets in: $ASSET_DIR"</span>
+echo <span class="string">"================================"</span>
+
+<span class="comment"># 检查纹理尺寸是否为 2 的幂</span>
+echo <span class="string">"Checking texture dimensions..."</span>
+<span class="keyword">while</span> IFS= read -r -d '' file; <span class="keyword">do</span>
+  <span class="keyword">if</span> command -v identify &> /dev/null; then
+    <span class="function">dims</span>=$(identify -format <span class="string">"%wx%h"</span> <span class="string">"$file"</span> <span class="number">2</span>/dev/null)
+    <span class="function">w</span>=$(echo <span class="string">"$dims"</span> | cut -d<span class="string">'x'</span> -f1)
+    <span class="function">h</span>=$(echo <span class="string">"$dims"</span> | cut -d<span class="string">'x'</span> -f2)
+    <span class="keyword">if</span> [ -n <span class="string">"$w"</span> ] && [ -n <span class="string">"$h"</span> ]; then
+      <span class="keyword">if</span> ! (( (w & (w-1)) == <span class="number">0</span> && (h & (h-1)) == <span class="number">0</span> )); then
+        echo <span class="string">"  WARN: Non-POT texture: $file (${w}x${h})"</span>
+        ((ERRORS++))
+      <span class="keyword">fi</span>
+    <span class="keyword">fi</span>
+  <span class="keyword">fi</span>
+<span class="keyword">done</span> < <(find <span class="string">"$ASSET_DIR/textures"</span> -type f \
+  \( -name <span class="string">"*.png"</span> -o -name <span class="string">"*.jpg"</span> \) -print0 <span class="number">2</span>/dev/null)
+
+<span class="comment"># 检查文件大小</span>
+echo <span class="string">"Checking file sizes..."</span>
+<span class="keyword">while</span> IFS= read -r -d '' file; <span class="keyword">do</span>
+  <span class="function">size</span>=$(wc -c < <span class="string">"$file"</span>)
+  <span class="keyword">if</span> [ <span class="string">"$size"</span> -gt <span class="number">10485760</span> ]; then  <span class="comment"># 10MB</span>
+    echo <span class="string">"  WARN: Large file: $file ($(($size/1048576))MB)"</span>
+    ((ERRORS++))
+  <span class="keyword">fi</span>
+<span class="keyword">done</span> < <(find <span class="string">"$ASSET_DIR"</span> -type f -print0)
+
+echo <span class="string">"================================"</span>
+echo <span class="string">"Found $ERRORS issue(s)."</span>
+<span class="keyword">exit</span> $(( ERRORS > <span class="number">0</span> ? <span class="number">1</span> : <span class="number">0</span> ))</code></pre>
+
+  <hr>
+
+  <h3>全章总结</h3>
+
+  <div class="card" style="border-color:var(--accent);background:rgba(10,189,227,0.04)">
+    <h4 style="color:var(--accent);margin-bottom:16px">工程实践核心原则</h4>
+    <ol class="numbered-list">
+      <li><strong>结构先行</strong>：项目一开始就建立好目录结构和命名规范，后期成本呈指数增长</li>
+      <li><strong>版本控制是生命线</strong>：不管团队大小，从第一天就使用 Git，频繁提交小改动</li>
+      <li><strong>自动化一切可重复的事</strong>：构建、测试、检查 —— 机器做得比人好</li>
+      <li><strong>测试不是浪费时间</strong>：纯逻辑单元测试 + 场景加载冒烟测试，投入产出比最高</li>
+      <li><strong>先测量，再优化</strong>：Profiler 是唯一的真理来源，不要凭直觉优化</li>
+      <li><strong>内存是资源，不是免费的</strong>：对象池、引用计数、流式加载是三大武器</li>
+      <li><strong>跨平台先抽象</strong>：平台差异藏在接口后面，游戏逻辑只跟接口打交道</li>
+      <li><strong>Debug 工具是值得投资的</strong>：控制台、Debug Draw、日志系统 —— 前期投入，全程受益</li>
+      <li><strong>Scope 是独立开发者的命</strong>：砍功能 > 降质量 > 延期，能发布的游戏才有价值</li>
+      <li><strong>流程服务于效率</strong>：协作流程适度就好，不要为了流程而流程</li>
+    </ol>
+  </div>
+</div>
+
+</main>
+
+<!-- 翻页 -->
+<div class="page-nav">
+  <a href="06-narrative.html">&larr; 叙事设计</a>
+  <a href="08-publishing.html">发布与运营 &rarr;</a>
+</div>
+
+<!-- 页脚 -->
+<footer class="footer">
+  <p>游戏开发完全指南 &middot; AI 生成 &middot; 2026</p>
+</footer>
+
+<script>
+(function() {
+  var saved = localStorage.getItem('gd-theme');
+  var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', theme);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+  btn && btn.addEventListener('click', function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gd-theme', next);
+    btn.textContent = next === 'light' ? '🌙' : '☀️';
+  });
+})();
+</script>
+
+</body>
+</html>

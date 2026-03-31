@@ -1,0 +1,3397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 — 系统与关卡设计 | 游戏开发完全指南</title>
+<style>
+/* ============================================
+   RESET & BASE
+   ============================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-page: #08080f;
+  --bg-surface: #0d0d17;
+  --bg-card: #141425;
+  --bg-code: #0a0a18;
+  --border: #1e1e3a;
+  --border-bright: #2a2a4a;
+  --text-primary: #ffffff;
+  --text-body: #c8c8d8;
+  --text-muted: #7878a0;
+  --accent: #48dbfb;
+  --accent-dim: rgba(72,219,251,0.1);
+  --accent-mid: rgba(72,219,251,0.25);
+  --danger: #ff6b6b;
+  --success: #51cf66;
+  --warning: #ffd43b;
+  --purple: #b197fc;
+  --orange: #ff922b;
+  --pink: #f06595;
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --max-width: 880px;
+  --nav-height: 60px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  /* backward-compat aliases for inline styles */
+  --text-heading: var(--text-primary);
+  --accent-low: var(--accent-dim);
+}
+
+[data-theme="light"] {
+  --bg-page: #f5f6fa;
+  --bg-surface: #ffffff;
+  --bg-card: #eeeef6;
+  --bg-code: #e6e6f0;
+  --border: #d5d5e2;
+  --border-bright: #c5c5d5;
+  --text-body: #3a3a50;
+  --text-primary: #1a1a2e;
+  --text-muted: #6a6a85;
+}
+
+[data-theme="light"] nav,
+[data-theme="light"] .navbar {
+  background: rgba(245,246,250,0.88);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .hero-number {
+  color: rgba(0,0,0,0.03);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+/* ── 日间模式组件修复 ── */
+[data-theme="light"] .top-nav {
+  background: rgba(245,246,250,0.88);
+  border-bottom-color: var(--border);
+}
+[data-theme="light"] .hero-number {
+  -webkit-text-stroke-color: rgba(0,0,0,0.06);
+}
+[data-theme="light"] .hero::before {
+  background:
+    radial-gradient(ellipse 600px 400px at 50% 40%, rgba(72,219,251,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 30% 60%, rgba(177,151,252,0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 70% 50%, rgba(240,101,149,0.02) 0%, transparent 70%);
+}
+[data-theme="light"] .card.accent-border {
+  border-color: rgba(72,219,251,0.25);
+}
+[data-theme="light"] .info-box.tip {
+  background: linear-gradient(135deg, rgba(72,219,251,0.06) 0%, var(--bg-card) 100%);
+}
+[data-theme="light"] .info-box.warn {
+  background: linear-gradient(135deg, rgba(255,212,59,0.08) 0%, var(--bg-card) 100%);
+}
+[data-theme="light"] .info-box.danger {
+  background: linear-gradient(135deg, rgba(255,107,107,0.06) 0%, var(--bg-card) 100%);
+}
+[data-theme="light"] .info-box.formula {
+  background: linear-gradient(135deg, rgba(177,151,252,0.08) 0%, var(--bg-card) 100%);
+}
+[data-theme="light"] .formula-block {
+  background: linear-gradient(135deg, rgba(177,151,252,0.06) 0%, var(--bg-card) 100%);
+  border-color: rgba(177,151,252,0.2);
+}
+[data-theme="light"] tr:hover td {
+  background: rgba(0,0,0,0.02);
+}
+[data-theme="light"] .flow-node {
+  background: rgba(72,219,251,0.08);
+  border-color: rgba(72,219,251,0.25);
+}
+[data-theme="light"] .flow-node.highlight {
+  background: rgba(72,219,251,0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(72,219,251,0.1);
+}
+[data-theme="light"] .flow-node.purple {
+  background: rgba(177,151,252,0.08);
+  border-color: rgba(177,151,252,0.25);
+}
+[data-theme="light"] .flow-node.pink {
+  background: rgba(240,101,149,0.08);
+  border-color: rgba(240,101,149,0.25);
+}
+[data-theme="light"] .flow-node.orange {
+  background: rgba(255,146,43,0.08);
+  border-color: rgba(255,146,43,0.25);
+}
+[data-theme="light"] .flow-node.success {
+  background: rgba(81,207,102,0.08);
+  border-color: rgba(81,207,102,0.25);
+}
+[data-theme="light"] .flow-node.danger {
+  background: rgba(255,107,107,0.08);
+  border-color: rgba(255,107,107,0.25);
+}
+[data-theme="light"] .sys-node.core {
+  background: rgba(72,219,251,0.1);
+  box-shadow: 0 0 16px rgba(72,219,251,0.06);
+}
+[data-theme="light"] .sys-node.sub {
+  background: rgba(177,151,252,0.06);
+  border-color: rgba(177,151,252,0.2);
+}
+[data-theme="light"] .sys-node.leaf {
+  background: rgba(120,120,160,0.05);
+  border-color: rgba(120,120,160,0.15);
+}
+[data-theme="light"] .sys-connector {
+  background: linear-gradient(to bottom, rgba(72,219,251,0.2), transparent);
+}
+[data-theme="light"] .sys-h-line {
+  background: rgba(120,120,160,0.2);
+}
+[data-theme="light"] .skill-node.active {
+  background: rgba(72,219,251,0.1);
+}
+[data-theme="light"] .skill-node.locked {
+  background: rgba(120,120,160,0.05);
+  border-color: rgba(120,120,160,0.15);
+}
+[data-theme="light"] .skill-node.ultimate {
+  background: rgba(177,151,252,0.1);
+}
+[data-theme="light"] .skill-line {
+  background: rgba(72,219,251,0.2);
+}
+[data-theme="light"] .progress-bar-outer {
+  background: rgba(120,120,160,0.1);
+}
+[data-theme="light"] .stat-bar .bar-track {
+  background: rgba(120,120,160,0.08);
+}
+[data-theme="light"] .tag.blue { background: rgba(72,219,251,0.1); }
+[data-theme="light"] .tag.purple { background: rgba(177,151,252,0.1); }
+[data-theme="light"] .tag.pink { background: rgba(240,101,149,0.1); }
+[data-theme="light"] .tag.orange { background: rgba(255,146,43,0.1); }
+[data-theme="light"] .tag.green { background: rgba(81,207,102,0.1); }
+[data-theme="light"] .tag.red { background: rgba(255,107,107,0.1); }
+[data-theme="light"] .bottom-nav a:hover {
+  border-color: rgba(72,219,251,0.25);
+}
+[data-theme="light"] .calc-widget .result-item {
+  background: rgba(72,219,251,0.06);
+}
+[data-theme="light"] .dungeon-cell.wall { background: rgba(120,120,160,0.12); }
+[data-theme="light"] .dungeon-cell.floor { background: rgba(72,219,251,0.12); }
+[data-theme="light"] .dungeon-cell.corridor { background: rgba(72,219,251,0.06); }
+[data-theme="light"] .dungeon-cell.start { background: rgba(81,207,102,0.3); }
+[data-theme="light"] .dungeon-cell.end { background: rgba(255,107,107,0.3); }
+[data-theme="light"] .dungeon-cell.chest { background: rgba(255,212,59,0.35); }
+[data-theme="light"] code {
+  background: var(--bg-card);
+  color: #c0392b;
+}
+[data-theme="light"] pre code {
+  background: none;
+  color: inherit;
+}
+[data-theme="light"] .card:hover {
+  background: var(--bg-card);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-page);
+  color: var(--text-body);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--accent-mid);
+  color: var(--text-primary);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+a:hover { opacity: 0.8; }
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: var(--nav-height);
+  background: rgba(8,8,15,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.top-nav a {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.top-nav a:hover { color: var(--accent); opacity: 1; }
+.top-nav .nav-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+#theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+#theme-toggle:hover {
+  border-color: var(--accent);
+}
+
+/* ============================================
+   HERO
+   ============================================ */
+.hero {
+  position: relative;
+  padding: 160px 24px 100px;
+  text-align: center;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(ellipse 600px 400px at 50% 40%, rgba(72,219,251,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 30% 60%, rgba(177,151,252,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 70% 50%, rgba(240,101,149,0.03) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-number {
+  font-size: clamp(120px, 20vw, 220px);
+  font-weight: 900;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(72,219,251,0.15);
+  line-height: 1;
+  margin-bottom: -20px;
+  position: relative;
+  user-select: none;
+}
+.hero h1 {
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 800;
+  color: var(--text-primary);
+  position: relative;
+  letter-spacing: -1px;
+}
+.hero h1 .accent { color: var(--accent); }
+.hero-sub {
+  font-size: 18px;
+  color: var(--text-muted);
+  margin-top: 16px;
+  position: relative;
+}
+
+/* ============================================
+   CONTENT LAYOUT
+   ============================================ */
+.content {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px 120px;
+}
+
+/* ============================================
+   SECTION
+   ============================================ */
+.section {
+  margin-bottom: 80px;
+}
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+.section-label::before {
+  content: '';
+  width: 24px;
+  height: 2px;
+  background: var(--accent);
+}
+
+h2 {
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  margin-bottom: 24px;
+  line-height: 1.2;
+}
+
+h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 48px 0 16px;
+  padding-left: 16px;
+  border-left: 3px solid var(--accent);
+}
+
+h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 32px 0 12px;
+}
+
+p { margin-bottom: 16px; }
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  margin: 24px 0;
+}
+.card.accent-border {
+  border-color: rgba(72,219,251,0.3);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Grid cards */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.card-grid .card {
+  margin: 0;
+  padding: 24px;
+}
+
+/* ============================================
+   INFO BOX (tip / warn / formula)
+   ============================================ */
+.info-box {
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin: 24px 0;
+  border-left: 4px solid;
+  background: var(--bg-card);
+}
+.info-box.tip {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(72,219,251,0.06) 0%, var(--bg-card) 100%);
+}
+.info-box.warn {
+  border-color: var(--warning);
+  background: linear-gradient(135deg, rgba(255,212,59,0.06) 0%, var(--bg-card) 100%);
+}
+.info-box.danger {
+  border-color: var(--danger);
+  background: linear-gradient(135deg, rgba(255,107,107,0.06) 0%, var(--bg-card) 100%);
+}
+.info-box.formula {
+  border-color: var(--purple);
+  background: linear-gradient(135deg, rgba(177,151,252,0.08) 0%, var(--bg-card) 100%);
+}
+.info-box-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+.info-box.tip .info-box-label { color: var(--accent); }
+.info-box.warn .info-box-label { color: var(--warning); }
+.info-box.danger .info-box-label { color: var(--danger); }
+.info-box.formula .info-box-label { color: var(--purple); }
+
+/* ============================================
+   CODE / FORMULA
+   ============================================ */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--accent-dim);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px 24px;
+  margin: 16px 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-body);
+}
+pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.formula-block {
+  background: linear-gradient(135deg, rgba(177,151,252,0.06) 0%, var(--bg-card) 100%);
+  border: 1px solid rgba(177,151,252,0.2);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin: 24px 0;
+  text-align: center;
+}
+.formula-block .formula {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  color: var(--purple);
+  font-weight: 600;
+  margin: 8px 0;
+}
+.formula-block .formula-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+.table-wrap {
+  overflow-x: auto;
+  margin: 24px 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th, td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+th {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(72,219,251,0.03); }
+
+/* ============================================
+   LISTS
+   ============================================ */
+ul, ol {
+  margin: 12px 0 20px 24px;
+}
+li {
+  margin-bottom: 8px;
+}
+li::marker {
+  color: var(--accent);
+}
+
+/* ============================================
+   FLOW DIAGRAMS (CSS-only)
+   ============================================ */
+.flow-diagram {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0;
+  padding: 32px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.flow-node {
+  background: var(--accent-dim);
+  border: 1px solid rgba(72,219,251,0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+  min-width: 100px;
+}
+.flow-node.highlight {
+  background: rgba(72,219,251,0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(72,219,251,0.15);
+}
+.flow-node.purple {
+  background: rgba(177,151,252,0.1);
+  border-color: rgba(177,151,252,0.3);
+  color: var(--purple);
+}
+.flow-node.pink {
+  background: rgba(240,101,149,0.1);
+  border-color: rgba(240,101,149,0.3);
+  color: var(--pink);
+}
+.flow-node.orange {
+  background: rgba(255,146,43,0.1);
+  border-color: rgba(255,146,43,0.3);
+  color: var(--orange);
+}
+.flow-node.success {
+  background: rgba(81,207,102,0.1);
+  border-color: rgba(81,207,102,0.3);
+  color: var(--success);
+}
+.flow-node.danger {
+  background: rgba(255,107,107,0.1);
+  border-color: rgba(255,107,107,0.3);
+  color: var(--danger);
+}
+.flow-arrow {
+  color: var(--text-muted);
+  font-size: 20px;
+  user-select: none;
+}
+
+/* System map */
+.system-map {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  margin: 24px 0;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.system-map-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+.system-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+.sys-node {
+  position: relative;
+  padding: 16px 24px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  min-width: 120px;
+  border: 1px solid;
+}
+.sys-node.core {
+  background: rgba(72,219,251,0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 30px rgba(72,219,251,0.1);
+  font-size: 16px;
+  padding: 20px 32px;
+}
+.sys-node.sub {
+  background: rgba(177,151,252,0.08);
+  border-color: rgba(177,151,252,0.3);
+  color: var(--purple);
+}
+.sys-node.leaf {
+  background: rgba(120,120,160,0.06);
+  border-color: rgba(120,120,160,0.2);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 10px 16px;
+  min-width: 90px;
+}
+.sys-connector {
+  width: 2px;
+  height: 24px;
+  background: linear-gradient(to bottom, var(--accent-mid), transparent);
+}
+.sys-h-line {
+  width: 40px;
+  height: 2px;
+  background: rgba(120,120,160,0.3);
+}
+
+/* ============================================
+   FEEDBACK LOOP VIS
+   ============================================ */
+.loop-vis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 24px 0;
+  padding: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+.loop-item {
+  text-align: center;
+  padding: 16px;
+  min-width: 120px;
+}
+.loop-item .label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.loop-item .desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.loop-connector {
+  font-size: 24px;
+  color: var(--accent);
+  padding: 0 4px;
+}
+.loop-connector.danger { color: var(--danger); }
+.loop-connector.success { color: var(--success); }
+
+/* ============================================
+   SKILL TREE VIS
+   ============================================ */
+.skill-tree {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  margin: 24px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.skill-tier {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.skill-tier-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  width: 100%;
+  text-align: center;
+  margin-bottom: 4px;
+}
+.skill-node {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border: 2px solid;
+  position: relative;
+}
+.skill-node.active {
+  background: rgba(72,219,251,0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.skill-node.locked {
+  background: rgba(120,120,160,0.06);
+  border-color: rgba(120,120,160,0.2);
+  color: var(--text-muted);
+}
+.skill-node.ultimate {
+  background: rgba(177,151,252,0.15);
+  border-color: var(--purple);
+  color: var(--purple);
+  width: 64px;
+  height: 64px;
+  font-size: 13px;
+}
+.skill-line {
+  width: 2px;
+  height: 16px;
+  background: rgba(72,219,251,0.3);
+  margin: 0 auto;
+}
+
+/* ============================================
+   PROGRESS BAR VIS
+   ============================================ */
+.progress-vis {
+  margin: 20px 0;
+}
+.progress-bar-outer {
+  height: 8px;
+  background: rgba(120,120,160,0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.progress-bar-inner {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+.progress-bar-inner.accent { background: linear-gradient(90deg, var(--accent), rgba(72,219,251,0.6)); }
+.progress-bar-inner.purple { background: linear-gradient(90deg, var(--purple), rgba(177,151,252,0.6)); }
+.progress-bar-inner.success { background: linear-gradient(90deg, var(--success), rgba(81,207,102,0.6)); }
+.progress-bar-inner.danger { background: linear-gradient(90deg, var(--danger), rgba(255,107,107,0.6)); }
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ============================================
+   STAT BAR
+   ============================================ */
+.stat-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+.stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.stat-bar .stat-name {
+  width: 60px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: right;
+}
+.stat-bar .bar-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(120,120,160,0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.stat-bar .bar-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+.stat-bar .stat-val {
+  width: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ============================================
+   TAG
+   ============================================ */
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tag.blue { background: rgba(72,219,251,0.12); color: var(--accent); }
+.tag.purple { background: rgba(177,151,252,0.12); color: var(--purple); }
+.tag.pink { background: rgba(240,101,149,0.12); color: var(--pink); }
+.tag.orange { background: rgba(255,146,43,0.12); color: var(--orange); }
+.tag.green { background: rgba(81,207,102,0.12); color: var(--success); }
+.tag.red { background: rgba(255,107,107,0.12); color: var(--danger); }
+
+/* ============================================
+   TOC
+   ============================================ */
+.toc {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  margin-bottom: 64px;
+}
+.toc-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 20px;
+}
+.toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+.toc-list li {
+  margin: 0;
+}
+.toc-list a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--text-body);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.toc-list a:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+  opacity: 1;
+}
+.toc-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 28px;
+}
+
+/* ============================================
+   GRID DIAGRAM
+   ============================================ */
+.grid-diagram {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 4px;
+  margin: 16px 0;
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+}
+.grid-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ============================================
+   BOTTOM NAV & FOOTER
+   ============================================ */
+.bottom-nav {
+  max-width: var(--max-width);
+  margin: 0 auto 40px;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.bottom-nav a {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  flex: 1;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.bottom-nav a:hover {
+  border-color: rgba(72,219,251,0.3);
+  transform: translateY(-2px);
+  opacity: 1;
+}
+.bottom-nav .nav-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.bottom-nav .nav-target {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.bottom-nav .next { text-align: right; }
+
+.site-footer {
+  text-align: center;
+  padding: 40px 24px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 640px) {
+  .top-nav { padding: 0 16px; }
+  .hero { padding: 140px 16px 72px; }
+  .content { padding: 0 16px 80px; }
+  .card { padding: 20px; }
+  h3 { font-size: 19px; }
+  .flow-diagram { flex-direction: column; }
+  .flow-arrow { transform: rotate(90deg); }
+  .bottom-nav { flex-direction: column; }
+  .bottom-nav .next { text-align: left; }
+  .toc-list { grid-template-columns: 1fr; }
+}
+
+/* ============================================
+   INTERACTIVE CALCULATOR
+   ============================================ */
+.calc-widget {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin: 24px 0;
+}
+.calc-widget label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  margin-top: 16px;
+}
+.calc-widget label:first-child { margin-top: 0; }
+.calc-widget input[type="range"] {
+  width: 100%;
+  margin: 4px 0;
+  accent-color: var(--accent);
+}
+.calc-widget .result {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--accent);
+  text-align: center;
+  font-weight: 600;
+}
+.calc-widget .result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.calc-widget .result-item {
+  background: rgba(72,219,251,0.05);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  text-align: center;
+}
+.calc-widget .result-item .val {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.calc-widget .result-item .lbl {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ============================================
+   DUNGEON VIS
+   ============================================ */
+.dungeon-grid {
+  display: grid;
+  gap: 2px;
+  margin: 16px auto;
+  width: fit-content;
+}
+.dungeon-cell {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+}
+.dungeon-cell.wall { background: rgba(120,120,160,0.15); }
+.dungeon-cell.floor { background: rgba(72,219,251,0.15); }
+.dungeon-cell.corridor { background: rgba(72,219,251,0.08); }
+.dungeon-cell.start { background: rgba(81,207,102,0.4); }
+.dungeon-cell.end { background: rgba(255,107,107,0.4); }
+.dungeon-cell.chest { background: rgba(255,212,59,0.4); }
+
+/* ============================================
+   COMPARISON
+   ============================================ */
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 24px 0;
+}
+.comparison .side {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.comparison .side-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.comparison .side.pro .side-title { color: var(--success); }
+.comparison .side.con .side-title { color: var(--danger); }
+@media (max-width: 640px) {
+  .comparison { grid-template-columns: 1fr; }
+}
+
+/* ============================================
+   TIMELINE
+   ============================================ */
+.timeline {
+  position: relative;
+  margin: 24px 0;
+  padding-left: 32px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), var(--purple), var(--pink));
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -26px;
+  top: 20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-page);
+}
+.timeline-item .t-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+html { scrollbar-width: thin; scrollbar-color: var(--border-bright) transparent; }
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: Focus Styles ── */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================
+     TOP NAVIGATION
+     ============================================ -->
+<nav class="top-nav">
+  <a href="index.html">← 索引</a>
+  <span class="nav-title">系统与关卡设计</span>
+  <a href="06-narrative.html">下一章 →</a>
+  <button id="theme-toggle" aria-label="切换主题">☀️</button>
+</nav>
+
+<!-- ============================================
+     HERO
+     ============================================ -->
+<header class="hero">
+  <div class="hero-number">05</div>
+  <h1>系统与<span class="accent">关卡</span>设计</h1>
+  <p class="hero-sub">从反馈循环到程序化生成 —— 构建令人沉迷的游戏系统</p>
+</header>
+
+<!-- ============================================
+     CONTENT
+     ============================================ -->
+<main class="content">
+
+<!-- TABLE OF CONTENTS -->
+<nav class="toc">
+  <div class="toc-title">目录</div>
+  <ul class="toc-list">
+    <li><a href="#sys-thinking"><span class="toc-num">01</span>系统设计思维</a></li>
+    <li><a href="#economy"><span class="toc-num">02</span>经济系统设计</a></li>
+    <li><a href="#progression"><span class="toc-num">03</span>进度系统</a></li>
+    <li><a href="#combat"><span class="toc-num">04</span>战斗系统设计</a></li>
+    <li><a href="#difficulty"><span class="toc-num">05</span>难度设计与平衡</a></li>
+    <li><a href="#level-design"><span class="toc-num">06</span>关卡设计</a></li>
+    <li><a href="#procgen"><span class="toc-num">07</span>程序化生成</a></li>
+    <li><a href="#numerical"><span class="toc-num">08</span>数值策划基础</a></li>
+    <li><a href="#practice"><span class="toc-num">09</span>实践：设计完整游戏系统</a></li>
+  </ul>
+</nav>
+
+<!-- ============================================
+     01 · 系统设计思维
+     ============================================ -->
+<section class="section" id="sys-thinking">
+  <div class="section-label">Part 01</div>
+  <h2>系统设计思维</h2>
+
+  <h3>什么是游戏系统</h3>
+  <p>游戏系统是一组<strong>相互关联的规则和机制</strong>，它们共同作用产生游戏体验。系统不是单个功能，而是功能之间的<strong>关系网络</strong>。一个孤立的"攻击"动作不是系统；攻击 + 防御 + 生命值 + 伤害计算 + 属性克制组合在一起，才构成了一个战斗系统。</p>
+
+  <p>理解游戏系统的关键在于：<strong>整体大于部分之和</strong>。系统中各元素的交互会产生单个元素无法产生的行为和体验。</p>
+
+  <div class="system-map">
+    <div class="system-map-title">游戏系统架构示例</div>
+    <div class="system-row">
+      <div class="sys-node core">核心游戏循环</div>
+    </div>
+    <div class="sys-connector"></div>
+    <div class="system-row">
+      <div class="sys-node sub">战斗系统</div>
+      <div class="sys-h-line"></div>
+      <div class="sys-node sub">经济系统</div>
+      <div class="sys-h-line"></div>
+      <div class="sys-node sub">进度系统</div>
+      <div class="sys-h-line"></div>
+      <div class="sys-node sub">社交系统</div>
+    </div>
+    <div class="sys-connector"></div>
+    <div class="system-row">
+      <div class="sys-node leaf">伤害计算</div>
+      <div class="sys-node leaf">属性克制</div>
+      <div class="sys-node leaf">资源产出</div>
+      <div class="sys-node leaf">交易市场</div>
+      <div class="sys-node leaf">经验等级</div>
+      <div class="sys-node leaf">技能树</div>
+      <div class="sys-node leaf">公会</div>
+      <div class="sys-node leaf">排行榜</div>
+    </div>
+  </div>
+
+  <h3>涌现性（Emergence）与复杂性</h3>
+  <p><strong>涌现性</strong>是系统设计的圣杯——简单规则交互产生复杂、不可预测但有意义的行为。涌现性使游戏超越设计者的预想，创造出无限可能的玩法空间。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🧬</div>
+        <div class="card-title">简单规则 → 复杂行为</div>
+      </div>
+      <p style="margin:0;font-size:14px">《我的世界》只有放置/破坏方块 + 合成 + 物理模拟几条基本规则，却涌现出红石计算机、自动化农场、像素艺术等设计者从未预想的玩法。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🔥</div>
+        <div class="card-title">元素交互涌现</div>
+      </div>
+      <p style="margin:0;font-size:14px">《塞尔达：旷野之息》的物理/化学引擎让火 + 风 = 火旋风，雷 + 金属 = 导电，水 + 寒冷 = 冰面。每种组合创造新战术。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🎭</div>
+        <div class="card-title">AI 行为涌现</div>
+      </div>
+      <p style="margin:0;font-size:14px">《RimWorld》的殖民者有个性、社交需求、技能偏好，这些简单属性组合后产生了戏剧性的故事——背叛、恋爱、精神崩溃。</p>
+    </div>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-label">设计心法</div>
+    <p style="margin:0">涌现性的关键不是规则的数量，而是规则之间的<strong>正交性</strong>（orthogonality）。如果 A 规则和 B 规则可以独立运作也可以组合，那就有涌现的空间。如果 A 依赖 B 才能工作，那只是一条更复杂的规则。</p>
+  </div>
+
+  <h4>复杂性（Complexity）vs 深度（Depth）</h4>
+  <p>这是游戏设计中最关键的区分之一：</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>维度</th><th>复杂性（Complexity）</th><th>深度（Depth）</th></tr>
+      <tr><td>定义</td><td>玩家需要理解的规则数量</td><td>有意义决策的数量和质量</td></tr>
+      <tr><td>玩家感受</td><td>学习成本高、信息过载</td><td>容易上手但不断发现新策略</td></tr>
+      <tr><td>典型表现</td><td>大量独立系统、特殊情况多</td><td>少量规则产生丰富交互</td></tr>
+      <tr><td>好例子</td><td>《矮人要塞》（高复杂+高深度）</td><td>围棋（低复杂+高深度）</td></tr>
+      <tr><td>坏例子</td><td>许多手游（高复杂+低深度）</td><td>井字棋（低复杂+低深度）</td></tr>
+    </table>
+  </div>
+
+  <p>设计目标：<strong>最大化深度/复杂性比率</strong>。用最少的规则创造最多有意义的决策。</p>
+
+  <h3>系统耦合与解耦</h3>
+  <p>系统之间的连接方式决定了游戏的可维护性、可扩展性和涌现性。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">紧耦合 <span class="tag red">谨慎使用</span></div>
+      </div>
+      <p style="font-size:14px">系统 A 直接调用/依赖系统 B 的内部状态。修改 B 必然影响 A。</p>
+      <pre><code>// 紧耦合：战斗直接读取装备
+damage = player.weapon.baseDamage
+       * player.strength
+       + player.weapon.enchant.bonus</code></pre>
+      <p style="font-size:13px;color:var(--text-muted);margin:0"><strong>问题：</strong>武器系统改动 → 战斗系统崩溃</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">松耦合 <span class="tag green">推荐</span></div>
+      </div>
+      <p style="font-size:14px">系统通过统一接口/事件通信，不关心对方内部实现。</p>
+      <pre><code>// 松耦合：通过统计值接口
+damage = stats.get("attack_power")
+// attack_power 由装备/buff/技能等
+// 各系统独立贡献，战斗系统不关心来源</code></pre>
+      <p style="font-size:13px;color:var(--text-muted);margin:0"><strong>优势：</strong>各系统独立开发、测试、修改</p>
+    </div>
+  </div>
+
+  <h4>事件驱动解耦模式</h4>
+  <div class="flow-diagram">
+    <div class="flow-node highlight">战斗系统<br><small>发射事件: "击杀敌人"</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node purple">事件总线</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node orange">经验系统<br><small>监听 → 加经验</small></div>
+  </div>
+  <div class="flow-diagram" style="margin-top:-12px">
+    <div class="flow-node" style="opacity:0;pointer-events:none">占位</div>
+    <div class="flow-arrow" style="opacity:0">→</div>
+    <div class="flow-node purple">事件总线</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node pink">任务系统<br><small>监听 → 更新进度</small></div>
+  </div>
+  <div class="flow-diagram" style="margin-top:-12px">
+    <div class="flow-node" style="opacity:0;pointer-events:none">占位</div>
+    <div class="flow-arrow" style="opacity:0">→</div>
+    <div class="flow-node purple">事件总线</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node success">成就系统<br><small>监听 → 检查条件</small></div>
+  </div>
+
+  <p>战斗系统不需要知道谁在监听"击杀敌人"事件。经验系统、任务系统、成就系统各自独立订阅，自行处理。新增统计系统时，只需添加一个新的监听者，无需修改战斗代码。</p>
+
+  <h3>正反馈与负反馈循环</h3>
+  <p>反馈循环是系统自我调节的核心机制，决定了游戏是趋向稳定还是趋向极端。</p>
+
+  <h4>正反馈循环（Positive Feedback）</h4>
+  <p>输出增强输入，"强者更强，弱者更弱"。制造加速和雪球效应。</p>
+
+  <div class="loop-vis">
+    <div class="loop-item">
+      <div class="label">击杀敌人</div>
+      <div class="desc">获得经验</div>
+    </div>
+    <div class="loop-connector success">→</div>
+    <div class="loop-item">
+      <div class="label">等级提升</div>
+      <div class="desc">属性增长</div>
+    </div>
+    <div class="loop-connector success">→</div>
+    <div class="loop-item">
+      <div class="label">更强战力</div>
+      <div class="desc">击杀更强敌人</div>
+    </div>
+    <div class="loop-connector success">→</div>
+    <div class="loop-item">
+      <div class="label">更多经验</div>
+      <div class="desc">加速成长</div>
+    </div>
+    <div class="loop-connector success">↻</div>
+  </div>
+
+  <p>正反馈的作用：缩短游戏时间、制造高潮、奖赏领先者。但不受控的正反馈会让落后者绝望。</p>
+
+  <h4>负反馈循环（Negative Feedback）</h4>
+  <p>输出抑制输入，"领先者受阻，落后者获助"。制造平衡和拉锯。</p>
+
+  <div class="loop-vis">
+    <div class="loop-item">
+      <div class="label">领先者</div>
+      <div class="desc">占领更多区域</div>
+    </div>
+    <div class="loop-connector danger">→</div>
+    <div class="loop-item">
+      <div class="label">管理成本↑</div>
+      <div class="desc">维护费用增加</div>
+    </div>
+    <div class="loop-connector danger">→</div>
+    <div class="loop-item">
+      <div class="label">扩张减速</div>
+      <div class="desc">资源压力大</div>
+    </div>
+    <div class="loop-connector danger">→</div>
+    <div class="loop-item">
+      <div class="label">对手追赶</div>
+      <div class="desc">差距缩小</div>
+    </div>
+    <div class="loop-connector danger">↻</div>
+  </div>
+
+  <p>负反馈的作用：保持竞争悬念、延长游戏时间、给落后者希望。但过强的负反馈会让努力无意义。</p>
+
+  <div class="info-box warn">
+    <div class="info-box-label">设计要点</div>
+    <p style="margin:0">好的游戏混合使用正反馈和负反馈。通常在<strong>短期</strong>使用正反馈（奖赏好的操作），在<strong>长期/全局</strong>使用负反馈（保持竞争平衡）。例如：《马里奥赛车》的道具系统——落后的玩家获得更强道具（负反馈），但领先者的操作技术优势仍然有效（正反馈）。</p>
+  </div>
+
+  <h3>系统思维案例分析</h3>
+
+  <div class="card accent-border">
+    <div class="card-header">
+      <div class="card-icon">🏛</div>
+      <div class="card-title">《文明》系列 —— 多维系统交织</div>
+    </div>
+    <p style="font-size:14px">《文明》是系统设计的教科书。它展示了如何让多个看似独立的系统深度交织：</p>
+    <ul style="font-size:14px">
+      <li><strong>科技树 → 军事单位 → 战争 → 领土 → 资源 → 科技研究速度</strong>：完美的循环依赖</li>
+      <li><strong>文化系统</strong>作为负反馈：文化弱的文明城市会被"文化翻转"</li>
+      <li><strong>幸福度系统</strong>限制扩张：城市越多 → 人民越不满 → 生产力下降（负反馈）</li>
+      <li><strong>多胜利条件</strong>创造路径多样性：科技胜利、文化胜利、征服胜利、外交胜利互相制约</li>
+    </ul>
+    <p style="font-size:14px;margin:0">核心设计智慧：每个系统都是其他系统的<strong>输入</strong>或<strong>约束</strong>，没有孤立存在的系统。</p>
+  </div>
+
+  <div class="card accent-border">
+    <div class="card-header">
+      <div class="card-icon">🏭</div>
+      <div class="card-title">《Factorio》 —— 自动化与涌现</div>
+    </div>
+    <p style="font-size:14px">《Factorio》展示了纯系统涌现的魅力：</p>
+    <ul style="font-size:14px">
+      <li><strong>核心规则极简</strong>：采矿 → 运输 → 加工 → 组装。只有四个动词</li>
+      <li><strong>复杂性由玩家创造</strong>：合成配方树的深度逼迫玩家构建越来越复杂的工厂</li>
+      <li><strong>正反馈驱动</strong>：自动化 → 产量提升 → 可以自动化更多流程 → 指数增长</li>
+      <li><strong>系统约束制造挑战</strong>：污染 → 虫群进攻 → 需要防御 → 消耗资源 → 需要更多自动化</li>
+      <li><strong>物流问题涌现</strong>：游戏没有"设计物流"的规则，但传送带的物理限制自然产生了物流瓶颈</li>
+    </ul>
+  </div>
+
+  <div class="card accent-border">
+    <div class="card-header">
+      <div class="card-icon">🎪</div>
+      <div class="card-title">《RimWorld》 —— AI 故事生成器</div>
+    </div>
+    <p style="font-size:14px">《RimWorld》将系统设计推向了叙事涌现的极致：</p>
+    <ul style="font-size:14px">
+      <li><strong>AI 故事讲述者</strong>：不是设计关卡，而是设计"节奏曲线"——卡桑德拉稳步升级，费比随机波动，兰迪完全混乱</li>
+      <li><strong>殖民者系统</strong>：每个角色有 50+ 属性/特质，组合产生独特个性和冲突</li>
+      <li><strong>需求系统</strong>：食物、休息、娱乐、社交、美观度等需求交织，不满积累可能导致精神崩溃</li>
+      <li><strong>社交系统涌现</strong>：好感度 + 共事 + 性格相容性 → 自然发展出恋爱、仇恨、心理创伤等"剧情"</li>
+      <li><strong>Mod 证明系统设计的成功</strong>：松耦合架构让社区创造了数千个 Mod，不断扩展系统的涌现空间</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================
+     02 · 经济系统设计
+     ============================================ -->
+<section class="section" id="economy">
+  <div class="section-label">Part 02</div>
+  <h2>经济系统设计</h2>
+
+  <h3>资源类型分类</h3>
+  <p>游戏经济的基础是资源设计。资源可以按多个维度分类：</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>分类维度</th><th>类型</th><th>特征</th><th>示例</th></tr>
+      <tr><td rowspan="3">持久性</td><td><span class="tag blue">可消耗</span></td><td>使用后消失</td><td>药水、弹药、食物</td></tr>
+      <tr><td><span class="tag purple">永久</span></td><td>获取后永久持有</td><td>解锁的技能、成就</td></tr>
+      <tr><td><span class="tag orange">时间型</span></td><td>随时间产生/衰减</td><td>体力值、耐久度、士气</td></tr>
+      <tr><td rowspan="3">获取方式</td><td><span class="tag green">可交易</span></td><td>玩家间可流通</td><td>金币、材料、装备</td></tr>
+      <tr><td><span class="tag red">绑定</span></td><td>不可转移</td><td>荣誉点、灵魂绑定装备</td></tr>
+      <tr><td><span class="tag pink">产出</span></td><td>系统自动产生</td><td>每日收益、被动收入</td></tr>
+      <tr><td rowspan="2">稀缺性</td><td><span class="tag blue">软上限</span></td><td>获取变难但无天花板</td><td>经验值、金币</td></tr>
+      <tr><td><span class="tag purple">硬上限</span></td><td>有明确数量限制</td><td>背包格数、技能点</td></tr>
+    </table>
+  </div>
+
+  <h3>水龙头与水槽模型（Faucet-Drain）</h3>
+  <p>这是经济系统设计中最核心的概念框架。把经济想象成一个<strong>水箱</strong>：</p>
+
+  <div class="flow-diagram">
+    <div class="flow-node success">水龙头<br>（资源来源）<br><small>任务奖励/击杀掉落<br>日常收益/出售物品</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node highlight" style="font-size:16px;padding:20px 32px">玩家资产池<br><small>当前持有的所有资源</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node danger">水槽<br>（资源消耗）<br><small>升级消耗/购买商品<br>修理费用/税收</small></div>
+  </div>
+
+  <div class="info-box formula">
+    <div class="info-box-label">核心平衡公式</div>
+    <div class="formula-block" style="background:none;border:none;padding:8px 0;margin:0">
+      <div class="formula">资产变化率 = Σ(水龙头流入) - Σ(水槽流出)</div>
+      <div class="formula-desc">当变化率 > 0 → 通胀（资源贬值）；当变化率 < 0 → 通缩（资源升值）</div>
+    </div>
+  </div>
+
+  <h4>常见水龙头设计</h4>
+  <ul>
+    <li><strong>击杀掉落</strong>：最基础的来源，需要根据怪物难度精确调控掉落量</li>
+    <li><strong>任务奖励</strong>：一次性大额注入，用于关键进度节点</li>
+    <li><strong>日常/周常</strong>：稳定流入，构成玩家"收入"的基础</li>
+    <li><strong>交易利润</strong>：在有玩家交易的游戏中，低买高卖产生的财富（零和，不增加总量）</li>
+    <li><strong>系统产出</strong>：基地收入、投资回报等自动化收入</li>
+  </ul>
+
+  <h4>常见水槽设计</h4>
+  <ul>
+    <li><strong>装备强化/升级</strong>：最大的资源消耗池，通常伴随概率机制</li>
+    <li><strong>消耗品购买</strong>：药水、弹药等持续性消耗</li>
+    <li><strong>修理/维护费</strong>：对装备使用征收"使用税"</li>
+    <li><strong>交易税</strong>：每次交易抽取一定比例，持续从系统中移除货币</li>
+    <li><strong>死亡惩罚</strong>：掉落金币/经验，直接从系统中移除资源</li>
+    <li><strong>外观/装饰</strong>：纯消费性支出，最健康的水槽类型</li>
+  </ul>
+
+  <h3>通货膨胀控制</h3>
+  <p>通胀是在线游戏经济的头号敌人。随着玩家群体积累财富，物价飙升，新玩家面临巨大经济壁垒。</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">通胀控制策略</h4>
+    <ol>
+      <li><strong>绑定机制</strong>：装备/材料获取后不可交易，阻断财富向老玩家集中</li>
+      <li><strong>强力水槽</strong>：设计吸引力极高的消费内容（限量外观、稀有坐骑），大量回收货币</li>
+      <li><strong>通货衰减</strong>：持有大量货币时征收存储费/税（模拟现实中的通胀税）</li>
+      <li><strong>赛季重置</strong>：定期清档或开新服，从根本上解决经济积累问题</li>
+      <li><strong>动态定价</strong>：NPC 商品价格随服务器总货币量动态调整</li>
+      <li><strong>差异化货币</strong>：不同内容使用不同货币，分散通胀压力</li>
+    </ol>
+  </div>
+
+  <h3>交易系统</h3>
+  <p>玩家间交易是最复杂的经济子系统，设计不当会摧毁整个经济。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">拍卖行模式</div>
+      <p style="font-size:14px"><strong>特点：</strong>集中式、透明价格、高效匹配</p>
+      <p style="font-size:14px"><strong>优势：</strong>价格发现准确，交易效率高</p>
+      <p style="font-size:14px;margin:0"><strong>风险：</strong>容易被脚本/工作室操控，价格波动大</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">自由交易模式</div>
+      <p style="font-size:14px"><strong>特点：</strong>面对面交易、社交驱动</p>
+      <p style="font-size:14px"><strong>优势：</strong>增强社交、允许讨价还价</p>
+      <p style="font-size:14px;margin:0"><strong>风险：</strong>诈骗频发、RMT 泛滥、不透明</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">限制交易模式</div>
+      <p style="font-size:14px"><strong>特点：</strong>只能交易特定物品/货币</p>
+      <p style="font-size:14px"><strong>优势：</strong>保护核心进度不被交易破坏</p>
+      <p style="font-size:14px;margin:0"><strong>风险：</strong>地下交易（如代打、账号交易）</p>
+    </div>
+  </div>
+
+  <h3>货币设计</h3>
+  <p>货币是经济系统的血液。大多数成功的游戏采用<strong>多货币体系</strong>：</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>货币类型</th><th>获取方式</th><th>用途</th><th>设计目的</th></tr>
+      <tr><td>基础货币（金币）</td><td>所有活动广泛产出</td><td>日常消耗、基础交易</td><td>通用润滑剂</td></tr>
+      <tr><td>高级货币（钻石）</td><td>充值、稀有活动</td><td>加速、外观、便利</td><td>商业变现</td></tr>
+      <tr><td>竞技货币（荣誉）</td><td>PvP 活动</td><td>竞技专属奖励</td><td>驱动特定行为</td></tr>
+      <tr><td>赛季货币</td><td>限时活动</td><td>赛季专属内容</td><td>限时紧迫感</td></tr>
+      <tr><td>社交货币（友情点）</td><td>好友互动</td><td>社交专属奖励</td><td>促进社交</td></tr>
+    </table>
+  </div>
+
+  <div class="info-box warn">
+    <div class="info-box-label">货币设计陷阱</div>
+    <p style="margin:0"><strong>货币过多</strong>会导致认知负担——玩家不理解每种货币的价值和用途。经验法则：核心货币不超过 3 种，辅助货币不超过 5 种。如果你发现自己在设计第 10 种货币，说明系统需要简化。</p>
+  </div>
+
+  <h3>经济模拟与测试</h3>
+  <p>经济系统上线前必须经过严格的模拟测试：</p>
+
+  <ol>
+    <li><strong>蒙特卡洛模拟</strong>：模拟数千个不同行为模式的玩家，运行数月游戏时间，观察经济走势</li>
+    <li><strong>极端行为测试</strong>：模拟"只打怪不消费"的储蓄型玩家和"能买就买"的消费型玩家</li>
+    <li><strong>多人博弈测试</strong>：模拟玩家间交易行为，检测套利空间</li>
+    <li><strong>时间加速测试</strong>：观察经济在 1 年、2 年后的健康度</li>
+  </ol>
+
+  <pre><code># 简单经济模拟伪代码
+class EconomySim:
+    def simulate(self, days=365, players=1000):
+        for day in range(days):
+            for player in self.players:
+                # 每日收入（水龙头）
+                income = self.calc_daily_income(player)
+                player.gold += income
+
+                # 每日支出（水槽）
+                expense = self.calc_daily_expense(player)
+                player.gold -= expense
+
+                # 记录经济指标
+                self.metrics.record(day, player)
+
+            # 全局统计
+            avg_gold = mean(p.gold for p in self.players)
+            gini = self.calc_gini_coefficient()
+            price_index = self.calc_price_index()
+
+            if gini > 0.6:  # 贫富差距警告
+                print(f"Day {day}: 基尼系数过高 {gini:.2f}")
+            if price_index > 200:  # 物价翻倍警告
+                print(f"Day {day}: 通胀严重, CPI={price_index}")</code></pre>
+</section>
+
+<!-- ============================================
+     03 · 进度系统
+     ============================================ -->
+<section class="section" id="progression">
+  <div class="section-label">Part 03</div>
+  <h2>进度系统</h2>
+
+  <h3>经验值与等级</h3>
+  <p>等级系统是最古老也最常见的进度框架。核心设计问题：<strong>每升一级需要多少经验？</strong></p>
+
+  <div class="formula-block">
+    <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px">常用升级经验公式</div>
+    <div class="formula">EXP(n) = base × n<sup>exponent</sup></div>
+    <div class="formula-desc">n = 当前等级, base = 基础经验, exponent = 增长因子（通常 1.5 ~ 2.5）</div>
+  </div>
+
+  <div class="calc-widget">
+    <h4 style="margin-top:0;color:var(--text-heading)">升级经验计算器</h4>
+    <label>基础经验 (base): <span id="base-val">100</span></label>
+    <input type="range" id="base-slider" min="50" max="500" value="100" step="10" oninput="updateExpCalc()">
+
+    <label>增长因子 (exponent): <span id="exp-val">2.0</span></label>
+    <input type="range" id="exp-slider" min="10" max="35" value="20" step="1" oninput="updateExpCalc()">
+
+    <label>最大等级: <span id="maxlv-val">50</span></label>
+    <input type="range" id="maxlv-slider" min="10" max="100" value="50" step="5" oninput="updateExpCalc()">
+
+    <div class="result-grid" id="exp-results"></div>
+  </div>
+
+  <h4>等级系统设计要点</h4>
+  <ul>
+    <li><strong>前期快速升级</strong>：给新玩家正反馈，让他们在前 30 分钟至少升 3-5 级</li>
+    <li><strong>中期稳定节奏</strong>：每级需要的时间相对稳定（30分钟 ~ 2小时）</li>
+    <li><strong>后期显著放缓</strong>：最后 10% 的等级可能需要总时间的 50%</li>
+    <li><strong>等级上限</strong>：明确的终点给玩家目标感，但要有满级后的内容</li>
+  </ul>
+
+  <div class="progress-vis">
+    <div class="progress-label"><span>Lv.1 → Lv.10（初期）</span><span>~2 小时</span></div>
+    <div class="progress-bar-outer"><div class="progress-bar-inner accent" style="width:90%"></div></div>
+    <div class="progress-label"><span>Lv.10 → Lv.30（中期）</span><span>~20 小时</span></div>
+    <div class="progress-bar-outer"><div class="progress-bar-inner purple" style="width:60%"></div></div>
+    <div class="progress-label"><span>Lv.30 → Lv.50（后期）</span><span>~80 小时</span></div>
+    <div class="progress-bar-outer"><div class="progress-bar-inner danger" style="width:25%"></div></div>
+    <p style="font-size:13px;color:var(--text-muted);text-align:center;margin-top:8px">
+      进度条表示升级速度（越长越快）。后期虽然时间更长但内容也更丰富。
+    </p>
+  </div>
+
+  <h3>技能树设计</h3>
+  <p>技能树为玩家提供<strong>个性化成长路径</strong>，是创造构建多样性（Build Diversity）的核心工具。</p>
+
+  <div class="skill-tree">
+    <div class="skill-tier">
+      <div class="skill-tier-label">Tier 1 · 基础</div>
+    </div>
+    <div class="skill-tier">
+      <div class="skill-node active">力量</div>
+      <div class="skill-node active">敏捷</div>
+      <div class="skill-node active">智力</div>
+    </div>
+    <div class="skill-line"></div>
+    <div class="skill-tier">
+      <div class="skill-tier-label">Tier 2 · 进阶</div>
+    </div>
+    <div class="skill-tier">
+      <div class="skill-node active">重击</div>
+      <div class="skill-node active">连击</div>
+      <div class="skill-node locked">暴击</div>
+      <div class="skill-node active">闪避</div>
+      <div class="skill-node locked">法伤</div>
+      <div class="skill-node locked">治疗</div>
+    </div>
+    <div class="skill-line"></div>
+    <div class="skill-tier">
+      <div class="skill-tier-label">Tier 3 · 大师</div>
+    </div>
+    <div class="skill-tier">
+      <div class="skill-node locked">狂战</div>
+      <div class="skill-node locked">剑舞</div>
+      <div class="skill-node locked">影杀</div>
+      <div class="skill-node locked">元素</div>
+    </div>
+    <div class="skill-line"></div>
+    <div class="skill-tier">
+      <div class="skill-tier-label">Tier 4 · 终极</div>
+    </div>
+    <div class="skill-tier">
+      <div class="skill-node ultimate">究极</div>
+    </div>
+  </div>
+
+  <h4>技能树设计模式</h4>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">线性树 <span class="tag blue">简单</span></div>
+      <p style="font-size:14px;margin:0">A → B → C → D。每个技能只有一个前置。简单明了，但缺乏选择深度。适合动作游戏。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">分支树 <span class="tag purple">经典</span></div>
+      <p style="font-size:14px;margin:0">A → B 或 C → D 或 E。关键节点提供互斥选择。WoW 天赋树的经典模式。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">网状树 <span class="tag orange">复杂</span></div>
+      <p style="font-size:14px;margin:0">任意节点可连接多个前置。《流放之路》的星座盘。构建空间巨大但难以平衡。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">模块树 <span class="tag green">现代</span></div>
+      <p style="font-size:14px;margin:0">独立模块可自由组合。《杀戮尖塔》的卡牌构建。灵活性最高，涌现性最强。</p>
+    </div>
+  </div>
+
+  <h3>解锁系统</h3>
+  <p>解锁系统控制玩家何时获得新能力/内容。好的解锁节奏让玩家始终有新东西可期待。</p>
+
+  <div class="info-box tip">
+    <div class="info-box-label">解锁节奏黄金法则</div>
+    <p style="margin:0">玩家在任何时刻都应该能看到"下一个解锁"在不远处。解锁间隔不应超过 15-20 分钟（移动端）或 30-60 分钟（主机/PC）。每次解锁应该<strong>改变玩法</strong>而不只是数值提升。</p>
+  </div>
+
+  <h3>成就系统</h3>
+  <p>成就系统是对玩家行为的<strong>外部认可</strong>，同时引导玩家探索他们可能不会自发尝试的内容。</p>
+
+  <h4>成就设计分类</h4>
+  <div class="table-wrap">
+    <table>
+      <tr><th>类型</th><th>描述</th><th>示例</th><th>设计目的</th></tr>
+      <tr><td>进度型</td><td>完成主要内容</td><td>击败第一个Boss</td><td>标记里程碑</td></tr>
+      <tr><td>探索型</td><td>发现隐藏内容</td><td>找到所有秘密区域</td><td>鼓励探索</td></tr>
+      <tr><td>挑战型</td><td>完成高难度任务</td><td>无伤通关</td><td>为硬核玩家提供目标</td></tr>
+      <tr><td>社交型</td><td>与其他玩家互动</td><td>组队完成副本</td><td>促进社交</td></tr>
+      <tr><td>创意型</td><td>用非常规方式完成</td><td>用炸鱼击败Boss</td><td>鼓励实验</td></tr>
+      <tr><td>收集型</td><td>收集全部某类物品</td><td>集齐所有坐骑</td><td>延长游戏寿命</td></tr>
+    </table>
+  </div>
+
+  <h3>Meta-progression（永久进度）</h3>
+  <p>Meta-progression 是 Roguelike 游戏的核心创新——死亡不是终点，而是另一种形式的进步。</p>
+
+  <div class="flow-diagram">
+    <div class="flow-node highlight">开始一局</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node orange">游戏过程<br><small>获取临时能力</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node danger">死亡</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node success">获得 Meta 货币</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node purple">永久升级<br><small>解锁新能力/角色</small></div>
+    <div class="flow-arrow">↻</div>
+  </div>
+
+  <p>经典案例：</p>
+  <ul>
+    <li><strong>《Hades》</strong>：暗黑之镜提供永久属性提升，钥匙解锁新武器，对话推进剧情——死亡 = 更多故事</li>
+    <li><strong>《杀戮尖塔》</strong>：每局解锁新卡牌加入卡池，20 级攀升解锁全部卡牌后才是真正的开始</li>
+    <li><strong>《以撒的结合》</strong>：击败 Boss 解锁新道具进入道具池，数百次通关才能看到全部内容</li>
+  </ul>
+
+  <div class="info-box tip">
+    <div class="info-box-label">设计心法</div>
+    <p style="margin:0">Meta-progression 的精髓是<strong>"不是变强，而是变多"</strong>。永久升级应该主要提供<strong>选项多样性</strong>（新角色、新技能、新起始道具），而不是纯数值提升。如果永久升级太强，游戏会变成"刷 meta 货币"，局内决策变得不重要。</p>
+  </div>
+
+  <h3>进度节奏控制</h3>
+  <p>进度节奏是玩家"感觉"的核心。太快则廉价，太慢则挫败。</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">进度节奏的三段论</h4>
+    <ol>
+      <li><strong>蜜月期（0-20%）</strong>：快速解锁、频繁奖励、新机制不断出现。目标：让玩家"上钩"</li>
+      <li><strong>探索期（20-70%）</strong>：节奏平稳、策略深化、有足够内容变化保持兴趣。目标：建立习惯</li>
+      <li><strong>精通期（70-100%）</strong>：挑战显著提升、奖励变得稀有而珍贵、出现需要高度技巧的内容。目标：留住核心玩家</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================
+     04 · 战斗系统设计
+     ============================================ -->
+<section class="section" id="combat">
+  <div class="section-label">Part 04</div>
+  <h2>战斗系统设计</h2>
+
+  <h3>回合制 vs 即时制 vs 混合</h3>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>维度</th><th>回合制</th><th>即时制</th><th>混合（ATB/RTwP）</th></tr>
+      <tr><td>节奏</td><td>思考型、策略型</td><td>紧张、反应型</td><td>介于两者之间</td></tr>
+      <tr><td>操作门槛</td><td>低（无操作要求）</td><td>高（需要反应速度）</td><td>中等</td></tr>
+      <tr><td>策略深度</td><td>高（充分思考时间）</td><td>中（来不及复杂决策）</td><td>高（可暂停思考）</td></tr>
+      <tr><td>代表作</td><td>FF系列、宝可梦</td><td>魂系、动作游戏</td><td>ATB、博德之门</td></tr>
+      <tr><td>适合场景</td><td>RPG、战棋、卡牌</td><td>ARPG、FPS、格斗</td><td>战术RPG、RTS</td></tr>
+      <tr><td>多角色管理</td><td>容易</td><td>困难（需要AI辅助）</td><td>中等</td></tr>
+    </table>
+  </div>
+
+  <h3>伤害计算公式</h3>
+  <p>伤害公式是战斗系统的数学基础。选择哪种公式决定了整个战斗的"手感"。</p>
+
+  <div class="formula-block">
+    <div style="font-size:14px;color:var(--text-muted)">减法模型（线性）</div>
+    <div class="formula">伤害 = 攻击力 - 防御力</div>
+    <div class="formula-desc">简单直观，但防御力等于攻击力时伤害为 0（"防御穿透"问题）</div>
+  </div>
+
+  <div class="formula-block">
+    <div style="font-size:14px;color:var(--text-muted)">百分比减伤模型</div>
+    <div class="formula">伤害 = 攻击力 × (1 - 防御力 / (防御力 + K))</div>
+    <div class="formula-desc">K 为常数。防御力提供百分比减伤，永远不会 100% 免伤。《英雄联盟》使用此模型</div>
+  </div>
+
+  <div class="formula-block">
+    <div style="font-size:14px;color:var(--text-muted)">乘法模型</div>
+    <div class="formula">伤害 = 攻击力 × 攻击力 / (攻击力 + 防御力)</div>
+    <div class="formula-desc">攻防博弈更平滑，双倍攻击力 ≈ 双倍伤害，双倍防御力 ≈ 半伤</div>
+  </div>
+
+  <div class="calc-widget">
+    <h4 style="margin-top:0;color:var(--text-heading)">伤害公式对比计算器</h4>
+    <label>攻击力 (ATK): <span id="atk-val">100</span></label>
+    <input type="range" id="atk-slider" min="10" max="500" value="100" step="10" oninput="updateDmgCalc()">
+    <label>防御力 (DEF): <span id="def-val">50</span></label>
+    <input type="range" id="def-slider" min="0" max="300" value="50" step="10" oninput="updateDmgCalc()">
+    <label>常数 K: <span id="k-val">100</span></label>
+    <input type="range" id="k-slider" min="50" max="500" value="100" step="10" oninput="updateDmgCalc()">
+    <div class="result-grid" id="dmg-results"></div>
+  </div>
+
+  <h3>属性系统设计</h3>
+  <p>属性系统定义了角色的"能力空间"。过多属性导致认知负担，过少则缺乏深度。</p>
+
+  <div class="card accent-border">
+    <h4 style="margin-top:0">经典六维属性模型</h4>
+    <div class="stat-bars">
+      <div class="stat-bar">
+        <div class="stat-name">力量</div>
+        <div class="bar-track"><div class="bar-fill" style="width:80%;background:linear-gradient(90deg,#ff6b6b,#ff922b)"></div></div>
+        <div class="stat-val">16</div>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-name">敏捷</div>
+        <div class="bar-track"><div class="bar-fill" style="width:60%;background:linear-gradient(90deg,#51cf66,#48dbfb)"></div></div>
+        <div class="stat-val">12</div>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-name">体质</div>
+        <div class="bar-track"><div class="bar-fill" style="width:70%;background:linear-gradient(90deg,#ff922b,#ffd43b)"></div></div>
+        <div class="stat-val">14</div>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-name">智力</div>
+        <div class="bar-track"><div class="bar-fill" style="width:45%;background:linear-gradient(90deg,#b197fc,#48dbfb)"></div></div>
+        <div class="stat-val">9</div>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-name">感知</div>
+        <div class="bar-track"><div class="bar-fill" style="width:55%;background:linear-gradient(90deg,#48dbfb,#51cf66)"></div></div>
+        <div class="stat-val">11</div>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-name">魅力</div>
+        <div class="bar-track"><div class="bar-fill" style="width:40%;background:linear-gradient(90deg,#f06595,#b197fc)"></div></div>
+        <div class="stat-val">8</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin:8px 0 0">D&D 六维体系是 RPG 属性设计的模板。每个属性应影响多个衍生属性和游戏机制。</p>
+  </div>
+
+  <h4>属性设计原则</h4>
+  <ul>
+    <li><strong>每个属性必须有用</strong>：如果某属性对某类角色毫无价值（"陷阱属性"），要么重新设计要么删除</li>
+    <li><strong>属性之间要有取舍</strong>：堆力量就堆不了智力，迫使玩家做出有意义的选择</li>
+    <li><strong>影响可感知</strong>：+1 力量应该有可感知的战斗差异，而不只是面板数字变化</li>
+    <li><strong>边际收益递减</strong>：防止极端堆砌——前 10 点力量每点 +3% 伤害，之后每点 +1% 伤害</li>
+  </ul>
+
+  <h3>Buff/Debuff 系统</h3>
+  <p>Buff/Debuff 是战斗策略深度的关键来源。好的 Buff 系统让"状态管理"成为核心玩法。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">持续时间型</div>
+      <p style="font-size:14px">持续 N 回合/秒后消失</p>
+      <p style="font-size:14px;margin:0"><code>增伤30%，持续10秒</code></p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">叠层型</div>
+      <p style="font-size:14px">每次触发叠加一层，效果随层数增强</p>
+      <p style="font-size:14px;margin:0"><code>出血：每层每秒10伤害，最多5层</code></p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">条件型</div>
+      <p style="font-size:14px">满足特定条件时触发/消失</p>
+      <p style="font-size:14px;margin:0"><code>护盾：吸收200伤害后消失</code></p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">永久型</div>
+      <p style="font-size:14px">直到被特定手段移除</p>
+      <p style="font-size:14px;margin:0"><code>诅咒：降低全属性10%，需解咒</code></p>
+    </div>
+  </div>
+
+  <h4>Buff 叠加规则</h4>
+  <pre><code>// Buff 计算优先级设计
+最终属性 = ((基础值 + 固定加成) × 百分比加成) × 最终乘数
+
+// 示例：角色基础攻击力100
+// 装备 +50（固定加成）
+// 力量增幅 +30%（百分比加成）
+// 暴击 ×2.0（最终乘数）
+最终攻击 = ((100 + 50) × 1.3) × 2.0 = 390
+
+// 常见叠加规则
+同类Buff：取最高值（不叠加）  // 防止极端堆叠
+异类Buff：加法叠加            // 鼓励多样化搭配
+百分比Buff：乘法叠加          // 收益递减更自然</code></pre>
+
+  <h3>技能系统架构</h3>
+  <p>技能系统的技术架构决定了扩展性和可调性。</p>
+
+  <pre><code>// 数据驱动的技能定义（JSON）
+{
+  "id": "fireball",
+  "name": "火球术",
+  "type": "active",
+  "target": "enemy_single",
+  "cost": { "mana": 30 },
+  "cooldown": 8,
+  "effects": [
+    {
+      "type": "damage",
+      "element": "fire",
+      "formula": "caster.int * 2.5 + 80",
+      "can_crit": true
+    },
+    {
+      "type": "apply_buff",
+      "buff_id": "burning",
+      "chance": 0.3,
+      "duration": 5
+    }
+  ],
+  "scaling": [
+    { "level": 1, "multiplier": 1.0 },
+    { "level": 5, "multiplier": 1.4 },
+    { "level": 10, "multiplier": 2.0 }
+  ]
+}</code></pre>
+
+  <p>数据驱动的优势：策划可以在不修改代码的情况下调整技能参数、添加新技能、平衡数值。</p>
+
+  <h3>战斗平衡方法论</h3>
+
+  <div class="card accent-border">
+    <h4 style="margin-top:0">DPS 基准法</h4>
+    <p style="font-size:14px">所有伤害型角色/技能都换算成 DPS（每秒伤害）进行比较：</p>
+    <div class="formula-block" style="margin:12px 0;background:none;border:none;padding:8px">
+      <div class="formula" style="font-size:16px">DPS = (单次伤害 × 命中率 × 暴击系数) / 攻击间隔</div>
+    </div>
+    <p style="font-size:14px">如果角色 A 的 DPS 远高于角色 B，且没有其他方面的劣势来补偿，说明不平衡。</p>
+    <p style="font-size:14px;margin:0"><strong>注意：</strong>DPS 只是一个维度。生存能力、控制能力、团队增益都要纳入综合评估。可以设计一个"战斗力综合公式"：<code>综合评分 = DPS × 0.4 + 生存 × 0.3 + 功能 × 0.3</code></p>
+  </div>
+
+  <div class="card accent-border">
+    <h4 style="margin-top:0">石头-剪刀-布 平衡</h4>
+    <p style="font-size:14px">让每种策略都有克制关系，确保没有"最优解"：</p>
+    <div class="flow-diagram" style="margin:12px 0;background:none;border:none;padding:0">
+      <div class="flow-node success">重甲战士<br><small>克制: 刺客</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node purple">法师<br><small>克制: 战士</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node danger">刺客<br><small>克制: 法师</small></div>
+      <div class="flow-arrow">↻</div>
+    </div>
+    <p style="font-size:14px;margin:0">克制关系不需要是绝对的——70:30 的胜率差就足够创造有意义的策略选择。</p>
+  </div>
+</section>
+
+<!-- ============================================
+     05 · 难度设计与平衡
+     ============================================ -->
+<section class="section" id="difficulty">
+  <div class="section-label">Part 05</div>
+  <h2>难度设计与平衡</h2>
+
+  <h3>难度曲线理论</h3>
+  <p>理想的难度曲线不是线性增长，而是<strong>锯齿形波浪</strong>——持续上升的整体趋势中穿插有规律的放松区间。</p>
+
+  <div class="card accent-border" style="padding:24px">
+    <div style="font-size:14px;font-weight:700;color:var(--text-heading);margin-bottom:16px;text-align:center">理想难度曲线</div>
+    <div style="display:flex;align-items:flex-end;height:180px;gap:3px;padding:0 16px;border-bottom:2px solid var(--border);border-left:2px solid var(--border);position:relative">
+      <!-- Y axis label -->
+      <div style="position:absolute;left:-60px;top:50%;transform:rotate(-90deg) translateX(50%);font-size:11px;color:var(--text-muted);white-space:nowrap">难度 →</div>
+      <!-- X axis label -->
+      <div style="position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--text-muted)">游戏进度 →</div>
+      <!-- Bars representing difficulty -->
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:15%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:20%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:28%"></div>
+      <div style="flex:1;background:rgba(255,212,59,0.2);border-radius:3px 3px 0 0;height:45%;border:1px solid rgba(255,212,59,0.3);border-bottom:0"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:25%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:35%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:42%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:50%"></div>
+      <div style="flex:1;background:rgba(255,212,59,0.2);border-radius:3px 3px 0 0;height:70%;border:1px solid rgba(255,212,59,0.3);border-bottom:0"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:40%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:50%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:58%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:65%"></div>
+      <div style="flex:1;background:var(--accent-low);border-radius:3px 3px 0 0;height:72%"></div>
+      <div style="flex:1;background:rgba(255,107,107,0.2);border-radius:3px 3px 0 0;height:95%;border:1px solid rgba(255,107,107,0.3);border-bottom:0"></div>
+    </div>
+    <div style="display:flex;justify-content:space-around;margin-top:12px;font-size:11px;color:var(--text-muted)">
+      <span>教学区</span>
+      <span style="color:var(--warning)">中Boss</span>
+      <span>稳步提升</span>
+      <span style="color:var(--warning)">中Boss</span>
+      <span>核心挑战</span>
+      <span style="color:var(--danger)">最终Boss</span>
+    </div>
+  </div>
+
+  <h4>心流理论（Flow Theory）</h4>
+  <p>心理学家 Csikszentmihalyi 提出的心流理论是难度设计的理论基础：</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div style="text-align:center;margin-bottom:12px">
+        <span style="font-size:32px;color:var(--danger)">😰</span>
+      </div>
+      <div class="card-title" style="text-align:center;margin-bottom:8px">焦虑区</div>
+      <p style="font-size:14px;margin:0;text-align:center">挑战远超能力<br>玩家感到挫败、放弃</p>
+    </div>
+    <div class="card" style="border-color:rgba(72,219,251,0.3)">
+      <div style="text-align:center;margin-bottom:12px">
+        <span style="font-size:32px;color:var(--accent)">🎯</span>
+      </div>
+      <div class="card-title" style="text-align:center;margin-bottom:8px;color:var(--accent)">心流区</div>
+      <p style="font-size:14px;margin:0;text-align:center">挑战与能力匹配<br>玩家全神贯注、享受</p>
+    </div>
+    <div class="card">
+      <div style="text-align:center;margin-bottom:12px">
+        <span style="font-size:32px;color:var(--warning)">😴</span>
+      </div>
+      <div class="card-title" style="text-align:center;margin-bottom:8px">无聊区</div>
+      <p style="font-size:14px;margin:0;text-align:center">能力远超挑战<br>玩家感到无趣、离开</p>
+    </div>
+  </div>
+
+  <p>设计目标：让难度始终在心流区的边缘波动。稍微高于玩家能力以保持紧张，但不超过能力太多以避免挫败。</p>
+
+  <h3>动态难度调整（DDA）</h3>
+  <p>DDA 是游戏根据玩家表现自动调整难度的机制。做得好，玩家浑然不觉；做得差，玩家觉得被"操纵"。</p>
+
+  <div class="card">
+    <h4 style="margin-top:0">DDA 实现策略</h4>
+    <pre><code>class DynamicDifficulty:
+    def __init__(self):
+        self.performance_window = []  # 最近 N 次战斗表现
+        self.difficulty_level = 1.0   # 1.0 = 标准
+
+    def record_combat(self, result):
+        """记录战斗表现"""
+        score = 0
+        score += result.health_remaining / result.max_health  # 剩余血量比
+        score += 1.0 if result.victory else 0
+        score -= result.deaths * 0.3
+        score += result.combo_accuracy * 0.2
+
+        self.performance_window.append(score)
+        if len(self.performance_window) > 10:
+            self.performance_window.pop(0)
+
+        self.adjust()
+
+    def adjust(self):
+        """根据近期表现调整难度"""
+        avg = mean(self.performance_window)
+
+        if avg > 0.8:   # 玩家碾压
+            self.difficulty_level += 0.05
+        elif avg < 0.3:  # 玩家苦战
+            self.difficulty_level -= 0.08  # 降低更快（减少挫败）
+        # 否则保持不变
+
+        # 限制范围
+        self.difficulty_level = clamp(self.difficulty_level, 0.5, 2.0)
+
+    def apply(self, enemy):
+        """应用到敌人属性"""
+        enemy.hp *= self.difficulty_level
+        enemy.damage *= (0.7 + 0.3 * self.difficulty_level)
+        enemy.ai_aggression *= self.difficulty_level</code></pre>
+  </div>
+
+  <div class="info-box warn">
+    <div class="info-box-label">DDA 的暗面</div>
+    <p style="margin:0"><strong>《生化危机4》</strong>的 DDA 是成功典范——玩家不知不觉中获得更多弹药和回血道具。<strong>《最后的生还者 第二章》</strong>也在玩家反复死亡后悄悄降低敌人攻击性。但<strong>《孢子》</strong>的 DDA 被玩家发现后遭到强烈反感——"你在作弊！"。关键原则：<strong>DDA 必须不可见</strong>，或者让玩家自己选择。</p>
+  </div>
+
+  <h3>数值平衡方法</h3>
+
+  <h4>TTK（Time To Kill）基准</h4>
+  <p>TTK 是衡量战斗节奏最重要的指标：</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>TTK</th><th>感受</th><th>适合类型</th><th>示例</th></tr>
+      <tr><td>&lt; 1 秒</td><td>瞬杀、极度紧张</td><td>战术射击</td><td>CS:GO、彩虹六号</td></tr>
+      <tr><td>1-3 秒</td><td>快速、刺激</td><td>FPS</td><td>使命召唤、Apex</td></tr>
+      <tr><td>3-10 秒</td><td>有对抗空间</td><td>MOBA、ARPG</td><td>英雄联盟、暗黑</td></tr>
+      <tr><td>10-30 秒</td><td>策略博弈</td><td>MMO</td><td>魔兽世界</td></tr>
+      <tr><td>&gt; 30 秒</td><td>消耗战</td><td>Boss战</td><td>魂系列Boss</td></tr>
+    </table>
+  </div>
+
+  <h3>玩家能力成长曲线</h3>
+  <p>玩家的"真实能力"由两部分组成：<strong>角色数值能力</strong>（装备/等级）和<strong>玩家操作能力</strong>（技巧/知识）。</p>
+
+  <div class="formula-block">
+    <div class="formula">有效战力 = 数值能力 × 操作系数</div>
+    <div class="formula-desc">操作系数范围通常 0.3（新手）~ 1.5（高手）<br>好的难度设计让"平均水平"的操作系数 = 1.0</div>
+  </div>
+
+  <h3>难度设置的设计</h3>
+  <p>难度选择不只是"简单/普通/困难"三个按钮。现代游戏的难度设计越来越精细。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">经典模式</div>
+      <p style="font-size:14px;margin:0">简单/普通/困难/噩梦。简单粗暴但有效。问题是玩家开局选"普通"，后面嫌太简单或太难。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">细粒度调节</div>
+      <p style="font-size:14px;margin:0">《Celeste》可以单独调节游戏速度、无限冲刺、无敌等。《最后的生还者2》有 60+ 个可单独调节的辅助选项。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">叙事模式</div>
+      <p style="font-size:14px;margin:0">几乎不可能失败，让不擅长游戏的玩家也能体验故事。如《底特律：成为人类》。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">无难度选择</div>
+      <p style="font-size:14px;margin:0">宫崎英高的选择——"难度就是设计的一部分"。通过灵活的 build 和求助系统间接调难度。</p>
+    </div>
+  </div>
+
+  <h3>橡皮筋效应（Rubber Banding）</h3>
+  <p>橡皮筋效应是负反馈循环的一种特定表现：<strong>落后者获得额外助力，领先者受到额外阻力</strong>。</p>
+
+  <div class="card accent-border">
+    <h4 style="margin-top:0">橡皮筋设计策略</h4>
+    <ul style="font-size:14px">
+      <li><strong>赛车游戏</strong>：AI 车手在落后时跑得更快（《马里奥赛车》）或获得更好道具</li>
+      <li><strong>体育游戏</strong>：落后队伍的射门准度微调提高（《FIFA》系列的争议"脚本"）</li>
+      <li><strong>策略游戏</strong>：弱势方获得额外资源或科技加速（《文明》的追赶机制）</li>
+      <li><strong>FPS</strong>：落后队伍重生时间缩短或获得更多弹药</li>
+    </ul>
+    <p style="font-size:14px;margin:0"><strong>关键：</strong>橡皮筋效应必须有度。太强会让领先毫无意义（"我为什么要努力？"），太弱则起不到保持悬念的作用。最佳设计是让橡皮筋<strong>给落后者机会但不保证翻盘</strong>。</p>
+  </div>
+</section>
+
+<!-- ============================================
+     06 · 关卡设计
+     ============================================ -->
+<section class="section" id="level-design">
+  <div class="section-label">Part 06</div>
+  <h2>关卡设计</h2>
+
+  <h3>关卡设计原则</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🎯</div>
+        <div class="card-title">目标清晰</div>
+      </div>
+      <p style="font-size:14px;margin:0">玩家在任何时刻都应该知道"我要去哪"和"我要做什么"。可以通过视觉引导（灯光、色彩）、空间引导（道路方向）、叙事引导（NPC提示）实现。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🗺</div>
+        <div class="card-title">可读性（Readability）</div>
+      </div>
+      <p style="font-size:14px;margin:0">玩家需要快速理解空间结构。可交互物体有统一视觉标识，危险区域有明确警告，安全区域让人放松。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🔄</div>
+        <div class="card-title">循环与捷径</div>
+      </div>
+      <p style="font-size:14px;margin:0">魂系列的精髓——探索后解锁回到起点的捷径，形成"环形"关卡结构。玩家的探索努力获得物质回报（更短的路径）。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🎭</div>
+        <div class="card-title">意外与奖励</div>
+      </div>
+      <p style="font-size:14px;margin:0">偏离主路径的探索应该有奖励。隐藏区域、秘密通道、彩蛋让好奇心得到回报，训练玩家主动探索。</p>
+    </div>
+  </div>
+
+  <h3>引导设计（无教程的教学）</h3>
+  <p>最好的教程是<strong>没有教程</strong>。通过关卡设计本身教会玩家，比弹出文字框高效百倍。</p>
+
+  <h4>任天堂的「4步教学法」</h4>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="t-label">Step 1 · 安全引入</div>
+      <p style="font-size:14px;margin:0">在安全环境中首次展示机制。例如：一个不会掉落的平台上放一个可推动的箱子，旁边有一个刚好需要箱子才能到达的高台。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="t-label">Step 2 · 简单应用</div>
+      <p style="font-size:14px;margin:0">添加微小风险要求玩家主动使用机制。例如：推箱子跨过一个小坑到达对面。失败代价很低（重来很快）。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="t-label">Step 3 · 复杂变化</div>
+      <p style="font-size:14px;margin:0">加入时间压力或组合元素。例如：需要在计时平台消失前推箱子到位，或者需要推两个箱子到不同位置。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="t-label">Step 4 · 终极考验</div>
+      <p style="font-size:14px;margin:0">将该机制与其他已学机制组合，创造终极挑战。例如：在敌人攻击下推箱子解谜，同时避开陷阱。</p>
+    </div>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-label">设计心法</div>
+    <p style="margin:0">《超级马里奥》1-1 是关卡引导设计的教科书。前 10 秒内，玩家会自然地学到：移动、跳跃、问号块可以打、蘑菇会移动、吃了蘑菇会变大、管道可以踩、栗子头是敌人。所有这些<strong>没有一行文字说明</strong>。</p>
+  </div>
+
+  <h3>空间节奏（紧张-放松）</h3>
+  <p>好的关卡像一首音乐，有高潮有间奏。持续高强度会让玩家疲惫，持续低强度会让人无聊。</p>
+
+  <div class="card accent-border" style="padding:24px">
+    <div style="font-size:14px;font-weight:700;color:var(--text-heading);margin-bottom:16px;text-align:center">关卡节奏示意</div>
+    <div style="display:flex;align-items:center;gap:4px;overflow-x:auto;padding-bottom:8px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px">
+        <div style="width:48px;height:24px;background:rgba(81,207,102,0.2);border-radius:4px;border:1px solid rgba(81,207,102,0.3)"></div>
+        <span style="font-size:10px;color:var(--text-muted)">安全区</span>
+      </div>
+      <div style="color:var(--text-muted)">→</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px">
+        <div style="width:48px;height:36px;background:rgba(72,219,251,0.2);border-radius:4px;border:1px solid rgba(72,219,251,0.3)"></div>
+        <span style="font-size:10px;color:var(--text-muted)">探索</span>
+      </div>
+      <div style="color:var(--text-muted)">→</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px">
+        <div style="width:48px;height:56px;background:rgba(255,146,43,0.2);border-radius:4px;border:1px solid rgba(255,146,43,0.3)"></div>
+        <span style="font-size:10px;color:var(--text-muted)">战斗</span>
+      </div>
+      <div style="color:var(--text-muted)">→</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px">
+        <div style="width:48px;height:32px;background:rgba(81,207,102,0.2);border-radius:4px;border:1px solid rgba(81,207,102,0.3)"></div>
+        <span style="font-size:10px;color:var(--text-muted)">喘息</span>
+      </div>
+      <div style="color:var(--text-muted)">→</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px">
+        <div style="width:48px;height:44px;background:rgba(177,151,252,0.2);border-radius:4px;border:1px solid rgba(177,151,252,0.3)"></div>
+        <span style="font-size:10px;color:var(--text-muted)">解谜</span>
+      </div>
+      <div style="color:var(--text-muted)">→</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px">
+        <div style="width:48px;height:72px;background:rgba(255,146,43,0.25);border-radius:4px;border:1px solid rgba(255,146,43,0.4)"></div>
+        <span style="font-size:10px;color:var(--text-muted)">精英战</span>
+      </div>
+      <div style="color:var(--text-muted)">→</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px">
+        <div style="width:48px;height:28px;background:rgba(81,207,102,0.2);border-radius:4px;border:1px solid rgba(81,207,102,0.3)"></div>
+        <span style="font-size:10px;color:var(--text-muted)">叙事</span>
+      </div>
+      <div style="color:var(--text-muted)">→</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px">
+        <div style="width:48px;height:100px;background:rgba(255,107,107,0.25);border-radius:4px;border:1px solid rgba(255,107,107,0.4)"></div>
+        <span style="font-size:10px;color:var(--danger)">Boss</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>任务/对象布局</h3>
+
+  <h4>敌人布局原则</h4>
+  <ul>
+    <li><strong>视线控制</strong>：让玩家先看到敌人，准备策略，再接触。偷袭应是例外而非常态</li>
+    <li><strong>组合搭配</strong>：远程 + 近战 + 盾兵的组合比 5 个相同敌人更有趣</li>
+    <li><strong>地形利用</strong>：敌人应占据有利地形（高处、掩体后），迫使玩家思考进攻路线</li>
+    <li><strong>渐进展示</strong>：新敌人类型第一次出现时应单独出场，让玩家了解其行为模式</li>
+  </ul>
+
+  <h4>物品布局原则</h4>
+  <ul>
+    <li><strong>危险前补给</strong>：大战前放置回复道具，暗示即将到来的挑战</li>
+    <li><strong>风险-回报</strong>：最好的奖励放在最危险或最隐蔽的地方</li>
+    <li><strong>面包屑引导</strong>：沿正确路径放置小奖励，引导玩家前进方向</li>
+    <li><strong>探索回报</strong>：分支路径末端必须有奖励，否则玩家会觉得浪费时间</li>
+  </ul>
+
+  <h3>2D vs 3D 关卡设计差异</h3>
+
+  <div class="comparison">
+    <div class="side pro">
+      <div class="side-title">2D 关卡特点</div>
+      <ul style="font-size:14px">
+        <li>信息展示更直观（一屏展示全局）</li>
+        <li>空间理解门槛低</li>
+        <li>以"平面构成"为核心</li>
+        <li>依赖重力和平台跳跃</li>
+        <li>迷路风险低</li>
+        <li>开发成本更低</li>
+      </ul>
+    </div>
+    <div class="side con">
+      <div class="side-title" style="color:var(--accent)">3D 关卡特点</div>
+      <ul style="font-size:14px">
+        <li>空间感和沉浸感更强</li>
+        <li>垂直空间利用（多层结构）</li>
+        <li>以"视线引导"为核心</li>
+        <li>相机管理是核心挑战</li>
+        <li>需要更多导航辅助</li>
+        <li>开发成本显著更高</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>关卡设计工作流</h3>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="t-label">Phase 1 · 概念设计</div>
+      <p style="font-size:14px;margin:0">确定关卡的<strong>核心体验目标</strong>（"恐惧感"、"成就感"、"探索的喜悦"）。绘制流程草图，标注关键节拍点。这个阶段用纸笔就够了。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="t-label">Phase 2 · 灰盒（Greybox）</div>
+      <p style="font-size:14px;margin:0">用基础几何体搭建关卡骨架。<strong>不做任何美术</strong>，纯粹测试空间尺度、节奏和游戏性。这是最重要的阶段——大量迭代。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="t-label">Phase 3 · 游戏性验证</div>
+      <p style="font-size:14px;margin:0">在灰盒上放入敌人、道具、触发器。反复测试难度和节奏。请团队成员或测试者试玩，观察他们的行为。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="t-label">Phase 4 · 美术处理</div>
+      <p style="font-size:14px;margin:0">替换灰盒为正式资产。添加灯光、粒子、环境叙事细节。<strong>美术不应改变已验证的游戏性</strong>。</p>
+    </div>
+    <div class="timeline-item">
+      <div class="t-label">Phase 5 · 打磨（Polish）</div>
+      <p style="font-size:14px;margin:0">音效、视觉反馈、过场动画、性能优化。处理边界情况和可能的序列破坏（sequence break）。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     07 · 程序化生成
+     ============================================ -->
+<section class="section" id="procgen">
+  <div class="section-label">Part 07</div>
+  <h2>程序化生成</h2>
+
+  <h3>噪声算法</h3>
+  <p>噪声算法是程序化生成的数学基础，用于创造自然、有机的随机内容。</p>
+
+  <h4>Perlin 噪声</h4>
+  <p>Ken Perlin 于 1983 年发明的梯度噪声算法，广泛用于地形生成、纹理生成、云雾效果。</p>
+
+  <pre><code>// Perlin 噪声核心思想（简化）
+// 1. 在网格每个整数点放置随机梯度向量
+// 2. 对于任意点 (x, y)，找到其所在网格的四个角点
+// 3. 计算点到四个角点的距离向量与梯度向量的点积
+// 4. 用平滑插值函数（通常是 6t^5 - 15t^4 + 10t^3）混合
+
+function perlin2D(x, y):
+    // 获取网格坐标
+    xi = floor(x), yi = floor(y)
+    // 获取局部坐标 (0-1)
+    xf = x - xi, yf = y - yi
+
+    // 获取四个角的梯度点积
+    n00 = dot(gradient[xi][yi],     (xf,   yf))
+    n10 = dot(gradient[xi+1][yi],   (xf-1, yf))
+    n01 = dot(gradient[xi][yi+1],   (xf,   yf-1))
+    n11 = dot(gradient[xi+1][yi+1], (xf-1, yf-1))
+
+    // 平滑插值
+    u = smoothstep(xf)
+    v = smoothstep(yf)
+    return lerp(lerp(n00, n10, u), lerp(n01, n11, u), v)</code></pre>
+
+  <h4>多octave噪声（分形噪声）</h4>
+  <p>单层噪声过于平滑。叠加多层不同频率和振幅的噪声创造更自然的效果：</p>
+
+  <div class="formula-block">
+    <div class="formula">fbm(p) = Σ<sub>i=0..n</sub> amplitude<sup>i</sup> × noise(frequency<sup>i</sup> × p)</div>
+    <div class="formula-desc">常用参数：amplitude = 0.5（每层振幅减半）, frequency = 2.0（每层频率翻倍）</div>
+  </div>
+
+  <pre><code>// 分形布朗运动（FBM）
+function fbm(x, y, octaves=6):
+    value = 0
+    amplitude = 1.0
+    frequency = 1.0
+    total_amplitude = 0
+
+    for i in range(octaves):
+        value += amplitude * perlin2D(x * frequency, y * frequency)
+        total_amplitude += amplitude
+        amplitude *= 0.5     // 每层振幅减半（persistence）
+        frequency *= 2.0     // 每层频率翻倍（lacunarity）
+
+    return value / total_amplitude  // 归一化到 [-1, 1]
+
+// 地形生成应用
+for x, y in map:
+    height = fbm(x * 0.01, y * 0.01)
+    if height < -0.2:   tile = DEEP_WATER
+    elif height < 0.0:  tile = SHALLOW_WATER
+    elif height < 0.3:  tile = GRASS
+    elif height < 0.6:  tile = HILL
+    else:               tile = MOUNTAIN</code></pre>
+
+  <h4>Simplex 噪声</h4>
+  <p>Perlin 于 2001 年改进的算法，在高维度下性能更好，且没有 Perlin 噪声在对角线方向的视觉瑕疵。核心改进：使用单纯形（三角形/四面体）替代正方形/立方体网格。</p>
+
+  <h3>波函数坍缩（WFC）</h3>
+  <p>WFC 是近年最受关注的程序化生成算法之一，灵感来自量子力学。核心思想：<strong>从所有可能性中，通过约束传播逐步确定每个位置的内容</strong>。</p>
+
+  <div class="flow-diagram">
+    <div class="flow-node highlight">初始化<br><small>每格可以是任何 tile</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node purple">选择最低熵格<br><small>可能性最少的格子</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node orange">坍缩<br><small>随机选择一个 tile</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node success">传播约束<br><small>更新邻居的可能性</small></div>
+    <div class="flow-arrow">↻</div>
+  </div>
+
+  <pre><code>// WFC 核心算法（简化）
+class WFC:
+    def __init__(self, width, height, tiles, rules):
+        self.grid = [[set(tiles) for _ in range(width)]
+                     for _ in range(height)]  # 每格初始为所有可能
+        self.rules = rules  # {tile: {方向: [可相邻tiles]}}
+
+    def solve(self):
+        while not self.is_collapsed():
+            # 1. 找到熵最低的格子（可能性最少）
+            x, y = self.find_min_entropy()
+
+            # 2. 坍缩：随机选一个可能的 tile
+            tile = random.choice(list(self.grid[y][x]))
+            self.grid[y][x] = {tile}
+
+            # 3. 传播约束
+            self.propagate(x, y)
+
+    def propagate(self, start_x, start_y):
+        """约束传播：移除不满足邻接规则的可能性"""
+        stack = [(start_x, start_y)]
+        while stack:
+            x, y = stack.pop()
+            for dx, dy, direction in neighbors:
+                nx, ny = x + dx, y + dy
+                if not in_bounds(nx, ny): continue
+
+                # 计算该邻居位置还允许哪些 tile
+                allowed = set()
+                for tile in self.grid[y][x]:
+                    allowed |= self.rules[tile][direction]
+
+                # 移除不被允许的可能性
+                before = len(self.grid[ny][nx])
+                self.grid[ny][nx] &= allowed
+
+                if len(self.grid[ny][nx]) < before:
+                    stack.append((nx, ny))  # 继续传播</code></pre>
+
+  <p>WFC 的优势在于它<strong>保证局部一致性</strong>——每个 tile 和它的邻居都满足预定义的规则。这使得生成的结果在视觉和逻辑上都是合理的。</p>
+
+  <h3>BSP 地牢生成</h3>
+  <p>Binary Space Partitioning（BSP）是 Roguelike 地牢生成的经典算法。</p>
+
+  <pre><code>// BSP 地牢生成
+function generateDungeon(width, height, minRoomSize):
+    // 1. 递归分割空间
+    root = BSPNode(0, 0, width, height)
+    split(root, minRoomSize)
+
+    // 2. 在叶子节点生成房间
+    for leaf in root.getLeaves():
+        leaf.room = randomRoom(
+            x = leaf.x + rand(1, leaf.w/4),
+            y = leaf.y + rand(1, leaf.h/4),
+            w = rand(minRoomSize, leaf.w - 2),
+            h = rand(minRoomSize, leaf.h - 2)
+        )
+
+    // 3. 生成走廊连接相邻房间
+    connectRooms(root)
+
+function split(node, minSize):
+    if node.w < minSize*2 and node.h < minSize*2:
+        return  // 太小了，停止分割
+
+    // 选择分割方向（较长的轴）
+    if node.w > node.h:
+        splitX = rand(node.x + minSize, node.x + node.w - minSize)
+        node.left  = BSPNode(node.x, node.y, splitX - node.x, node.h)
+        node.right = BSPNode(splitX, node.y, node.x + node.w - splitX, node.h)
+    else:
+        splitY = rand(node.y + minSize, node.y + node.h - minSize)
+        node.left  = BSPNode(node.x, node.y, node.w, splitY - node.y)
+        node.right = BSPNode(node.x, splitY, node.w, node.y + node.h - splitY)
+
+    split(node.left, minSize)
+    split(node.right, minSize)</code></pre>
+
+  <div class="card accent-border" style="padding:24px">
+    <div style="font-size:14px;font-weight:700;color:var(--text-heading);margin-bottom:16px;text-align:center">BSP 地牢生成示意</div>
+    <div class="dungeon-grid" style="grid-template-columns:repeat(20,20px)" id="dungeon-vis"></div>
+    <div style="display:flex;gap:16px;justify-content:center;margin-top:16px;font-size:12px;flex-wrap:wrap">
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(120,120,160,0.15);vertical-align:middle;margin-right:4px"></span>墙壁</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(72,219,251,0.15);vertical-align:middle;margin-right:4px"></span>房间</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(72,219,251,0.08);vertical-align:middle;margin-right:4px"></span>走廊</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(81,207,102,0.4);vertical-align:middle;margin-right:4px"></span>入口</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(255,107,107,0.4);vertical-align:middle;margin-right:4px"></span>出口</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(255,212,59,0.4);vertical-align:middle;margin-right:4px"></span>宝箱</span>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <button onclick="generateDungeonVis()" style="background:var(--accent-low);border:1px solid rgba(72,219,251,0.3);color:var(--accent);padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">重新生成</button>
+    </div>
+  </div>
+
+  <h3>程序化 vs 手工设计的权衡</h3>
+
+  <div class="comparison">
+    <div class="side pro">
+      <div class="side-title">程序化生成 优势</div>
+      <ul style="font-size:14px">
+        <li>无限可重玩性</li>
+        <li>开发效率高（一次编写算法）</li>
+        <li>海量内容（不需要逐个手工制作）</li>
+        <li>适合 Roguelike/沙盒</li>
+        <li>每次体验独特</li>
+      </ul>
+    </div>
+    <div class="side con">
+      <div class="side-title">程序化生成 劣势</div>
+      <ul style="font-size:14px">
+        <li>缺乏手工打磨的精致感</li>
+        <li>难以控制叙事节奏</li>
+        <li>可能生成不合理内容</li>
+        <li>调试困难（问题难以复现）</li>
+        <li>缺乏设计者意图的"惊喜"</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-label">最佳实践</div>
+    <p style="margin:0">最好的方案通常是<strong>混合方法</strong>：用程序化生成创建基础结构，再用手工设计的模块（预制件/模板）填充关键位置。《Dead Cells》用手工设计的房间模块 + 程序化的模块排列。《Spelunky》用程序化的关卡结构 + 手工设计的房间模板。这样既有随机性带来的新鲜感，又有设计者精心安排的体验。</p>
+  </div>
+
+  <h3>Roguelike 生成策略</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">层级递进</div>
+      <p style="font-size:14px;margin:0">每层使用不同的生成规则。浅层房间大、敌少；深层房间小、敌密、陷阱多。逐层增加新的地形元素和敌人类型。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">关键路径保证</div>
+      <p style="font-size:14px;margin:0">先生成从入口到出口的<strong>关键路径</strong>，确保可通关性。然后在路径外添加分支、死胡同和秘密区域作为探索奖励。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">主题约束</div>
+      <p style="font-size:14px;margin:0">地下城 → 石头墙+火把+骷髅；森林 → 树木+蘑菇+精灵。主题不仅是美术，还约束敌人类型和物品分布。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">种子系统</div>
+      <p style="font-size:14px;margin:0">允许玩家分享种子（seed）来重现相同地图。竞速和挑战模式依赖固定种子确保公平性。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     08 · 数值策划基础
+     ============================================ -->
+<section class="section" id="numerical">
+  <div class="section-label">Part 08</div>
+  <h2>数值策划基础</h2>
+
+  <h3>数值设计的核心概念</h3>
+  <p>数值策划（Game Balancing / Economy Design）是将设计意图转化为具体数字的艺术与科学。核心原则：<strong>数值服务于体验，不是体验服务于数值</strong>。</p>
+
+  <h4>数值设计三要素</h4>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="font-size:16px">📐</div>
+        <div class="card-title">量级（Scale）</div>
+      </div>
+      <p style="font-size:14px;margin:0">数值的绝对大小。100 点伤害 vs 10000 点伤害本质上可以相同，但<strong>大数字给人更强的正反馈</strong>。许多手游故意使用大数字（百万伤害）来营造爽感。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="font-size:16px">📊</div>
+        <div class="card-title">比率（Ratio）</div>
+      </div>
+      <p style="font-size:14px;margin:0">数值之间的相对关系。攻击力是防御力的 2 倍，升级后变成 2.5 倍——这个变化比绝对值更重要。平衡的本质是控制<strong>比率</strong>。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="font-size:16px">📈</div>
+        <div class="card-title">增长（Growth）</div>
+      </div>
+      <p style="font-size:14px;margin:0">数值随时间/等级的变化速率。线性增长让人感觉"稳定"，指数增长制造"爆发感"，对数增长产生"天花板感"。</p>
+    </div>
+  </div>
+
+  <h3>常用数学模型</h3>
+
+  <h4>线性模型</h4>
+  <div class="formula-block">
+    <div class="formula">f(x) = a × x + b</div>
+    <div class="formula-desc">等差增长。每级固定提升同样的值。简单可预测。</div>
+  </div>
+  <p>适用场景：基础属性成长（每级 +5 力量）、固定奖励递增。</p>
+  <p>问题：后期增幅感知下降——从 100 到 105 的 5% 提升远不如从 10 到 15 的 50% 提升有感觉。</p>
+
+  <h4>指数模型</h4>
+  <div class="formula-block">
+    <div class="formula">f(x) = a × b<sup>x</sup></div>
+    <div class="formula-desc">等比增长。每级按比例提升。前期平缓后期爆炸。</div>
+  </div>
+  <p>适用场景：升级所需经验值（越来越多）、装备战力（越来越强）。</p>
+  <p>问题：数值膨胀（Power Creep）——后期数字大到失去意义。需要定期进行"数值压缩"（stat squish）。</p>
+
+  <h4>对数模型</h4>
+  <div class="formula-block">
+    <div class="formula">f(x) = a × log(b × x + 1)</div>
+    <div class="formula-desc">前期快速增长，后期趋于平缓。天然的收益递减。</div>
+  </div>
+  <p>适用场景：暴击率（堆到一定值后几乎不增长）、移动速度上限。</p>
+
+  <h4>S 曲线（Logistic）</h4>
+  <div class="formula-block">
+    <div class="formula">f(x) = L / (1 + e<sup>-k(x - x₀)</sup>)</div>
+    <div class="formula-desc">L = 上限, k = 增长速率, x₀ = 中点。前期慢、中期快、后期趋平。</div>
+  </div>
+  <p>适用场景：角色能力上限、命中率计算、难度曲线。</p>
+
+  <div class="calc-widget">
+    <h4 style="margin-top:0;color:var(--text-heading)">增长模型对比</h4>
+    <label>基础值 a: <span id="model-a-val">10</span></label>
+    <input type="range" id="model-a" min="1" max="50" value="10" step="1" oninput="updateModelCalc()">
+    <label>增长因子 b: <span id="model-b-val">1.5</span></label>
+    <input type="range" id="model-b" min="10" max="30" value="15" step="1" oninput="updateModelCalc()">
+    <div class="result-grid" id="model-results"></div>
+  </div>
+
+  <h3>Excel/表格驱动的策划方法</h3>
+  <p>实际工作中，数值策划的主要工具是<strong>电子表格</strong>。一张设计良好的表格可以：</p>
+
+  <ul>
+    <li>自动计算衍生数值（从基础属性推导 DPS、有效生命值等）</li>
+    <li>批量生成怪物/装备数值</li>
+    <li>通过图表可视化增长曲线</li>
+    <li>一键调整全局参数（改一个系数，全表自动更新）</li>
+    <li>导出为游戏可读取的格式（JSON/CSV）</li>
+  </ul>
+
+  <div class="card accent-border">
+    <h4 style="margin-top:0">数值表设计示例：怪物属性表</h4>
+    <div class="table-wrap" style="margin:12px 0 0">
+      <table>
+        <tr>
+          <th>怪物ID</th>
+          <th>等级</th>
+          <th>HP</th>
+          <th>ATK</th>
+          <th>DEF</th>
+          <th>EXP</th>
+          <th>金币</th>
+          <th>DPS</th>
+          <th>有效HP</th>
+        </tr>
+        <tr>
+          <td><code>slime_01</code></td><td>1</td><td>50</td><td>8</td><td>2</td><td>10</td><td>5</td>
+          <td style="color:var(--accent)">6.4</td>
+          <td style="color:var(--purple)">56</td>
+        </tr>
+        <tr>
+          <td><code>goblin_01</code></td><td>3</td><td>120</td><td>15</td><td>5</td><td>30</td><td>12</td>
+          <td style="color:var(--accent)">12.0</td>
+          <td style="color:var(--purple)">144</td>
+        </tr>
+        <tr>
+          <td><code>orc_01</code></td><td>5</td><td>250</td><td>22</td><td>10</td><td>60</td><td>25</td>
+          <td style="color:var(--accent)">17.6</td>
+          <td style="color:var(--purple)">325</td>
+        </tr>
+        <tr>
+          <td><code>dragon_01</code></td><td>10</td><td>800</td><td>45</td><td>25</td><td>200</td><td>100</td>
+          <td style="color:var(--accent)">36.0</td>
+          <td style="color:var(--purple)">1200</td>
+        </tr>
+      </table>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin:12px 0 0">
+      DPS 和有效 HP 是自动计算的衍生值。DPS = ATK × 0.8（假设攻击间隔1.25秒），有效HP = HP × (1 + DEF/100)。
+    </p>
+  </div>
+
+  <h4>表格公式设计技巧</h4>
+  <pre><code>// 怪物属性公式示例
+HP(level)  = base_hp × (1 + 0.15 × level)^1.8
+ATK(level) = base_atk × (1 + 0.12 × level)^1.5
+DEF(level) = base_def × (1 + 0.10 × level)^1.3
+EXP(level) = base_exp × level^1.6
+GOLD(level) = base_gold × level^1.2
+
+// "验算"公式
+// 一个同等级玩家击杀此怪物需要多少秒？
+TTK = monster.effective_hp / player.dps
+// 理想值：普通怪 5-15 秒，精英 30-60 秒，Boss 3-10 分钟
+
+// 每小时收益
+gold_per_hour = (GOLD / TTK) × 3600
+exp_per_hour = (EXP / TTK) × 3600
+// 这两个值应该在不同等级段保持相对稳定</code></pre>
+
+  <h3>数值验证与平衡测试</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">边界测试</div>
+      <p style="font-size:14px;margin:0">测试最低和最高属性值。全力量角色 vs 全敏捷角色的差异是否在可接受范围？是否存在"无敌"或"无法通关"的组合？</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">蒙特卡洛模拟</div>
+      <p style="font-size:14px;margin:0">运行 10000 次模拟战斗，统计胜率、平均 TTK、伤害分布。如果战士 vs 法师胜率是 90%，说明严重不平衡。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">敏感度分析</div>
+      <p style="font-size:14px;margin:0">改变单个参数 ±10%，观察结果变化多大。如果暴击率从 30% 变为 33% 导致 DPS 提升 25%，说明这个参数过于敏感。</p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">玩家行为模拟</div>
+      <p style="font-size:14px;margin:0">模拟不同类型玩家（速推/肝帝/休闲/氪金），检查每类玩家的游戏体验是否都在可接受范围内。</p>
+    </div>
+  </div>
+
+  <h3>经济模拟</h3>
+  <p>经济模拟是验证整个游戏经济健康度的终极手段：</p>
+
+  <pre><code>// 经济健康度检查指标
+class EconomyHealthCheck:
+    def check(self, sim_data):
+        results = {}
+
+        # 1. 基尼系数（贫富差距）
+        # 0 = 完全平等, 1 = 一人独占
+        # 健康范围: 0.3 - 0.5
+        results['gini'] = self.calc_gini(sim_data.player_wealth)
+
+        # 2. 物价稳定性
+        # CPI 涨幅应 < 5% / 月
+        results['cpi_change'] = self.calc_cpi_change(sim_data.prices)
+
+        # 3. 新玩家购买力
+        # 新玩家一周内应能买到基础装备
+        results['newbie_affordability'] = (
+            sim_data.avg_weekly_income_new /
+            sim_data.basic_gear_price
+        )
+
+        # 4. 货币流速
+        # 每日交易总量 / 货币总存量
+        # 健康范围: 0.05 - 0.15
+        results['velocity'] = (
+            sim_data.daily_transaction_volume /
+            sim_data.total_money_supply
+        )
+
+        # 5. 沉淀率
+        # 被"闲置"的货币占比，越高说明缺乏消费动力
+        results['idle_ratio'] = (
+            sim_data.idle_money /
+            sim_data.total_money_supply
+        )
+
+        return results</code></pre>
+</section>
+
+<!-- ============================================
+     09 · 实践：设计完整游戏系统
+     ============================================ -->
+<section class="section" id="practice">
+  <div class="section-label">Part 09</div>
+  <h2>实践：设计一个完整游戏系统</h2>
+
+  <p>把前面学到的所有知识综合起来，从零设计一个<strong>中世纪奇幻 RPG 的战斗系统</strong>。</p>
+
+  <h3>Step 1：确定核心体验目标</h3>
+  <div class="card accent-border">
+    <p style="font-size:14px;margin:0">
+      <strong>目标体验：</strong>策略性的回合制战斗，强调队伍搭配和技能组合。玩家需要根据敌人弱点调整策略，而不是无脑平推。<br><br>
+      <strong>核心动词：</strong>选择（技能）、搭配（队伍）、适应（策略）<br><br>
+      <strong>参考作品：</strong>早期 Final Fantasy + 女神异闻录 5 的弱点系统
+    </p>
+  </div>
+
+  <h3>Step 2：属性系统设计</h3>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>属性</th><th>缩写</th><th>影响</th><th>基础值范围</th></tr>
+      <tr><td>力量</td><td>STR</td><td>物理攻击力、负重</td><td>5 - 30</td></tr>
+      <tr><td>智慧</td><td>INT</td><td>魔法攻击力、MP 上限</td><td>5 - 30</td></tr>
+      <tr><td>敏捷</td><td>AGI</td><td>行动速度、闪避率、暴击率</td><td>5 - 30</td></tr>
+      <tr><td>体质</td><td>VIT</td><td>HP 上限、物理防御</td><td>5 - 30</td></tr>
+      <tr><td>精神</td><td>SPI</td><td>魔法防御、MP 回复、状态抗性</td><td>5 - 30</td></tr>
+    </table>
+  </div>
+
+  <h4>衍生属性公式</h4>
+  <pre><code>// 一级属性 → 衍生属性
+HP      = VIT × 10 + Level × 5 + 50
+MP      = INT × 5 + SPI × 3 + Level × 3 + 20
+P.ATK   = STR × 2.5 + Level × 1.5    // 物理攻击
+M.ATK   = INT × 2.5 + Level × 1.5    // 魔法攻击
+P.DEF   = VIT × 1.5 + STR × 0.5      // 物理防御
+M.DEF   = SPI × 1.5 + INT × 0.5      // 魔法防御
+SPEED   = AGI × 2 + Level             // 行动值
+CRIT%   = AGI × 0.5 + 5              // 暴击率(%)
+DODGE%  = AGI × 0.3 + 2              // 闪避率(%)</code></pre>
+
+  <h3>Step 3：伤害计算</h3>
+
+  <pre><code>// 伤害计算流程
+function calculateDamage(attacker, defender, skill):
+    // 1. 基础伤害
+    if skill.type == "physical":
+        raw = attacker.P_ATK × skill.power / 100
+        defense = defender.P_DEF
+    else:
+        raw = attacker.M_ATK × skill.power / 100
+        defense = defender.M_DEF
+
+    // 2. 防御减伤（百分比模型）
+    reduction = defense / (defense + 100)
+    base_damage = raw × (1 - reduction)
+
+    // 3. 属性克制
+    element_multi = getElementMultiplier(skill.element, defender.weakness)
+    // 克制: ×2.0  |  抵抗: ×0.5  |  中性: ×1.0  |  吸收: ×-0.5
+
+    // 4. 暴击判定
+    if random() < attacker.CRIT_RATE / 100:
+        crit_multi = 1.5 + (attacker.STR or attacker.INT) × 0.01
+    else:
+        crit_multi = 1.0
+
+    // 5. 随机波动（±10%）
+    variance = 0.9 + random() × 0.2
+
+    // 6. 最终伤害
+    final = floor(base_damage × element_multi × crit_multi × variance)
+    return max(final, 1)  // 最低伤害 1</code></pre>
+
+  <h3>Step 4：属性克制系统</h3>
+
+  <div class="flow-diagram">
+    <div class="flow-node" style="background:rgba(255,80,80,0.15);border-color:rgba(255,80,80,0.4);color:#ff5050">火</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node" style="background:rgba(80,200,80,0.15);border-color:rgba(80,200,80,0.4);color:#50c850">木</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node" style="background:rgba(80,180,255,0.15);border-color:rgba(80,180,255,0.4);color:#50b4ff">水</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node" style="background:rgba(255,80,80,0.15);border-color:rgba(255,80,80,0.4);color:#ff5050">火</div>
+  </div>
+  <div class="flow-diagram" style="margin-top:-8px">
+    <div class="flow-node" style="background:rgba(255,255,100,0.12);border-color:rgba(255,255,100,0.3);color:#e0e050">光</div>
+    <div class="flow-arrow">⇄</div>
+    <div class="flow-node" style="background:rgba(160,80,200,0.15);border-color:rgba(160,80,200,0.4);color:#a050c8">暗</div>
+  </div>
+
+  <p>火克木克水克火形成三角循环，光暗互克。这个设计保证：</p>
+  <ul>
+    <li>每种属性都有弱点，没有"最强属性"</li>
+    <li>队伍需要多元素配置来应对不同敌人</li>
+    <li>Boss 战需要根据 Boss 属性调整队伍</li>
+  </ul>
+
+  <h3>Step 5：回合制行动系统</h3>
+  <pre><code>// CTB（Conditional Turn-Based）行动系统
+// 类似 FFX 的系统，速度决定行动频率
+
+class TurnManager:
+    def __init__(self):
+        self.timeline = []  // 行动时间线
+
+    def calculate_turns(self, units):
+        """计算未来 10 个行动的顺序"""
+        for unit in units:
+            # 每个单位按固定间隔插入时间线
+            interval = 1000 / unit.SPEED  // 速度越高间隔越短
+            t = interval
+            while t < max_timeline:
+                self.timeline.append((t, unit))
+                t += interval
+
+        self.timeline.sort(key=lambda x: x[0])
+
+    def apply_skill_delay(self, unit, skill):
+        """技能使用后的延迟"""
+        # 重型技能有更长的恢复时间
+        delay = skill.recovery × (100 / unit.SPEED)
+        unit.next_turn += delay
+        # 这意味着快速角色用重型技能也需要等待
+        # 创造了"速度 vs 威力"的有意义选择</code></pre>
+
+  <h3>Step 6：技能设计示例</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>技能</th><th>类型</th><th>消耗</th><th>倍率</th><th>效果</th><th>恢复</th></tr>
+      <tr>
+        <td>斩击</td><td>物理/无</td><td>0 MP</td><td>100%</td>
+        <td>普通攻击</td><td>低</td>
+      </tr>
+      <tr>
+        <td>火球术</td><td>魔法/火</td><td>15 MP</td><td>180%</td>
+        <td>30% 概率灼烧（3回合 DoT）</td><td>中</td>
+      </tr>
+      <tr>
+        <td>冰冻枪</td><td>魔法/水</td><td>20 MP</td><td>150%</td>
+        <td>40% 概率减速（行动间隔 +30%）</td><td>中</td>
+      </tr>
+      <tr>
+        <td>治愈术</td><td>魔法/光</td><td>25 MP</td><td>-</td>
+        <td>回复目标 INT×3 + 50 HP</td><td>中</td>
+      </tr>
+      <tr>
+        <td>旋风斩</td><td>物理/无</td><td>30 MP</td><td>120%</td>
+        <td>攻击全体敌人</td><td>高</td>
+      </tr>
+      <tr>
+        <td>蓄力</td><td>辅助</td><td>0 MP</td><td>-</td>
+        <td>下次攻击伤害 ×2.5</td><td>低</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>Step 7：验证与平衡</h3>
+  <pre><code>// 平衡验证清单
+验证项目:
+1. 同等级 4 人队伍 vs 同等级普通怪组
+   → 预期: 2-3 回合消灭, 队伍损失 10-20% HP
+
+2. 同等级 4 人队伍 vs 同等级 Boss
+   → 预期: 15-25 回合, 队伍可能减员 1-2 人
+
+3. 纯物理队 vs 纯魔法队
+   → 预期: 各有优劣场景, 总清关时间差异 < 20%
+
+4. 最优构建 vs 最差构建
+   → 预期: 效率差异不超过 2 倍
+
+5. 每个属性的 DPS 贡献
+   → STR/INT: 每点 ≈ +2% 物理/魔法 DPS
+   → AGI: 每点 ≈ +1.5% 总 DPS(通过速度和暴击)
+   → VIT/SPI: 不直接贡献 DPS，但提供生存能力</code></pre>
+
+  <h3>系统文档模板</h3>
+  <div class="card accent-border">
+    <h4 style="margin-top:0">游戏系统设计文档 (GDD) 模板</h4>
+    <pre><code>## 系统名称: [名称]
+
+### 1. 概述
+- 设计目标: 这个系统要创造什么体验？
+- 核心动词: 玩家在这个系统中做什么？
+- 参考作品: 哪些游戏的类似系统可以参考？
+
+### 2. 规则
+- 核心规则: 用最简单的语言描述
+- 公式: 所有数学公式
+- 数据表: 关键数值（可链接到表格）
+- 边界条件: 最大值、最小值、特殊情况
+
+### 3. 与其他系统的关系
+- 输入: 从哪些系统获取数据？
+- 输出: 向哪些系统提供数据？
+- 事件: 触发/监听哪些事件？
+
+### 4. 玩家体验
+- 新手体验: 第一次接触这个系统
+- 进阶体验: 熟悉后的深度玩法
+- 反馈循环: 正/负反馈分析
+
+### 5. UI/UX
+- 需要展示哪些信息？
+- 玩家的操作流程？
+- 信息层级（一屏展示 vs 需要点击展开？）
+
+### 6. 风险与注意事项
+- 潜在的平衡问题
+- 可能的利用/破解（exploit）
+- 性能考虑</code></pre>
+  </div>
+
+  <h3>常见系统设计陷阱</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,0.1)">1</div>
+        <div class="card-title" style="color:var(--danger)">数值膨胀（Power Creep）</div>
+      </div>
+      <p style="font-size:14px;margin:0">为了"新内容必须更强"而持续提高数值上限。最终导致旧内容完全失去意义，新玩家面临巨大的追赶压力。<br><strong>解法：</strong>横向扩展（新的侧重/风格）而不是纵向膨胀（更大的数字）。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,0.1)">2</div>
+        <div class="card-title" style="color:var(--danger)">陷阱选项</div>
+      </div>
+      <p style="font-size:14px;margin:0">提供看起来是选择、实际永远不应该选的选项。浪费玩家的时间和资源，降低信任感。<br><strong>解法：</strong>每个选项都应该有至少一个场景是最优的。如果做不到，就删掉它。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,0.1)">3</div>
+        <div class="card-title" style="color:var(--danger)">过度复杂</div>
+      </div>
+      <p style="font-size:14px;margin:0">设计了 20 种互相影响的状态效果，连策划自己都记不清交互规则。<br><strong>解法：</strong>"如果你无法用一句话向新手解释这个机制，它就太复杂了。"</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,0.1)">4</div>
+        <div class="card-title" style="color:var(--danger)">最优策略固化</div>
+      </div>
+      <p style="font-size:14px;margin:0">存在一个远优于其他策略的"最优解"，所有玩家都使用相同的构建/策略。<br><strong>解法：</strong>石头剪刀布设计、定期平衡更新、元游戏（meta）轮换。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,0.1)">5</div>
+        <div class="card-title" style="color:var(--danger)">乘法陷阱</div>
+      </div>
+      <p style="font-size:14px;margin:0">多个独立系统的 buff 叠乘后产生设计者未预料的极端数值。+50% × +50% × +50% ≈ +237.5%，而不是 +150%。<br><strong>解法：</strong>限制同类 buff 的叠加数量，或使用加法叠加后再应用。</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,0.1)">6</div>
+        <div class="card-title" style="color:var(--danger)">忽视边际效用</div>
+      </div>
+      <p style="font-size:14px;margin:0">从 0% 暴击到 10% 暴击的感知提升远大于从 80% 到 90%。如果暴击率线性叠加，后期暴击装备会感觉"没用"。<br><strong>解法：</strong>用对数或收益递减模型，或者让高暴击率解锁额外效果（超暴击）。</p>
+    </div>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-label">最后的忠告</div>
+    <p style="margin:0">
+      系统设计的最高境界是<strong>"少即是多"</strong>。不要因为可以添加复杂性就添加。每个新系统都有维护成本、平衡成本、认知成本。
+      <br><br>
+      开始时用最简单的规则，让玩家试玩，观察什么有趣什么无聊，然后<strong>只添加解决真实问题的系统</strong>。
+      <br><br>
+      记住任天堂的宫本茂说过：<em>"一个好的点子就是解决了多个问题的点子。"</em>
+    </p>
+  </div>
+</section>
+
+</main>
+
+<!-- ============================================
+     BOTTOM NAVIGATION
+     ============================================ -->
+<nav class="bottom-nav">
+  <a href="04-audio.html">
+    <span class="nav-label">← 上一章</span>
+    <span class="nav-target">音频设计</span>
+  </a>
+  <a href="06-narrative.html" class="next">
+    <span class="nav-label">下一章 →</span>
+    <span class="nav-target">叙事设计</span>
+  </a>
+</nav>
+
+<!-- ============================================
+     FOOTER
+     ============================================ -->
+<footer class="site-footer">
+  游戏开发完全指南 · AI 生成 · 2026
+</footer>
+
+<!-- ============================================
+     SCRIPTS
+     ============================================ -->
+<script>
+// ============================================
+// 升级经验计算器
+// ============================================
+function updateExpCalc() {
+  const base = parseInt(document.getElementById('base-slider').value);
+  const exp = parseInt(document.getElementById('exp-slider').value) / 10;
+  const maxLv = parseInt(document.getElementById('maxlv-slider').value);
+
+  document.getElementById('base-val').textContent = base;
+  document.getElementById('exp-val').textContent = exp.toFixed(1);
+  document.getElementById('maxlv-val').textContent = maxLv;
+
+  const container = document.getElementById('exp-results');
+  const levels = [1, 5, 10, Math.floor(maxLv/4), Math.floor(maxLv/2), maxLv];
+  let html = '';
+
+  levels.forEach(lv => {
+    if (lv > maxLv) return;
+    const expNeeded = Math.floor(base * Math.pow(lv, exp));
+    html += `<div class="result-item">
+      <div class="lbl">Lv.${lv} 所需经验</div>
+      <div class="val">${expNeeded.toLocaleString()}</div>
+    </div>`;
+  });
+
+  // 总经验
+  let total = 0;
+  for (let i = 1; i <= maxLv; i++) {
+    total += Math.floor(base * Math.pow(i, exp));
+  }
+  html += `<div class="result-item">
+    <div class="lbl">满级总经验</div>
+    <div class="val" style="color:var(--purple)">${total.toLocaleString()}</div>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+// ============================================
+// 伤害公式计算器
+// ============================================
+function updateDmgCalc() {
+  const atk = parseInt(document.getElementById('atk-slider').value);
+  const def = parseInt(document.getElementById('def-slider').value);
+  const k = parseInt(document.getElementById('k-slider').value);
+
+  document.getElementById('atk-val').textContent = atk;
+  document.getElementById('def-val').textContent = def;
+  document.getElementById('k-val').textContent = k;
+
+  const container = document.getElementById('dmg-results');
+
+  // 减法模型
+  const dmg1 = Math.max(atk - def, 1);
+  // 百分比减伤
+  const dmg2 = Math.floor(atk * (1 - def / (def + k)));
+  // 乘法模型
+  const dmg3 = Math.floor(atk * atk / (atk + def));
+
+  container.innerHTML = `
+    <div class="result-item">
+      <div class="lbl">减法模型</div>
+      <div class="val">${dmg1}</div>
+    </div>
+    <div class="result-item">
+      <div class="lbl">百分比减伤</div>
+      <div class="val">${dmg2}</div>
+    </div>
+    <div class="result-item">
+      <div class="lbl">乘法模型</div>
+      <div class="val">${dmg3}</div>
+    </div>
+    <div class="result-item">
+      <div class="lbl">减伤率</div>
+      <div class="val" style="color:var(--purple)">${(def / (def + k) * 100).toFixed(1)}%</div>
+    </div>
+  `;
+}
+
+// ============================================
+// 增长模型对比
+// ============================================
+function updateModelCalc() {
+  const a = parseInt(document.getElementById('model-a').value);
+  const b = parseInt(document.getElementById('model-b').value) / 10;
+
+  document.getElementById('model-a-val').textContent = a;
+  document.getElementById('model-b-val').textContent = b.toFixed(1);
+
+  const container = document.getElementById('model-results');
+  const x = 10; // 比较在 x=10 时的值
+
+  const linear = a * x + a;
+  const exponential = Math.floor(a * Math.pow(b, x));
+  const logarithmic = Math.floor(a * Math.log(b * x + 1) * 10);
+  const logistic = Math.floor(a * 100 / (1 + Math.exp(-0.5 * (x - 10))));
+
+  container.innerHTML = `
+    <div class="result-item">
+      <div class="lbl">线性 (x=${x})</div>
+      <div class="val">${linear}</div>
+    </div>
+    <div class="result-item">
+      <div class="lbl">指数 (x=${x})</div>
+      <div class="val">${exponential.toLocaleString()}</div>
+    </div>
+    <div class="result-item">
+      <div class="lbl">对数 (x=${x})</div>
+      <div class="val">${logarithmic}</div>
+    </div>
+    <div class="result-item">
+      <div class="lbl">S 曲线 (x=${x})</div>
+      <div class="val" style="color:var(--purple)">${logistic}</div>
+    </div>
+  `;
+}
+
+// ============================================
+// BSP 地牢生成可视化
+// ============================================
+function generateDungeonVis() {
+  const W = 20, H = 14;
+  const grid = Array.from({length: H}, () => Array(W).fill('wall'));
+
+  // 简化的 BSP
+  const rooms = [];
+
+  function splitAndPlace(x, y, w, h, depth) {
+    if (depth > 3 || w < 5 || h < 5) {
+      // 放置房间
+      const rw = Math.max(3, Math.floor(Math.random() * (w - 2)) + 2);
+      const rh = Math.max(3, Math.floor(Math.random() * (h - 2)) + 2);
+      const rx = x + Math.floor(Math.random() * (w - rw));
+      const ry = y + Math.floor(Math.random() * (h - rh));
+      rooms.push({x: rx, y: ry, w: rw, h: rh});
+
+      for (let dy = 0; dy < rh; dy++) {
+        for (let dx = 0; dx < rw; dx++) {
+          if (ry + dy < H && rx + dx < W) {
+            grid[ry + dy][rx + dx] = 'floor';
+          }
+        }
+      }
+      return;
+    }
+
+    if (w > h) {
+      const split = x + Math.floor(w * 0.3 + Math.random() * w * 0.4);
+      splitAndPlace(x, y, split - x, h, depth + 1);
+      splitAndPlace(split, y, x + w - split, h, depth + 1);
+    } else {
+      const split = y + Math.floor(h * 0.3 + Math.random() * h * 0.4);
+      splitAndPlace(x, y, w, split - y, depth + 1);
+      splitAndPlace(x, split, w, y + h - split, depth + 1);
+    }
+  }
+
+  splitAndPlace(1, 1, W - 2, H - 2, 0);
+
+  // 连接房间
+  for (let i = 0; i < rooms.length - 1; i++) {
+    const a = rooms[i], b = rooms[i + 1];
+    const ax = Math.floor(a.x + a.w / 2);
+    const ay = Math.floor(a.y + a.h / 2);
+    const bx = Math.floor(b.x + b.w / 2);
+    const by = Math.floor(b.y + b.h / 2);
+
+    let cx = ax, cy = ay;
+    while (cx !== bx) {
+      if (cy >= 0 && cy < H && cx >= 0 && cx < W && grid[cy][cx] === 'wall') {
+        grid[cy][cx] = 'corridor';
+      }
+      cx += cx < bx ? 1 : -1;
+    }
+    while (cy !== by) {
+      if (cy >= 0 && cy < H && cx >= 0 && cx < W && grid[cy][cx] === 'wall') {
+        grid[cy][cx] = 'corridor';
+      }
+      cy += cy < by ? 1 : -1;
+    }
+  }
+
+  // 起点和终点
+  if (rooms.length >= 2) {
+    const start = rooms[0];
+    const end = rooms[rooms.length - 1];
+    grid[start.y + 1][start.x + 1] = 'start';
+    grid[end.y + Math.floor(end.h / 2)][end.x + Math.floor(end.w / 2)] = 'end';
+  }
+
+  // 随机宝箱
+  for (let i = 1; i < rooms.length - 1; i++) {
+    if (Math.random() > 0.5) {
+      const r = rooms[i];
+      const tx = r.x + 1 + Math.floor(Math.random() * (r.w - 2));
+      const ty = r.y + 1 + Math.floor(Math.random() * (r.h - 2));
+      if (ty < H && tx < W && grid[ty][tx] === 'floor') {
+        grid[ty][tx] = 'chest';
+      }
+    }
+  }
+
+  // 渲染
+  const container = document.getElementById('dungeon-vis');
+  container.style.gridTemplateColumns = `repeat(${W}, 20px)`;
+  let html = '';
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      html += `<div class="dungeon-cell ${grid[y][x]}"></div>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+// ============================================
+// 初始化
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+  updateExpCalc();
+  updateDmgCalc();
+  updateModelCalc();
+  generateDungeonVis();
+});
+</script>
+
+<script>
+(function() {
+  var saved = localStorage.getItem('gd-theme');
+  var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', theme);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+  btn && btn.addEventListener('click', function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gd-theme', next);
+    btn.textContent = next === 'light' ? '🌙' : '☀️';
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent 框架对比：Agno vs DSPy vs pi-mono vs LangChain</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e4e4ef;
+    --text-dim: #8888a0;
+    --accent-1: #6c5ce7;
+    --accent-2: #00cec9;
+    --accent-3: #fd79a8;
+    --accent-4: #fdcb6e;
+    --green: #00b894;
+    --red: #e17055;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    padding: 40px 20px;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  header p {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  /* Framework cards at top */
+  .framework-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .fw-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fw-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .fw-card:nth-child(1)::before { background: var(--accent-1); }
+  .fw-card:nth-child(2)::before { background: var(--accent-2); }
+  .fw-card:nth-child(3)::before { background: var(--accent-3); }
+  .fw-card:nth-child(4)::before { background: var(--accent-4); }
+
+  .fw-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 4px;
+  }
+
+  .fw-card:nth-child(1) h3 { color: var(--accent-1); }
+  .fw-card:nth-child(2) h3 { color: var(--accent-2); }
+  .fw-card:nth-child(3) h3 { color: var(--accent-3); }
+  .fw-card:nth-child(4) h3 { color: var(--accent-4); }
+
+  .fw-card .meta {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .fw-card .philosophy {
+    font-size: 0.88rem;
+    color: var(--text);
+    font-style: italic;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    border-left: 3px solid;
+  }
+
+  .fw-card:nth-child(1) .philosophy { border-color: var(--accent-1); }
+  .fw-card:nth-child(2) .philosophy { border-color: var(--accent-2); }
+  .fw-card:nth-child(3) .philosophy { border-color: var(--accent-3); }
+  .fw-card:nth-child(4) .philosophy { border-color: var(--accent-4); }
+
+  /* Comparison table */
+  .table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 48px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  thead th {
+    background: var(--surface2);
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 0;
+    white-space: nowrap;
+  }
+
+  thead th:first-child {
+    min-width: 140px;
+    color: var(--text-dim);
+  }
+
+  thead th:nth-child(2) { color: var(--accent-1); }
+  thead th:nth-child(3) { color: var(--accent-2); }
+  thead th:nth-child(4) { color: var(--accent-3); }
+  thead th:nth-child(5) { color: var(--accent-4); }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr:hover {
+    background: rgba(108, 92, 231, 0.04);
+  }
+
+  tbody td {
+    padding: 12px 16px;
+    vertical-align: top;
+  }
+
+  tbody td:first-child {
+    font-weight: 600;
+    color: var(--text-dim);
+    background: var(--surface);
+    white-space: nowrap;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin: 1px 2px;
+  }
+
+  .tag-yes { background: rgba(0,184,148,0.15); color: var(--green); }
+  .tag-partial { background: rgba(253,203,110,0.15); color: var(--accent-4); }
+  .tag-no { background: rgba(225,112,85,0.12); color: var(--red); }
+  .tag-unknown { background: rgba(136,136,160,0.15); color: var(--text-dim); }
+
+  /* Pros/Cons section */
+  .pros-cons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .pc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .pc-card h4 {
+    font-size: 1rem;
+    margin-bottom: 14px;
+  }
+
+  .pc-card:nth-child(1) h4 { color: var(--accent-1); }
+  .pc-card:nth-child(2) h4 { color: var(--accent-2); }
+  .pc-card:nth-child(3) h4 { color: var(--accent-3); }
+  .pc-card:nth-child(4) h4 { color: var(--accent-4); }
+
+  .pc-section {
+    margin-bottom: 12px;
+  }
+
+  .pc-section h5 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .pc-section.pros h5 { color: var(--green); }
+  .pc-section.cons h5 { color: var(--red); }
+
+  .pc-section ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .pc-section li {
+    font-size: 0.82rem;
+    padding: 3px 0;
+    padding-left: 16px;
+    position: relative;
+    color: var(--text);
+  }
+
+  .pc-section.pros li::before {
+    content: '+';
+    position: absolute;
+    left: 0;
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  .pc-section.cons li::before {
+    content: '-';
+    position: absolute;
+    left: 0;
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  /* Scenario section */
+  .scenarios {
+    margin-bottom: 48px;
+  }
+
+  .scenarios h2 {
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .scenario-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .scenario-item .scene {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 160px;
+  }
+
+  .scenario-item .pick {
+    font-size: 0.84rem;
+    color: var(--text-dim);
+  }
+
+  .scenario-item .pick strong {
+    color: var(--accent-2);
+  }
+
+  /* LangChain comparison */
+  .langchain-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 48px;
+  }
+
+  .langchain-section h2 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    color: var(--accent-4);
+  }
+
+  .lc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .lc-item {
+    padding: 16px;
+    background: var(--surface2);
+    border-radius: 8px;
+  }
+
+  .lc-item h5 {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+  }
+
+  .lc-item:nth-child(1) h5 { color: var(--accent-1); }
+  .lc-item:nth-child(2) h5 { color: var(--accent-2); }
+  .lc-item:nth-child(3) h5 { color: var(--accent-3); }
+
+  .lc-item p {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 1024px) {
+    .framework-cards, .pros-cons { grid-template-columns: repeat(2, 1fr); }
+    .lc-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 640px) {
+    .framework-cards, .pros-cons, .scenario-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>AI Agent 框架对比研究</h1>
+  <p>Agno &middot; DSPy &middot; pi-mono &middot; LangChain &mdash; 2026.03 更新</p>
+</header>
+
+<!-- Framework Identity Cards -->
+<div class="framework-cards">
+  <div class="fw-card">
+    <h3>Agno</h3>
+    <div class="meta">原 PhiData &middot; GitHub 38.9k stars &middot; Python &middot; v2.5.x</div>
+    <div class="philosophy">"构建、运行、管理规模化的 Agent 软件。" &mdash; 从 Agent 到 Team 到 Workflow，一站式生产级运行时。</div>
+  </div>
+  <div class="fw-card">
+    <h3>DSPy</h3>
+    <div class="meta">Stanford NLP &middot; GitHub 33.1k stars &middot; Python &middot; v3.1.x</div>
+    <div class="philosophy">"Programming, not prompting LMs." &mdash; 用声明式模块替代手写 prompt，自动编译优化权重和提示词。</div>
+  </div>
+  <div class="fw-card">
+    <h3>pi-mono</h3>
+    <div class="meta">矩阵起源内部框架 &middot; 非开源 &middot; Python &middot; 生产环境使用</div>
+    <div class="philosophy">"多层 Agent 编排 + 并发 LLM 调用。" &mdash; 面向复杂企业场景（如招投标分析），支持 6 层架构的内部专用框架。</div>
+  </div>
+  <div class="fw-card">
+    <h3>LangChain</h3>
+    <div class="meta">LangChain Inc &middot; GitHub 100k+ stars &middot; Python/JS &middot; v0.3.x</div>
+    <div class="philosophy">"LLM 应用的万能瑞士军刀。" &mdash; 最大的生态和集成库，Chain/Agent/Tool 抽象层。</div>
+  </div>
+</div>
+
+<!-- Main Comparison Table -->
+<div class="table-wrapper">
+<table>
+  <thead>
+    <tr>
+      <th>维度</th>
+      <th>Agno</th>
+      <th>DSPy</th>
+      <th>pi-mono</th>
+      <th>LangChain</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>核心定位</td>
+      <td>生产级 Agent 运行时<br>(Framework + Runtime + Control Plane)</td>
+      <td>LM 程序的声明式编程 &amp; 自动优化框架</td>
+      <td>企业内部多层 Agent 编排框架</td>
+      <td>通用 LLM 应用开发框架</td>
+    </tr>
+    <tr>
+      <td>设计范式</td>
+      <td>Agent-first：Agent / Team / Workflow 三层抽象</td>
+      <td>Module-first：Signature + Module + Optimizer 三阶段</td>
+      <td>Layer-first：多层 Agent 分层编排</td>
+      <td>Chain-first：Chain / Agent / Tool 组合</td>
+    </tr>
+    <tr>
+      <td>Agent 构建</td>
+      <td><span class="tag tag-yes">一等公民</span> 内置 Memory、Knowledge、Tools、Guardrails</td>
+      <td><span class="tag tag-yes">支持</span> ReAct 模块 + Tool 调用，但非核心卖点</td>
+      <td><span class="tag tag-yes">核心能力</span> 6 层架构、复杂任务分解</td>
+      <td><span class="tag tag-yes">支持</span> AgentExecutor / LangGraph</td>
+    </tr>
+    <tr>
+      <td>Tool Use</td>
+      <td><span class="tag tag-yes">100+ 内置集成</span></td>
+      <td><span class="tag tag-yes">支持</span> 函数式 Tool + MCP 协议</td>
+      <td><span class="tag tag-partial">自定义</span> 针对业务场景封装</td>
+      <td><span class="tag tag-yes">丰富</span> 大量社区 Tool 集成</td>
+    </tr>
+    <tr>
+      <td>RAG 能力</td>
+      <td><span class="tag tag-yes">内置 Knowledge</span> 向量库 + Embedder + Chunking 一体化</td>
+      <td><span class="tag tag-yes">原生支持</span> Retrieval Module，可优化检索策略</td>
+      <td><span class="tag tag-unknown">未知</span> 可能集成外部方案</td>
+      <td><span class="tag tag-yes">丰富</span> 大量 Document Loader / VectorStore</td>
+    </tr>
+    <tr>
+      <td>多 Agent 协作</td>
+      <td><span class="tag tag-yes">Team 抽象</span> 原生 Agent 协调、角色分工</td>
+      <td><span class="tag tag-partial">有限</span> 可组合 Module 但无专用多 Agent 协议</td>
+      <td><span class="tag tag-yes">核心能力</span> 分层架构，Agent 间并发调度</td>
+      <td><span class="tag tag-yes">LangGraph</span> 基于图的 Agent 编排</td>
+    </tr>
+    <tr>
+      <td>Prompt 优化</td>
+      <td><span class="tag tag-no">无</span> 手动编写 Instruction</td>
+      <td><span class="tag tag-yes">杀手级特性</span> 自动编译 prompt/权重，BootstrapFewShot 等优化器</td>
+      <td><span class="tag tag-unknown">未知</span></td>
+      <td><span class="tag tag-no">无</span> 依赖 LangSmith 人工迭代</td>
+    </tr>
+    <tr>
+      <td>Evaluation</td>
+      <td><span class="tag tag-yes">内置 Evals</span></td>
+      <td><span class="tag tag-yes">核心能力</span> 内置 Metric + Evaluate 系统</td>
+      <td><span class="tag tag-unknown">未知</span></td>
+      <td><span class="tag tag-partial">LangSmith</span> 需配合外部平台</td>
+    </tr>
+    <tr>
+      <td>Memory / 状态</td>
+      <td><span class="tag tag-yes">丰富</span> Session / State / Chat History / Context 压缩 / Learning</td>
+      <td><span class="tag tag-no">无内置</span> 需自行管理</td>
+      <td><span class="tag tag-partial">可能有</span> 任务上下文传递</td>
+      <td><span class="tag tag-yes">支持</span> ConversationMemory 等</td>
+    </tr>
+    <tr>
+      <td>模型支持</td>
+      <td>OpenAI / Anthropic / Gemini / 50+ Provider</td>
+      <td>OpenAI / Anthropic / Gemini / Databricks / 本地模型</td>
+      <td>可能绑定特定 Provider</td>
+      <td>几乎所有主流模型</td>
+    </tr>
+    <tr>
+      <td>生产部署</td>
+      <td><span class="tag tag-yes">一等公民</span> 无状态 FastAPI Runtime + AgentOS UI</td>
+      <td><span class="tag tag-partial">需自建</span> 框架本身不含部署方案</td>
+      <td><span class="tag tag-yes">生产就绪</span> 已在企业环境运行</td>
+      <td><span class="tag tag-partial">LangServe</span> + LangSmith 组合</td>
+    </tr>
+    <tr>
+      <td>可观测性</td>
+      <td><span class="tag tag-yes">原生 Tracing</span> + AgentOS 监控</td>
+      <td><span class="tag tag-partial">基础</span> 可 inspect 模块调用</td>
+      <td><span class="tag tag-unknown">未知</span></td>
+      <td><span class="tag tag-yes">LangSmith</span> 完整链路追踪</td>
+    </tr>
+    <tr>
+      <td>Human-in-the-Loop</td>
+      <td><span class="tag tag-yes">内置</span></td>
+      <td><span class="tag tag-no">无</span></td>
+      <td><span class="tag tag-unknown">未知</span></td>
+      <td><span class="tag tag-yes">LangGraph 支持</span></td>
+    </tr>
+    <tr>
+      <td>Guardrails</td>
+      <td><span class="tag tag-yes">内置</span> 输入/输出守护</td>
+      <td><span class="tag tag-yes">Assertions</span> dspy.Assert / dspy.Suggest</td>
+      <td><span class="tag tag-unknown">未知</span></td>
+      <td><span class="tag tag-partial">需第三方</span></td>
+    </tr>
+    <tr>
+      <td>学习曲线</td>
+      <td>中等 &mdash; API 直观，概念清晰</td>
+      <td>较高 &mdash; 需理解声明式编程 + 优化器思维</td>
+      <td>内部培训 &mdash; 非公开文档</td>
+      <td>中等 &mdash; 文档丰富但抽象层多</td>
+    </tr>
+    <tr>
+      <td>社区生态</td>
+      <td>快速增长（38.9k stars），100+ 集成</td>
+      <td>学术背景强（33.1k stars），研究社区活跃</td>
+      <td>仅限公司内部</td>
+      <td>最大生态（100k+ stars），最多第三方集成</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- Pros/Cons -->
+<div class="pros-cons">
+  <div class="pc-card">
+    <h4>Agno</h4>
+    <div class="pc-section pros">
+      <h5>优势</h5>
+      <ul>
+        <li>Agent/Team/Workflow 三层抽象覆盖绝大多数场景</li>
+        <li>内置生产级部署（无状态 Runtime + AgentOS）</li>
+        <li>100+ 开箱即用集成（工具、向量库、模型）</li>
+        <li>Memory/Knowledge/Learning 内置且完善</li>
+        <li>Guardrails + Human-in-the-Loop 原生支持</li>
+        <li>从单 Agent 到多 Agent 系统平滑扩展</li>
+      </ul>
+    </div>
+    <div class="pc-section cons">
+      <h5>劣势</h5>
+      <ul>
+        <li>无自动 Prompt 优化能力（纯手工 instruction）</li>
+        <li>前身 PhiData 品牌迁移可能带来混淆</li>
+        <li>AgentOS 平台锁定风险</li>
+        <li>相比 LangChain 社区生态仍小</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pc-card">
+    <h4>DSPy</h4>
+    <div class="pc-section pros">
+      <h5>优势</h5>
+      <ul>
+        <li>自动 Prompt/权重优化是独有杀手级特性</li>
+        <li>声明式编程让 LM 程序更可维护、可复用</li>
+        <li>模型无关：换模型只需 re-compile</li>
+        <li>Stanford 学术背景，理论基础扎实</li>
+        <li>内置评估系统，数据驱动迭代</li>
+        <li>MCP 协议支持</li>
+      </ul>
+    </div>
+    <div class="pc-section cons">
+      <h5>劣势</h5>
+      <ul>
+        <li>学习曲线较陡（需理解优化器思维）</li>
+        <li>不是完整的 Agent 框架（无 Memory/部署/监控）</li>
+        <li>多 Agent 编排能力有限</li>
+        <li>生产部署需自行解决</li>
+        <li>偏学术，企业级文档和最佳实践较少</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pc-card">
+    <h4>pi-mono</h4>
+    <div class="pc-section pros">
+      <h5>优势</h5>
+      <ul>
+        <li>专为复杂企业场景设计（招投标分析等）</li>
+        <li>多层 Agent 架构（6 层），任务分解能力强</li>
+        <li>并发 LLM 调用，性能优化</li>
+        <li>已在矩阵起源生产环境验证</li>
+        <li>可针对业务深度定制</li>
+      </ul>
+    </div>
+    <div class="pc-section cons">
+      <h5>劣势</h5>
+      <ul>
+        <li>非开源，无法复用</li>
+        <li>无公开文档和社区支持</li>
+        <li>与特定公司业务绑定</li>
+        <li>人才迁移成本高</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="pc-card">
+    <h4>LangChain</h4>
+    <div class="pc-section pros">
+      <h5>优势</h5>
+      <ul>
+        <li>最大的社区和生态系统</li>
+        <li>几乎所有模型和工具都有集成</li>
+        <li>LangGraph 解决了复杂编排需求</li>
+        <li>LangSmith 提供完整可观测性</li>
+        <li>文档和教程最丰富</li>
+        <li>Python + JS 双语言支持</li>
+      </ul>
+    </div>
+    <div class="pc-section cons">
+      <h5>劣势</h5>
+      <ul>
+        <li>抽象层过多，"overengineered"</li>
+        <li>API 频繁变更，升级成本高</li>
+        <li>性能开销较大</li>
+        <li>简单任务也需大量 boilerplate</li>
+        <li>核心功能分散到多个包（langchain-core/community/...）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Use Case Recommendations -->
+<div class="scenarios">
+  <h2>场景推荐</h2>
+  <div class="scenario-grid">
+    <div class="scenario-item">
+      <div class="scene">快速构建生产级 Agent</div>
+      <div class="pick"><strong>Agno</strong> &mdash; 开箱即用的 Agent + 部署 + 监控全链路。</div>
+    </div>
+    <div class="scenario-item">
+      <div class="scene">优化 LLM 输出质量</div>
+      <div class="pick"><strong>DSPy</strong> &mdash; 自动编译优化 prompt/权重，数据驱动提升效果。</div>
+    </div>
+    <div class="scenario-item">
+      <div class="scene">复杂多 Agent 编排</div>
+      <div class="pick"><strong>Agno Team</strong> 或 <strong>LangGraph</strong> &mdash; 前者更简洁，后者更灵活。</div>
+    </div>
+    <div class="scenario-item">
+      <div class="scene">企业深度定制 Agent</div>
+      <div class="pick"><strong>pi-mono 思路</strong> &mdash; 多层架构 + 并发调度适合复杂业务流程。</div>
+    </div>
+    <div class="scenario-item">
+      <div class="scene">RAG 应用开发</div>
+      <div class="pick"><strong>Agno Knowledge</strong> 或 <strong>LangChain</strong> &mdash; 都有成熟的 RAG 管线。DSPy 可优化检索效果。</div>
+    </div>
+    <div class="scenario-item">
+      <div class="scene">学术研究 / Prompt 工程</div>
+      <div class="pick"><strong>DSPy</strong> &mdash; 声明式抽象 + 自动优化，适合系统化研究。</div>
+    </div>
+    <div class="scenario-item">
+      <div class="scene">个人开发者 / 快速原型</div>
+      <div class="pick"><strong>Agno</strong> &mdash; API 简洁，少量代码即可搭建完整系统。</div>
+    </div>
+    <div class="scenario-item">
+      <div class="scene">大团队 / 需要最大生态</div>
+      <div class="pick"><strong>LangChain</strong> &mdash; 最多集成、最大社区、最多参考案例。</div>
+    </div>
+  </div>
+</div>
+
+<!-- LangChain Comparison -->
+<div class="langchain-section">
+  <h2>与 LangChain 的核心差异</h2>
+  <div class="lc-grid">
+    <div class="lc-item">
+      <h5>Agno vs LangChain</h5>
+      <p>Agno 是 "Agent Runtime"，LangChain 是 "LLM Framework"。Agno 自带部署运行时和管控平面，不需要拼装 LangServe + LangSmith + LangGraph 多个产品。API 更简洁，从单 Agent 到 Team 到 Workflow 一套代码搞定。但 LangChain 生态更大，第三方集成更多。</p>
+    </div>
+    <div class="lc-item">
+      <h5>DSPy vs LangChain</h5>
+      <p>本质定位不同。DSPy 解决的是 "如何让 LLM 输出更好"（自动优化 prompt/权重），LangChain 解决的是 "如何组装 LLM 应用"（Chain/Agent 编排）。DSPy 可以和 LangChain 互补使用 &mdash; 用 DSPy 优化核心 LM 调用，用 LangChain 做外围集成。DSPy 反对手写 prompt，LangChain 围绕 prompt template 展开。</p>
+    </div>
+    <div class="lc-item">
+      <h5>pi-mono vs LangChain</h5>
+      <p>pi-mono 是针对特定企业场景的深度定制框架，强调多层架构和并发性能。LangChain 是通用框架，覆盖面广但在复杂企业场景中可能需要大量定制。pi-mono 的分层 Agent 设计思路可以用 LangGraph 部分实现，但后者需要更多胶水代码。</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>研究日期：2026-03-24 &middot; pi-mono 信息基于公开简历描述，细节有限 &middot; 其余数据来自官方文档和 GitHub</p>
+</footer>
+
+</div>
+</body>
+</html>

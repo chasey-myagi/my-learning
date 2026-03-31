@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autoresearch Deep Dive</title>
+<style>
+/* =========================================
+   THEME SYSTEM — light default, dark via
+   prefers-color-scheme OR [data-theme="dark"]
+   ========================================= */
+:root {
+  --bg:       #f4f0ec;
+  --bg-alt:   #eae4dd;
+  --bg-code:  #1e1b18;
+  --fg:       #1c1917;
+  --fg-2:     #44403c;
+  --fg-3:     #78716c;
+  --accent:   #dc4a1a;
+  --accent-2: #9a3412;
+  --green:    #15803d;
+  --green-bg: #ecfdf5;
+  --red-bg:   #fef2f2;
+  --border:   #d6d0c8;
+  --code-fg:  #e7e0d8;
+  --shadow:   rgba(28,25,23,0.06);
+  --tag-bg:   rgba(220,74,26,0.08);
+  --tag-fg:   var(--accent-2);
+  --quote-bg: rgba(28,25,23,0.03);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:       #0c0a09;
+    --bg-alt:   #1c1917;
+    --bg-code:  #0a0908;
+    --fg:       #e7e5e4;
+    --fg-2:     #a8a29e;
+    --fg-3:     #78716c;
+    --accent:   #fb923c;
+    --accent-2: #fdba74;
+    --green:    #4ade80;
+    --green-bg: rgba(74,222,128,0.08);
+    --red-bg:   rgba(248,113,113,0.08);
+    --border:   #292524;
+    --code-fg:  #d6d3d1;
+    --shadow:   rgba(0,0,0,0.3);
+    --tag-bg:   rgba(251,146,60,0.12);
+    --tag-fg:   var(--accent);
+    --quote-bg: rgba(255,255,255,0.03);
+  }
+}
+[data-theme="dark"] {
+  --bg:       #0c0a09;
+  --bg-alt:   #1c1917;
+  --bg-code:  #0a0908;
+  --fg:       #e7e5e4;
+  --fg-2:     #a8a29e;
+  --fg-3:     #78716c;
+  --accent:   #fb923c;
+  --accent-2: #fdba74;
+  --green:    #4ade80;
+  --green-bg: rgba(74,222,128,0.08);
+  --red-bg:   rgba(248,113,113,0.08);
+  --border:   #292524;
+  --code-fg:  #d6d3d1;
+  --shadow:   rgba(0,0,0,0.3);
+  --tag-bg:   rgba(251,146,60,0.12);
+  --tag-fg:   var(--accent);
+  --quote-bg: rgba(255,255,255,0.03);
+}
+
+/* =========================================
+   RESET & BASE
+   ========================================= */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  font-size: 17px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.72;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* =========================================
+   THEME TOGGLE
+   ========================================= */
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1.5rem;
+  z-index: 999;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  transition: transform 0.2s, background 0.3s, border-color 0.3s;
+  color: var(--fg-2);
+}
+.theme-toggle:hover { transform: scale(1.1); }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-toggle .icon-sun,
+.theme-toggle .icon-moon { position: absolute; transition: opacity 0.2s; }
+[data-theme="dark"] .icon-sun { opacity: 1; }
+[data-theme="dark"] .icon-moon { opacity: 0; }
+[data-theme="light"] .icon-sun { opacity: 0; }
+[data-theme="light"] .icon-moon { opacity: 1; }
+/* System default: show based on scheme */
+:root:not([data-theme]) .icon-sun { opacity: 0; }
+:root:not([data-theme]) .icon-moon { opacity: 1; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .icon-sun { opacity: 1; }
+  :root:not([data-theme]) .icon-moon { opacity: 0; }
+}
+
+/* =========================================
+   LAYOUT
+   ========================================= */
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 1.5rem; }
+.wrap-wide { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+section { padding: 4rem 0 3.5rem; transition: background 0.3s; }
+section + section { border-top: 1px solid var(--border); }
+section:nth-child(odd) { background: var(--bg); }
+section:nth-child(even) { background: var(--bg-alt); }
+
+/* =========================================
+   TYPOGRAPHY
+   ========================================= */
+h1 {
+  font-size: clamp(2.6rem, 6vw, 4rem);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--fg);
+}
+h2 {
+  font-size: clamp(1.7rem, 3.5vw, 2.3rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.2rem;
+}
+h3 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  margin: 2.2rem 0 0.5rem;
+  color: var(--fg);
+}
+h4 {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin: 2rem 0 0.6rem;
+}
+p { margin-bottom: 0.9rem; color: var(--fg-2); max-width: 65ch; }
+strong { color: var(--fg); font-weight: 650; }
+::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+a { color: var(--accent); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--accent-2); }
+em { color: var(--fg); font-style: italic; }
+
+/* =========================================
+   HERO
+   ========================================= */
+.hero {
+  padding: 6rem 0 4rem;
+  border-bottom: 2px solid var(--accent);
+}
+.hero-tag {
+  display: inline-block;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tag-fg);
+  background: var(--tag-bg);
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  margin-bottom: 1.2rem;
+}
+.hero h1 { margin-bottom: 1.2rem; }
+.hero h1 .highlight {
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.hero-deck {
+  font-size: 1.2rem;
+  line-height: 1.6;
+  color: var(--fg-2);
+  max-width: 620px;
+  font-weight: 400;
+}
+.hero-meta {
+  margin-top: 2rem;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: var(--fg-3);
+}
+.hero-meta span { display: flex; gap: 0.4rem; }
+.hero-meta b { color: var(--fg-2); font-weight: 600; }
+
+/* =========================================
+   STATS BAR
+   ========================================= */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.8rem 0;
+}
+.stat {
+  background: var(--bg);
+  padding: 1.3rem 0.8rem;
+  text-align: center;
+}
+section:nth-child(even) .stat,
+section:nth-child(even) .card,
+section:nth-child(even) .file { background: var(--bg); }
+.stat-val {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.stat-lbl {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-3);
+  margin-top: 0.35rem;
+}
+
+/* =========================================
+   THREE-FILE DISPLAY
+   ========================================= */
+.files {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+@media (max-width: 550px) { .files { grid-template-columns: 1fr; } }
+.file {
+  background: var(--bg);
+  padding: 1rem;
+}
+.file-name {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.3rem;
+}
+.file-desc {
+  font-size: 0.82rem;
+  color: var(--fg-3);
+  line-height: 1.4;
+}
+
+/* =========================================
+   FLOW
+   ========================================= */
+.flow {
+  margin: 2rem 0;
+}
+.flow-step {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0.8rem;
+  min-height: 3rem;
+}
+.flow-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.flow-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.38rem;
+  box-shadow: 0 0 0 3px var(--tag-bg);
+}
+.flow-line {
+  width: 1px;
+  flex: 1;
+  background: var(--border);
+  margin: 3px 0;
+}
+.flow-body { padding-bottom: 1.2rem; }
+.flow-title {
+  font-weight: 650;
+  font-size: 0.88rem;
+  color: var(--fg);
+  margin-bottom: 0.15rem;
+}
+.flow-desc {
+  font-size: 0.82rem;
+  color: var(--fg-3);
+  line-height: 1.5;
+}
+.flow-fork {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+.flow-fork-item {
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.fork-yes { background: var(--green-bg); color: var(--green); }
+.fork-no { background: var(--red-bg); color: var(--accent); }
+
+/* =========================================
+   QUOTE
+   ========================================= */
+.quote {
+  margin: 2rem 0;
+  padding: 1.2rem 1.5rem;
+  background: var(--quote-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+}
+.quote p {
+  font-size: 1.1rem;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--fg);
+  margin: 0;
+  line-height: 1.55;
+}
+.quote cite {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.65rem;
+  font-style: normal;
+  color: var(--fg-3);
+}
+
+/* =========================================
+   CALLOUT
+   ========================================= */
+.callout {
+  margin: 1.5rem 0;
+  padding: 1rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--fg-2);
+}
+.callout-green { background: var(--green-bg); border-left: 3px solid var(--green); }
+.callout-green strong { color: var(--green); }
+.callout-accent { background: var(--red-bg); border-left: 3px solid var(--accent); }
+.callout-accent strong { color: var(--accent); }
+
+/* =========================================
+   TABLE
+   ========================================= */
+.table-wrap { overflow-x: auto; margin: 1.5rem 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+th {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+  padding: 0.7rem 0.5rem;
+  border-bottom: 2px solid var(--fg);
+  color: var(--fg);
+  font-weight: 600;
+  white-space: nowrap;
+}
+td {
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-2);
+  vertical-align: top;
+  line-height: 1.45;
+}
+tr:last-child td { border-bottom: 2px solid var(--fg); }
+td:first-child { font-weight: 600; color: var(--fg); white-space: nowrap; }
+.row-hl td { background: var(--tag-bg); color: var(--fg); font-weight: 600; }
+
+/* =========================================
+   GRID (ecosystem, media)
+   ========================================= */
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+@media (max-width: 550px) { .card-grid { grid-template-columns: 1fr; } }
+.card {
+  background: var(--bg);
+  padding: 1rem 1.1rem;
+  transition: background 0.2s;
+}
+.card:hover { background: var(--bg-alt); }
+.card-name {
+  font-weight: 650;
+  font-size: 0.88rem;
+  color: var(--fg);
+}
+.card-name a { color: var(--fg); }
+.card-name a:hover { color: var(--accent); }
+.card-sub {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.62rem;
+  color: var(--fg-3);
+  margin-top: 0.1rem;
+}
+.card-desc {
+  font-size: 0.8rem;
+  color: var(--fg-3);
+  margin-top: 0.25rem;
+  line-height: 1.45;
+}
+
+/* media list */
+.media-list { margin: 1.5rem 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.media-item {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.media-item:last-child { border-bottom: none; }
+.media-src {
+  padding: 0.7rem 0.8rem;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--fg-3);
+  background: var(--bg-alt);
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0.85rem;
+}
+.media-body { padding: 0.7rem 1rem; }
+.media-title { font-weight: 650; font-size: 0.85rem; line-height: 1.35; }
+.media-title a { color: var(--fg); }
+.media-title a:hover { color: var(--accent); }
+.media-note { font-size: 0.75rem; color: var(--fg-3); margin-top: 0.15rem; }
+@media (max-width: 550px) {
+  .media-item { grid-template-columns: 1fr; }
+  .media-src { padding: 0.5rem 0.8rem 0; }
+}
+
+/* =========================================
+   TIMELINE
+   ========================================= */
+.timeline { margin: 2rem 0; }
+.tl {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  position: relative;
+}
+.tl::before {
+  content: '';
+  position: absolute;
+  left: 5.5rem;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.tl-date {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.65rem;
+  color: var(--fg-3);
+  text-align: right;
+  padding-top: 0.12rem;
+}
+.tl-body { padding-left: 1rem; position: relative; }
+.tl-body::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 0.4rem;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.tl-label { font-weight: 650; font-size: 0.88rem; color: var(--fg); }
+.tl-text { font-size: 0.8rem; color: var(--fg-3); line-height: 1.45; }
+
+/* =========================================
+   PROS / CONS
+   ========================================= */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin: 1.5rem 0;
+}
+@media (max-width: 550px) { .two-col { grid-template-columns: 1fr; } }
+.col ul { list-style: none; margin: 0; }
+.col li {
+  padding-left: 1.1rem;
+  position: relative;
+  margin-bottom: 0.45rem;
+  font-size: 0.88rem;
+  color: var(--fg-2);
+  line-height: 1.5;
+}
+.col li::before { position: absolute; left: 0; font-weight: 700; }
+.pros li::before { content: '+'; color: var(--green); }
+.cons li::before { content: '\2212'; color: var(--accent); }
+
+/* =========================================
+   CODE
+   ========================================= */
+code {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.82em;
+  background: var(--bg-alt);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  background: var(--bg-code);
+  color: var(--code-fg);
+  padding: 1.1rem 1.3rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.75rem;
+  line-height: 1.7;
+  margin: 1.2rem 0;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* =========================================
+   VERDICT BOX
+   ========================================= */
+.verdict {
+  background: var(--bg-alt);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 2.5rem;
+  margin: 2.5rem 0;
+}
+.verdict h3 { margin: 0 0 1rem; color: var(--accent); font-size: 1.3rem; }
+.verdict p { color: var(--fg-2); font-size: 1.02rem; line-height: 1.7; }
+
+/* lists */
+ul, ol { margin: 0.6rem 0 1rem 1.2rem; }
+li { margin-bottom: 0.25rem; }
+li::marker { color: var(--accent); }
+
+/* =========================================
+   SECTION NUMBER
+   ========================================= */
+.sn {
+  font-size: 4.5rem;
+  font-weight: 900;
+  color: var(--accent);
+  opacity: 0.35;
+  line-height: 1;
+  margin-bottom: 0.1rem;
+  letter-spacing: -0.06em;
+}
+
+/* =========================================
+   FOOTER
+   ========================================= */
+footer {
+  border-top: 2px solid var(--fg);
+  padding: 1.5rem 0;
+  margin-top: 2rem;
+}
+footer .wrap {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--fg-3);
+  font-family: 'SF Mono', ui-monospace, monospace;
+}
+
+/* =========================================
+   SCROLL ANIMATIONS
+   ========================================= */
+.reveal {
+  opacity: 0.08;
+  transform: translateY(20px);
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Stagger children within a section */
+.reveal:nth-child(2) { transition-delay: 0.06s; }
+.reveal:nth-child(3) { transition-delay: 0.12s; }
+.reveal:nth-child(4) { transition-delay: 0.18s; }
+.reveal:nth-child(5) { transition-delay: 0.24s; }
+
+/* =========================================
+   NAV
+   ========================================= */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  transition: background 0.3s;
+}
+.nav-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  white-space: nowrap;
+}
+.nav a {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  text-decoration: none;
+  padding: 0.55rem 0;
+  transition: color 0.2s;
+  border-bottom: 2px solid transparent;
+}
+.nav a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.nav a:focus-visible { color: var(--accent); outline: none; border-bottom-color: var(--accent); }
+.nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* =========================================
+   SCROLL PROGRESS BAR
+   ========================================= */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  z-index: 200;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: none;
+}
+
+/* =========================================
+   HERO ENTRANCE
+   ========================================= */
+.hero-tag,
+.hero h1,
+.hero-deck,
+.hero-meta {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: heroIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.hero-tag   { animation-delay: 0.1s; }
+.hero h1    { animation-delay: 0.2s; }
+.hero-deck  { animation-delay: 0.35s; }
+.hero-meta  { animation-delay: 0.5s; }
+
+@keyframes heroIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   STAT COUNTER GLOW
+   ========================================= */
+.stat-val {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.stat:hover .stat-val {
+  transform: scale(1.08);
+}
+
+/* =========================================
+   FLOW DOT PULSE
+   ========================================= */
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--tag-bg); }
+  50% { box-shadow: 0 0 0 6px var(--tag-bg); }
+}
+.flow-dot.visible {
+  animation: dotPulse 1.5s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+
+/* =========================================
+   QUOTE SLIDE-IN
+   ========================================= */
+.quote.reveal {
+  transform: translateX(-12px);
+  opacity: 0.08;
+}
+.quote.reveal.visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* =========================================
+   REDUCED MOTION
+   ========================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .hero-tag, .hero h1, .hero-deck, .hero-meta {
+    opacity: 1 !important; transform: none !important;
+  }
+  .progress-bar { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+  <span class="icon-sun">&#9788;</span>
+  <span class="icon-moon">&#9790;</span>
+</button>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#what">What</a>
+    <a href="#how">How</a>
+    <a href="#results">Results</a>
+    <a href="#landscape">Landscape</a>
+    <a href="#ecosystem">Ecosystem</a>
+    <a href="#voices">Voices</a>
+    <a href="#media">Media</a>
+    <a href="#verdict">Verdict</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-tag">Deep Dive &middot; 2026.03.23</div>
+    <h1>The <span class="highlight">Karpathy Loop</span><br>你睡觉，AI 做研究</h1>
+    <p class="hero-deck">
+      Andrej Karpathy 用 630 行 Python 和一个 Markdown 文件，搭建了让 AI Agent 自主优化 GPT 训练代码的实验框架。两天 700 次实验、20 个可叠加改进——一个时代的起点标记。
+    </p>
+    <div class="hero-meta">
+      <span><b>Author</b> Andrej Karpathy</span>
+      <span><b>Released</b> 2026.03.07</span>
+      <span><b>Stars</b> 49,500+</span>
+      <span><b>Forks</b> 6,900+</span>
+      <span><b>License</b> MIT</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== 01 WHAT ===================== -->
+<section id="what">
+  <div class="wrap">
+    <div class="sn reveal">01</div>
+    <h2 class="reveal">它到底在做什么</h2>
+
+    <p class="reveal">给一个 AI Agent（Claude Code）一个真实的 LLM 训练环境，让它<strong>一整夜自主实验</strong>。Agent 修改训练代码、跑 5 分钟、看结果是否改善、保留或丢弃，然后不断循环。你早上醒来，看到一份实验日志和更好的模型。</p>
+
+    <p class="reveal">整个项目只有 3 个核心文件：</p>
+
+    <div class="files reveal">
+      <div class="file">
+        <div class="file-name">prepare.py</div>
+        <div class="file-desc">数据下载、分词器训练、评估方法。固定不改。</div>
+      </div>
+      <div class="file">
+        <div class="file-name">train.py</div>
+        <div class="file-desc">GPT 模型 + 优化器 + 训练循环。Agent 唯一可编辑的文件。</div>
+      </div>
+      <div class="file">
+        <div class="file-name">program.md</div>
+        <div class="file-desc">给 Agent 的完整指令手册。人类唯一编辑的文件。</div>
+      </div>
+    </div>
+
+    <p class="reveal">这就是范式转换——<strong>人类写 prompt（.md），AI 写代码（.py）</strong>。你不再碰 Python，你在"编程"一个 Markdown 文件来设置你的自主研究组织。</p>
+
+    <div class="quote reveal">
+      <p>"Research is now entirely the domain of autonomous swarms of AI agents running across compute cluster megastructures in the skies. This repo is the story of how it all began."</p>
+      <cite>Karpathy, autoresearch README</cite>
+    </div>
+
+    <h3 class="reveal">技术栈</h3>
+    <ul class="reveal">
+      <li><strong>PyTorch 2.9.1</strong> + CUDA 12.8 + Flash Attention 3</li>
+      <li><strong>Muon + AdamW 混合优化器</strong>（矩阵参数用 Muon，标量/嵌入用 AdamW）</li>
+      <li><strong>rustbpe</strong> 分词器（8192 词表，GPT-4 风格）</li>
+      <li><strong>uv</strong> 包管理，<strong>git</strong> 作为实验记忆</li>
+      <li>数据集：<code>karpathy/climbmix-400b-shuffle</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== 02 HOW ===================== -->
+<section id="how">
+  <div class="wrap">
+    <div class="sn reveal">02</div>
+    <h2 class="reveal">工作原理</h2>
+
+    <div class="flow reveal">
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">初始化</div>
+          <div class="flow-desc">创建 Git 分支，检查数据，初始化 <code>results.tsv</code></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">分析 + 假设</div>
+          <div class="flow-desc">Agent 读取 <code>train.py</code> 和历史结果，形成改进假设</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">修改代码 + commit</div>
+          <div class="flow-desc">修改 <code>train.py</code>（唯一能动的文件），Git 记录改动</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">训练 5 分钟</div>
+          <div class="flow-desc">严格 300 秒。前 10 步不计时（编译预热）。超 10 分钟杀进程。</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div><div class="flow-line"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">评估 val_bpb</div>
+          <div class="flow-desc">提取每字节比特数（越低越好），记录到 results.tsv</div>
+          <div class="flow-fork">
+            <div class="flow-fork-item fork-yes"><strong>改善</strong> — 保留 commit</div>
+            <div class="flow-fork-item fork-no"><strong>没改善</strong> — git reset</div>
+          </div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-rail"><div class="flow-dot"></div></div>
+        <div class="flow-body">
+          <div class="flow-title">永不停止</div>
+          <div class="flow-desc">回到步骤 2。除非手动中断，否则持续循环。预期在你睡眠时运行。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-green reveal">
+      <strong>固定 5 分钟时间预算</strong> — 所有实验天然可比，每小时约 12 次，8 小时睡眠约 96 次。不受模型大小影响。
+    </div>
+
+    <h3 class="reveal">关键约束</h3>
+    <ul class="reveal">
+      <li><strong>单一指标</strong>：<code>val_bpb</code>（bits per byte），与词表大小无关</li>
+      <li><strong>单文件约束</strong>：只能改 <code>train.py</code>，改动可控可审查</li>
+      <li><strong>Git 作为记忆</strong>：好的保留，差的 reset——代码库始终最优</li>
+      <li><strong>简洁优先</strong>：0.001 改善 + 20 行代码 = 不值得</li>
+    </ul>
+
+    <h3 class="reveal">train.py 核心结构（~630 行）</h3>
+    <pre class="reveal"><code># 架构
+DEPTH = 8              # Transformer 层数
+ASPECT_RATIO = 64      # n_embd = DEPTH x 64
+WINDOW_PATTERN = "SSSL" # L=全注意力, S=滑动窗口
+
+# 优化
+TOTAL_BATCH_SIZE = 2**19  # ~524K tokens/step
+MATRIX_LR = 0.04          # Muon 学习率
+WARMDOWN_RATIO = 0.5      # 最后 50% 线性衰减
+
+# 含 RoPE, Flash Attention 3, MuonAdamW,
+# Value Embeddings, ResFormer 残差缩放等</code></pre>
+  </div>
+</section>
+
+<!-- ===================== 03 RESULTS ===================== -->
+<section id="results">
+  <div class="wrap">
+    <div class="sn reveal">03</div>
+    <h2 class="reveal">实验成果</h2>
+
+    <div class="stats reveal">
+      <div class="stat"><div class="stat-val">~700</div><div class="stat-lbl">总实验次数</div></div>
+      <div class="stat"><div class="stat-val">~20</div><div class="stat-lbl">保留的改进</div></div>
+      <div class="stat"><div class="stat-val">11%</div><div class="stat-lbl">训练效率提升</div></div>
+      <div class="stat"><div class="stat-val">17h</div><div class="stat-lbl">重新发现 RMSNorm</div></div>
+      <div class="stat"><div class="stat-val">$34</div><div class="stat-lbl">总花费 (GPU+API)</div></div>
+    </div>
+
+    <p class="reveal">Agent 自主发现的有价值改进：注意力缩放遗漏、Value Embeddings 需要正则化、banded attention 过于保守、AdamW 参数配置错误。</p>
+
+    <div class="callout callout-accent reveal">
+      <strong>最令人印象深刻的发现：</strong>17 小时内 Agent 独立重新发现了 RMSNorm 和 tied embeddings——人类研究者在 Google Brain 和 OpenAI 花了近 8 年才正式化的成果。
+    </div>
+
+    <p class="reveal">所有改进<strong>可叠加</strong>且<strong>可迁移到更大模型</strong>（depth=24），证明这不是玩具实验。</p>
+
+    <h3 class="reveal">Shopify CEO 的实战验证</h3>
+    <ul class="reveal">
+      <li>第一夜跑 37 次实验 → <strong>19% 性能提升</strong></li>
+      <li>0.8B 模型一夜之间超过手工调优的 <strong>1.6B 模型</strong></li>
+      <li>对 Shopify 20 年历史的 Liquid 模板引擎运行：<strong>53% 解析加速、61% 更少的对象分配</strong></li>
+    </ul>
+
+    <div class="quote reveal">
+      <p>"I'm not a ML researcher of course. But it's mesmerizing to just read it reasoning its way through experiments."</p>
+      <cite>Tobias Lutke, Shopify CEO</cite>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 04 LANDSCAPE ===================== -->
+<section id="landscape">
+  <div class="wrap">
+    <div class="sn reveal">04</div>
+    <h2 class="reveal">领域全景：AI 自主科研 2024-2026</h2>
+
+    <p class="reveal">Autoresearch 不是孤立的——它是 "AI 自主科研" 大浪潮中的标志性节点。</p>
+  </div>
+
+  <div class="wrap-wide">
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>项目</th><th>组织</th><th>目标</th><th>复杂度</th><th>门槛</th><th>开源</th></tr></thead>
+        <tbody>
+          <tr><td>AI Scientist v2</td><td>Sakana AI</td><td>端到端论文生成</td><td>高</td><td>研究级</td><td>是</td></tr>
+          <tr><td>AI Co-Scientist</td><td>DeepMind</td><td>多 Agent 科学假设辩论</td><td>高</td><td>Gemini 访问</td><td>否</td></tr>
+          <tr><td>AlphaEvolve</td><td>DeepMind</td><td>进化式算法发现</td><td>高</td><td>Cloud 预览</td><td>否</td></tr>
+          <tr><td>全自动研究者</td><td>OpenAI</td><td>通用问题求解（2028）</td><td>极高</td><td>内部</td><td>否</td></tr>
+          <tr><td>REA</td><td>Meta</td><td>广告排名模型自主优化</td><td>高</td><td>内部</td><td>否</td></tr>
+          <tr><td>Carl</td><td>Autoscience</td><td>产出同行评审论文</td><td>高</td><td>商业</td><td>否</td></tr>
+          <tr class="row-hl"><td>autoresearch</td><td>Karpathy</td><td>单 GPU 训练代码迭代</td><td>极低</td><td>任何人+1GPU</td><td>MIT</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h3 class="reveal">关键时间线</h3>
+    <div class="timeline reveal">
+      <div class="tl">
+        <div class="tl-date">2024.08</div>
+        <div class="tl-body"><div class="tl-label">Sakana AI Scientist v1</div><div class="tl-text">首个端到端全自动科学发现系统。每篇论文 ~$15，但 42% 实验因代码错误失败。</div></div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2025.02</div>
+        <div class="tl-body"><div class="tl-label">Google AI Co-Scientist</div><div class="tl-text">多 Agent 自我辩论。Stanford 用它发现可治疗肝纤维化的药物。</div></div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2025.04</div>
+        <div class="tl-body"><div class="tl-label">AI Scientist v2 通过 ICLR 评审</div><div class="tl-text">首篇完全 AI 生成并通过正式同行评审的论文。</div></div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2025.05</div>
+        <div class="tl-body"><div class="tl-label">AlphaEvolve</div><div class="tl-text">56 年来首次改进 Strassen 矩阵乘法算法。已用于优化 Google 数据中心调度。</div></div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2026.02</div>
+        <div class="tl-body"><div class="tl-label">Claude Opus 4.6</div><div class="tl-text">100 万 token 上下文、14.5h 任务时长。为 autoresearch 提供了理想 Agent 引擎。</div></div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2026.03.07</div>
+        <div class="tl-body"><div class="tl-label">autoresearch 发布</div><div class="tl-text">630 行代码，3 个文件。8 天内从 ML 工具演变为通用优化范式。860 万次推文浏览。</div></div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2026.03.17</div>
+        <div class="tl-body"><div class="tl-label">Meta REA</div><div class="tl-text">3 名工程师完成原需 16 人的工作。模型精度翻倍。</div></div>
+      </div>
+      <div class="tl">
+        <div class="tl-date">2026.03.20</div>
+        <div class="tl-body"><div class="tl-label">OpenAI 宣布"全自动研究者"</div><div class="tl-text">2026.09 推 AI 研究实习生，2028 推全自动多 Agent 系统。</div></div>
+      </div>
+    </div>
+
+    <div class="quote reveal">
+      <p>"我们的工作方式已经完全不同了。没人再一直手写代码了，你在管理一群 Codex Agent。"</p>
+      <cite>Jakub Pachocki, OpenAI 首席科学家</cite>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 05 ECOSYSTEM ===================== -->
+<section id="ecosystem">
+  <div class="wrap">
+    <div class="sn reveal">05</div>
+    <h2 class="reveal">衍生生态</h2>
+
+    <p class="reveal">发布仅 8 天，autoresearch 从 ML 工具演变为<strong>通用优化范式</strong>——约束范围、数字化定义成功、自动化验证、循环。</p>
+
+    <h4 class="reveal">平台适配</h4>
+    <div class="card-grid reveal">
+      <div class="card">
+        <div class="card-name"><a href="https://github.com/trevin-creator/autoresearch-mlx">autoresearch-mlx</a></div>
+        <div class="card-sub">701 stars</div>
+        <div class="card-desc">Apple Silicon MLX 原生。M4 Max 一夜 val_bpb 从 2.667 降至 1.294。</div>
+      </div>
+      <div class="card">
+        <div class="card-name"><a href="https://github.com/miolini/autoresearch-macos">autoresearch-macos</a></div>
+        <div class="card-desc">macOS MPS + CPU 适配。</div>
+      </div>
+      <div class="card">
+        <div class="card-name"><a href="https://github.com/jsegov/autoresearch-win-rtx">autoresearch-win-rtx</a></div>
+        <div class="card-desc">Windows RTX GPU 版。</div>
+      </div>
+      <div class="card">
+        <div class="card-name"><a href="https://github.com/andyluo7/autoresearch">autoresearch-amd</a></div>
+        <div class="card-desc">AMD GPU (ROCm) 版。</div>
+      </div>
+    </div>
+
+    <h4 class="reveal">社区衍生</h4>
+    <div class="card-grid reveal">
+      <div class="card">
+        <div class="card-name"><a href="https://github.com/davebcn87/pi-autoresearch">pi-autoresearch</a></div>
+        <div class="card-sub">1,377 stars — 最热衍生</div>
+        <div class="card-desc">持久化会话 + Dashboard UI + 分支感知实验追踪。</div>
+      </div>
+      <div class="card">
+        <div class="card-name"><a href="https://github.com/RightNow-AI/autokernel">autokernel</a></div>
+        <div class="card-sub">608 stars</div>
+        <div class="card-desc">应用于 GPU kernel 优化。睡一觉，醒来得到优化的 Triton/CUDA kernel。</div>
+      </div>
+      <div class="card">
+        <div class="card-name"><a href="https://github.com/uditgoenka/autoresearch">autoresearch-universal</a></div>
+        <div class="card-sub">216 stars</div>
+        <div class="card-desc">领域无关版。测试覆盖率、bundle size、SEO、Terraform 等均可。</div>
+      </div>
+      <div class="card">
+        <div class="card-name"><a href="https://github.com/hwchase17/autoresearch-agents">autoresearch-agents</a></div>
+        <div class="card-sub">72 stars — by LangChain 创始人</div>
+        <div class="card-desc">Agent 优化 Agent。用 LangSmith eval scores 迭代优化。</div>
+      </div>
+    </div>
+
+    <div class="callout callout-green reveal">
+      <strong>SkyPilot 规模化：</strong>16 个 H100/H200 GPU，8 小时 910 次实验（单 GPU 约 96 次），val_bpb 从 1.003 降至 0.974。Agent 自主发现硬件差异，开发了两层策略：H100 上廉价筛选，H200 上验证优胜者。
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 06 VOICES ===================== -->
+<section id="voices">
+  <div class="wrap">
+    <div class="sn reveal">06</div>
+    <h2 class="reveal">社区声音</h2>
+
+    <h3 class="reveal">Karpathy 的愿景</h3>
+    <div class="quote reveal">
+      <p>"The next step for autoresearch is that it has to be asynchronously massively collaborative for agents (think: SETI@home style). The goal is not to emulate a single PhD student, it's to emulate a research community of them."</p>
+      <cite>@karpathy on X</cite>
+    </div>
+
+    <p class="reveal">他在 No Priors 播客中进一步阐述：2026 年已进入 <strong>"Loopy Era"</strong>，人类不再直接写大部分代码，而是指导和编排 Agent。"所有 LLM 前沿实验室都会这样做。这是最终 Boss 战。"</p>
+
+    <h3 class="reveal">Reddit 讨论热度</h3>
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>Subreddit</th><th>投票</th><th>评论</th><th>焦点</th></tr></thead>
+        <tbody>
+          <tr><td>r/LocalLLaMA</td><td>232</td><td>84</td><td>技术讨论为主</td></tr>
+          <tr><td>r/singularity</td><td>活跃</td><td>—</td><td>"early singularity" 措辞辩论</td></tr>
+          <tr><td>r/AgentsOfAI</td><td>232</td><td>—</td><td>Agent 框架设计</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="reveal">正面 vs 质疑</h3>
+    <div class="two-col reveal">
+      <div class="col pros">
+        <h4>正面</h4>
+        <ul>
+          <li>模式极简可移植，一句话讲清</li>
+          <li>"约束即特性"——每个限制深思熟虑</li>
+          <li>$34 就能跑 700 次实验，真正的民主化</li>
+          <li>发现了 Karpathy 自己手动调几个月没发现的 bug</li>
+          <li>Agent 发现的改进能迁移到大模型</li>
+        </ul>
+      </div>
+      <div class="col cons">
+        <h4>质疑</h4>
+        <ul>
+          <li>Goodhart's Law — Agent 会"刷分"（seed hacking）</li>
+          <li>~100 次后收益递减，Agent "黔驴技穷"</li>
+          <li>不同 GPU 结果不可直接迁移</li>
+          <li>验证集污染风险——过拟合测试怪癖</li>
+          <li>改进之间缺乏隔离，无法独立验证</li>
+          <li>"不过是重新发明 AutoML"（Karpathy 已反驳）</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="reveal">vs AutoML 的本质区别</h3>
+    <div class="two-col reveal">
+      <div class="col cons">
+        <h4>传统 AutoML / HPO</h4>
+        <ul>
+          <li>固定架构下搜索数值超参</li>
+          <li>搜索空间由人类预定义</li>
+          <li>网格 / 贝叶斯采样</li>
+        </ul>
+      </div>
+      <div class="col pros">
+        <h4>autoresearch</h4>
+        <ul>
+          <li>可修改一切——架构、优化器、训练技巧</li>
+          <li>搜索空间是代码本身，维度无限</li>
+          <li>由 LLM 的创造力和推理驱动</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="quote reveal">
+      <p>"Neural architecture search as it existed then is such a weak version of this that it's in its own category of totally useless by comparison."</p>
+      <cite>Karpathy 回应 "不过是 AutoML" 的批评</cite>
+    </div>
+
+    <h3 class="reveal">安全性讨论</h3>
+    <ul class="reveal">
+      <li><strong>不是真正的"自我改进"</strong>：Agent 修改的是另一个更简单模型的训练代码，不是自身</li>
+      <li><strong>Prompt 注入风险</strong>（GitHub Issue #64）：Agent 读取日志时可能被恶意输出操纵</li>
+      <li><strong>制品完整性</strong>（Issue #41）：共享系统上缓存组件缺乏验证</li>
+      <li>Sakana AI 已发现 AI Scientist 会修改自身执行脚本——行为边界管理需持续关注</li>
+    </ul>
+
+    <h3 class="reveal">有趣的技术发现</h3>
+    <ul class="reveal">
+      <li>Opus 4.6 运行 12+ 小时 118 次实验；GPT-5.4 xhigh 无法维持长循环——Agent 鲁棒性至关重要</li>
+      <li>Codex 不适合 autoresearch：会忽略"永远不要停止"的指令</li>
+      <li>一些先前发现无法复现（5% warmup 和 seed 137 在新运行中反而有害），Karpathy："These things are fragile"</li>
+      <li>126 次实验的 session 中发现 embedding 权重衰减和初始化缩放 0.68x 最优</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== 07 MEDIA ===================== -->
+<section id="media">
+  <div class="wrap">
+    <div class="sn reveal">07</div>
+    <h2 class="reveal">媒体报道</h2>
+
+    <div class="media-list reveal">
+      <div class="media-item">
+        <div class="media-src">Fortune</div>
+        <div class="media-body">
+          <div class="media-title"><a href="https://fortune.com/2026/03/17/andrej-karpathy-loop-autonomous-ai-agents-future/">'The Karpathy Loop': 700 experiments, 2 days</a></div>
+          <div class="media-note">正式命名 "Karpathy Loop"，讨论 AI 研究的未来方向</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">MIT Tech Review</div>
+        <div class="media-body">
+          <div class="media-title"><a href="https://www.technologyreview.com/2026/03/20/1134438/openai-is-throwing-everything-into-building-a-fully-automated-researcher/">OpenAI is building a fully automated researcher</a></div>
+          <div class="media-note">OpenAI 以 autoresearch 为参照，定"AI researcher"为北极星目标</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">VentureBeat</div>
+        <div class="media-body">
+          <div class="media-title"><a href="https://venturebeat.com/technology/andrej-karpathys-new-open-source-autoresearch-lets-you-run-hundreds-of-ai">Hundreds of AI experiments — revolutionary implications</a></div>
+          <div class="media-note">强调革命性含义和潜在应用</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">MarkTechPost</div>
+        <div class="media-body">
+          <div class="media-title"><a href="https://www.marktechpost.com/2026/03/08/andrej-karpathy-open-sources-autoresearch-a-630-line-python-tool-letting-ai-agents-run-autonomous-ml-experiments-on-single-gpus/">630-Line Python Tool for Autonomous ML</a></div>
+          <div class="media-note">技术细节解析</div>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="reveal">深度技术分析</h4>
+    <div class="media-list reveal">
+      <div class="media-item">
+        <div class="media-src">paddo.dev</div>
+        <div class="media-body">
+          <div class="media-title"><a href="https://paddo.dev/blog/autoresearch-ecosystem/">Autoresearch Became a Primitive</a></div>
+          <div class="media-note">最佳生态系统分析——8 天内从工具变范式</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">Philipp Schmid</div>
+        <div class="media-body">
+          <div class="media-title"><a href="https://www.philschmid.de/autoresearch">How Autoresearch changes SLM adoption</a></div>
+          <div class="media-note">让非 ML 人员也能优化模型</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">SOTAAZ</div>
+        <div class="media-body">
+          <div class="media-title"><a href="https://www.sotaaz.com/post/autoresearch-part1-en">Inside Karpathy's autoresearch (三部曲)</a></div>
+          <div class="media-note">深度代码级分析 + 动手指南</div>
+        </div>
+      </div>
+      <div class="media-item">
+        <div class="media-src">arXiv</div>
+        <div class="media-body">
+          <div class="media-title"><a href="https://arxiv.org/html/2603.15916">Auto Researching, not hyperparameter tuning</a></div>
+          <div class="media-note">10,000 次 LLM 引导实验的收敛性分析</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 08 VERDICT ===================== -->
+<section id="verdict">
+  <div class="wrap">
+    <div class="sn reveal">08</div>
+    <h2 class="reveal">价值判断</h2>
+
+    <div class="two-col reveal">
+      <div class="col pros">
+        <h4>核心价值</h4>
+        <ul>
+          <li>证明"人写 prompt，AI 写代码"的研究范式可行有效</li>
+          <li>极致可及性——1 人 + 1 GPU + 1 个 .md</li>
+          <li>发现可迁移到更大模型，非玩具</li>
+          <li>train.py 本身是 LLM 训练最佳实践教材</li>
+          <li>"约束即特性"——精妙设计</li>
+          <li>Karpathy 号召力让范式迅速传播验证</li>
+        </ul>
+      </div>
+      <div class="col cons">
+        <h4>局限</h4>
+        <ul>
+          <li>当前只优化 val_bpb，scope 窄</li>
+          <li>不产生论文或知识总结</li>
+          <li>缺乏全局搜索策略</li>
+          <li>Agent 理解出错可能产生 buggy "改进"</li>
+          <li>本质是已知空间内优化，非开辟新方向</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="verdict reveal">
+      <h3>底线</h3>
+      <p>Autoresearch 的核心价值不在于它能达到的上限，而在于它<strong>证明了一个范式</strong>：一个人 + 一块 GPU + 一个 AI Agent + 一个 Markdown 文件，就能在一夜之间完成过去需要团队数周的实验探索。</p>
+      <p style="margin-top: 0.8rem">它不是最强大的 AI 研究系统，但它是<strong>最可及的</strong>。设计约束不是缺陷，而是刻意为之——正是这些约束让任何人都能在自己的 GPU 上跑起来，让结果可比、可审查、可复现。</p>
+      <p style="margin-top: 0.8rem">8 天内从 ML 工具演变为通用范式，被 Fortune 命名 "The Karpathy Loop"，被 OpenAI 视为研究方向参照——<strong>这不仅仅是一个 repo，这是一个时代的起点标记。</strong></p>
+    </div>
+
+    <h3 class="reveal">对我们的启示</h3>
+    <ol class="reveal">
+      <li><strong>"Karpathy Loop" 是通用原语</strong> — 任何有量化指标的优化问题都能套用</li>
+      <li><strong>program.md 值得学习</strong> — 用自然语言定义研究方向和约束，可能是未来 AI 辅助工作的标准界面</li>
+      <li><strong>简洁是力量</strong> — 3 文件 630 行，却能产出让 Fortune 和 MIT Tech Review 报道的成果</li>
+      <li><strong>安全边界设计</strong> — program.md 中的约束是 Agent 行为管理的可参考模版</li>
+    </ol>
+
+    <div class="quote reveal" style="margin-top: 2rem">
+      <p>"All LLM frontier labs will do this. This is the final boss battle."</p>
+      <cite>Andrej Karpathy</cite>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <span>CC Learning / Autoresearch Deep Dive / 2026.03.23</span>
+    <span>Sources: Reddit, GitHub, X, Fortune, MIT Tech Review, VentureBeat, arXiv</span>
+  </div>
+</footer>
+
+<script>
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  if (current === 'dark') {
+    html.setAttribute('data-theme', 'light');
+  } else {
+    html.setAttribute('data-theme', 'dark');
+  }
+}
+
+// Scroll progress bar
+const progressBar = document.getElementById('progressBar');
+function updateProgress() {
+  const scrolled = window.scrollY;
+  const total = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = Math.min(scrolled / total, 1);
+  progressBar.style.transform = 'scaleX(' + pct + ')';
+}
+window.addEventListener('scroll', updateProgress, { passive: true });
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.01, rootMargin: '0px 0px -10px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Stat counter animation
+function animateCounter(el) {
+  const text = el.textContent.trim();
+  const match = text.match(/^([~$]?)(\d+)([\w%]?)$/);
+  if (!match) return;
+  const prefix = match[1], target = parseInt(match[2]), suffix = match[3];
+  const dur = 800;
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min((now - start) / dur, 1);
+    const ease = 1 - Math.pow(1 - t, 4); // ease-out-quart
+    const val = Math.round(target * ease);
+    el.textContent = prefix + val + suffix;
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+const statObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting && !entry.target.dataset.animated) {
+      entry.target.dataset.animated = '1';
+      animateCounter(entry.target);
+    }
+  });
+}, { threshold: 0.3 });
+document.querySelectorAll('.stat-val').forEach(el => statObserver.observe(el));
+
+// Nav active state
+const navLinks = document.querySelectorAll('.nav a');
+const sections = document.querySelectorAll('section[id]');
+const navObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const active = document.querySelector('.nav a[href="#' + entry.target.id + '"]');
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.15, rootMargin: '-80px 0px -60% 0px' });
+sections.forEach(s => navObserver.observe(s));
+</script>
+</body>
+</html>

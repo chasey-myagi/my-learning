@@ -1,0 +1,2830 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 — 编程与引擎 | 游戏开发完全指南</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-page: #08080f;
+  --bg-surface: #0d0d17;
+  --bg-card: #141425;
+  --bg-code: #0a0a18;
+  --border: #1e1e3a;
+  --border-bright: #2a2a4a;
+  --text-primary: #ffffff;
+  --text-body: #c8c8d8;
+  --text-muted: #7878a0;
+  --accent: #4ecdc4;
+  --accent-dim: rgba(78,205,196,0.1);
+  --accent-mid: rgba(78,205,196,0.25);
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --max-width: 880px;
+  --nav-height: 60px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --success: #2ecc71;
+  --info: #3498db;
+}
+
+[data-theme="light"] {
+  --bg-page: #f5f6fa;
+  --bg-surface: #ffffff;
+  --bg-card: #eeeef6;
+  --bg-code: #e6e6f0;
+  --border: #d5d5e2;
+  --border-bright: #c5c5d5;
+  --text-body: #3a3a50;
+  --text-primary: #1a1a2e;
+  --text-muted: #6a6a85;
+}
+
+[data-theme="light"] nav,
+[data-theme="light"] .navbar {
+  background: rgba(245,246,250,0.88);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .hero-number {
+  color: rgba(0,0,0,0.03);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+/* ── 日间模式组件修复 ── */
+[data-theme="light"] table {
+  border: 1px solid var(--border);
+}
+[data-theme="light"] th {
+  background: var(--bg-card);
+  border-bottom: 2px solid var(--accent);
+}
+[data-theme="light"] td {
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="light"] tr:nth-child(even) {
+  background: rgba(0,0,0,0.025);
+}
+[data-theme="light"] code {
+  background: var(--bg-card);
+  color: #0d7377;
+  border-color: var(--border);
+}
+[data-theme="light"] pre code {
+  background: none;
+  color: var(--text-body);
+  border: none;
+}
+[data-theme="light"] .concept-box {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+[data-theme="light"] .practice-box {
+  background: var(--bg-surface);
+  border-color: var(--border);
+  border-left-color: var(--success);
+}
+[data-theme="light"] .warning-box {
+  background: var(--bg-surface);
+  border-color: var(--border);
+  border-left-color: var(--warning);
+}
+[data-theme="light"] .decision-node {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+[data-theme="light"] .decision-node.question {
+  background: var(--bg-card);
+  border-color: var(--accent);
+}
+[data-theme="light"] .decision-node.answer {
+  background: var(--bg-surface);
+  border-color: var(--success);
+}
+[data-theme="light"] .card {
+  background: var(--bg-card);
+}
+[data-theme="light"] blockquote {
+  background: var(--bg-card);
+}
+[data-theme="light"] .flow-step {
+  background: var(--bg-card);
+}
+[data-theme="light"] .flow-step.highlight {
+  background: var(--bg-card);
+  border-color: var(--accent);
+}
+/* 日间模式语法高亮 */
+[data-theme="light"] .kw { color: #7c3aed; }
+[data-theme="light"] .fn { color: #2563eb; }
+[data-theme="light"] .str { color: #059669; }
+[data-theme="light"] .cm { color: #6b7280; }
+[data-theme="light"] .num { color: #d97706; }
+[data-theme="light"] .type { color: #b45309; }
+[data-theme="light"] .op { color: #0891b2; }
+[data-theme="light"] .var { color: #dc2626; }
+[data-theme="light"] .tag-green { background: rgba(46,204,113,0.12); }
+[data-theme="light"] .tag-red { background: rgba(231,76,60,0.12); }
+[data-theme="light"] .tag-yellow { background: rgba(243,156,18,0.12); }
+[data-theme="light"] .tag-blue { background: rgba(52,152,219,0.12); }
+[data-theme="light"] .tag-accent { background: var(--bg-card); }
+
+#theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+#theme-toggle:hover {
+  border-color: var(--accent);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-page);
+  color: var(--text-body);
+  font: 16px/1.85 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ===== 导航栏 ===== */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  background: rgba(8,8,15,0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+nav a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+nav a:hover { color: var(--accent); }
+
+nav .nav-center {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+}
+
+nav .nav-right { display: flex; gap: 20px; }
+
+/* ===== 主内容 ===== */
+main {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ===== Hero ===== */
+.hero {
+  padding-top: 120px;
+  padding-bottom: 60px;
+  text-align: center;
+}
+
+.hero .module-number {
+  display: inline-block;
+  font-size: 5rem;
+  font-weight: 900;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--accent);
+  opacity: 0.3;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.hero h1 {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+
+.hero h1 span { color: var(--accent); }
+
+.hero .subtitle {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  max-width: 640px;
+  margin: 0 auto;
+  line-height: 1.75;
+}
+
+/* ===== 目录 ===== */
+.toc {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 32px;
+  margin-bottom: 80px;
+}
+
+.toc h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.toc ol {
+  list-style: none;
+  counter-reset: toc-counter;
+}
+
+.toc ol li {
+  counter-increment: toc-counter;
+  margin-bottom: 10px;
+}
+
+.toc ol li a {
+  color: var(--text-body);
+  text-decoration: none;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.toc ol li a::before {
+  content: counter(toc-counter, decimal-leading-zero);
+  color: var(--accent);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  min-width: 28px;
+}
+
+.toc ol li a:hover { color: var(--accent); transform: translateX(4px); }
+
+/* ===== Section ===== */
+section { margin-bottom: 80px; }
+
+h2 {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 40px;
+  margin-bottom: 16px;
+}
+
+h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 28px;
+  margin-bottom: 12px;
+}
+
+p { margin-bottom: 16px; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+strong { color: var(--text-primary); font-weight: 600; }
+
+ul, ol { margin-bottom: 16px; padding-left: 24px; }
+li { margin-bottom: 6px; }
+
+/* ===== 代码块 ===== */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--bg-code);
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  position: relative;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--text-body);
+}
+
+pre .label {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 语法高亮 */
+.kw { color: #c678dd; }       /* 关键字 */
+.fn { color: #61afef; }       /* 函数 */
+.str { color: #98c379; }      /* 字符串 */
+.cm { color: #5c6370; font-style: italic; }  /* 注释 */
+.num { color: #d19a66; }      /* 数字 */
+.type { color: #e5c07b; }     /* 类型 */
+.op { color: #56b6c2; }       /* 运算符 */
+.var { color: #e06c75; }      /* 变量/属性 */
+
+/* ===== 卡片 ===== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+}
+
+.card.accent-border { border-left: 3px solid var(--accent); }
+.card.warning-border { border-left: 3px solid var(--warning); }
+.card.danger-border { border-left: 3px solid var(--danger); }
+.card.success-border { border-left: 3px solid var(--success); }
+.card.info-border { border-left: 3px solid var(--info); }
+
+.card h4 { margin-top: 0; }
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ===== 表格 ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+  font-size: 0.92rem;
+}
+
+th {
+  background: var(--bg-card);
+  color: var(--accent);
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+
+tr:nth-child(even) { background: rgba(20,20,37,0.5); }
+
+/* ===== 引用块 ===== */
+blockquote {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-dim);
+  padding: 16px 20px;
+  margin: 0 0 24px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+  color: var(--text-body);
+}
+
+blockquote strong { color: var(--accent); }
+
+/* ===== 重点概念 ===== */
+.concept-box {
+  background: var(--accent-dim);
+  border: 1px solid rgba(78,205,196,0.2);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.concept-box .concept-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+/* ===== 实践区块 ===== */
+.practice-box {
+  background: rgba(46,204,113,0.06);
+  border: 1px solid rgba(46,204,113,0.2);
+  border-left: 3px solid var(--success);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.practice-box .practice-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--success);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+/* ===== 警告区块 ===== */
+.warning-box {
+  background: rgba(243,156,18,0.06);
+  border: 1px solid rgba(243,156,18,0.2);
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.warning-box .warning-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--warning);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+/* ===== 决策树 ===== */
+.decision-tree {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin-bottom: 24px;
+}
+
+.decision-node {
+  background: var(--accent-dim);
+  border: 1px solid rgba(78,205,196,0.3);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  margin: 8px 0;
+  font-size: 0.92rem;
+  position: relative;
+}
+
+.decision-node.question {
+  background: rgba(78,205,196,0.15);
+  border-color: var(--accent);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.decision-node.answer {
+  background: rgba(46,204,113,0.1);
+  border-color: var(--success);
+  color: var(--success);
+  font-weight: 600;
+}
+
+.decision-branch {
+  display: flex;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.decision-branch > div { flex: 1; }
+
+.decision-arrow {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 4px 0;
+}
+
+/* ===== 流程图 ===== */
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.flow-step {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  text-align: center;
+  min-width: 80px;
+}
+
+.flow-step.highlight {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.flow-arrow { color: var(--accent); font-size: 1.2rem; }
+
+/* ===== 标签 ===== */
+.tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tag-green { background: rgba(46,204,113,0.15); color: var(--success); }
+.tag-red { background: rgba(231,76,60,0.15); color: var(--danger); }
+.tag-yellow { background: rgba(243,156,18,0.15); color: var(--warning); }
+.tag-blue { background: rgba(52,152,219,0.15); color: var(--info); }
+.tag-accent { background: var(--accent-dim); color: var(--accent); }
+
+/* ===== 底部导航 ===== */
+.bottom-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 80px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+
+.bottom-nav a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  flex: 1;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.bottom-nav a:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+.bottom-nav a .label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.bottom-nav a .title {
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.bottom-nav a:last-child { text-align: right; }
+
+/* ===== 页脚 ===== */
+footer {
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  border-top: 1px solid var(--border);
+  margin-top: 60px;
+}
+
+/* ===== 分隔线 ===== */
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 40px 0;
+}
+
+/* ===== 渐变分割装饰 ===== */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-mid), transparent);
+  margin: 60px 0;
+}
+
+/* ===== 比较条 ===== */
+.comparison-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  font-size: 0.88rem;
+}
+
+.comparison-bar .bar-label { min-width: 100px; color: var(--text-muted); }
+
+.comparison-bar .bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-page);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.comparison-bar .bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+  transition: width 0.5s ease;
+}
+
+.comparison-bar .bar-value {
+  min-width: 30px;
+  text-align: right;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.2rem; }
+  .card-grid, .card-grid-3 { grid-template-columns: 1fr; }
+  .decision-branch { flex-direction: column; }
+  nav { padding: 0 16px; }
+  nav .nav-right { gap: 12px; }
+  main { padding: 0 16px 60px; }
+  .toc { padding: 20px; }
+  pre { padding: 16px; }
+  .bottom-nav { flex-direction: column; }
+  table { font-size: 0.82rem; }
+  th, td { padding: 8px 10px; }
+  .flow-diagram { gap: 4px; }
+  .flow-step { min-width: 60px; padding: 8px 10px; font-size: 0.78rem; }
+}
+
+@media (max-width: 480px) {
+  .hero .module-number { font-size: 3.5rem; }
+  .hero h1 { font-size: 1.7rem; }
+  body { font-size: 15px; }
+}
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: Focus Styles ── */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 导航栏 ===== -->
+<nav>
+  <a href="index.html">&larr; 索引</a>
+  <span class="nav-center">编程与引擎</span>
+  <div class="nav-right">
+    <a href="01-game-design.html">上一页</a>
+    <a href="03-art.html">下一页</a>
+    <button id="theme-toggle" aria-label="切换主题">☀️</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ===== Hero ===== -->
+<div class="hero">
+  <div class="module-number">02</div>
+  <h1>编程与<span>游戏引擎</span></h1>
+  <p class="subtitle">从引擎选型到架构设计，从物理模拟到 AI 寻路，从网络同步到性能优化——<br>一份面向独立开发者的完整技术参考。</p>
+</div>
+
+<!-- ===== 目录 ===== -->
+<div class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#engines">游戏引擎概览</a></li>
+    <li><a href="#languages">编程语言选择</a></li>
+    <li><a href="#architecture">游戏架构模式</a></li>
+    <li><a href="#game-loop">游戏循环的技术实现</a></li>
+    <li><a href="#physics">物理引擎原理</a></li>
+    <li><a href="#ai">游戏 AI 编程</a></li>
+    <li><a href="#networking">网络编程基础</a></li>
+    <li><a href="#optimization">性能优化原则</a></li>
+    <li><a href="#practice">实践：引擎选择与第一个项目</a></li>
+  </ol>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 1: 游戏引擎概览
+     ════════════════════════════════════════════════════════ -->
+<section id="engines">
+<h2>01 &mdash; 游戏引擎概览</h2>
+
+<h3>什么是游戏引擎？</h3>
+
+<p>游戏引擎是一个<strong>可复用的软件框架</strong>，它将游戏开发中通用的底层系统抽象出来，让开发者可以专注于游戏逻辑和内容创作，而不必每次都从零搭建渲染管线、物理模拟、音频播放等基础设施。</p>
+
+<div class="concept-box">
+  <div class="concept-label">核心概念</div>
+  <p style="margin-bottom:0">游戏引擎 ≠ 游戏。引擎是<strong>工具</strong>，游戏是<strong>产品</strong>。一个好的引擎应该让你更快地做出好游戏，而不是让你花更多时间"学引擎"。</p>
+</div>
+
+<h3>引擎提供的核心系统</h3>
+
+<div class="card-grid">
+  <div class="card accent-border">
+    <h4>渲染系统</h4>
+    <p style="margin-bottom:0">2D/3D 图形渲染管线、着色器管理、光照计算、后处理效果、粒子系统。现代引擎通常同时支持 OpenGL/Vulkan/DirectX/Metal。</p>
+  </div>
+  <div class="card accent-border">
+    <h4>物理引擎</h4>
+    <p style="margin-bottom:0">碰撞检测与响应、刚体/软体模拟、射线检测、关节约束。常见集成：Box2D（2D）、Bullet / PhysX / Jolt（3D）。</p>
+  </div>
+  <div class="card accent-border">
+    <h4>音频系统</h4>
+    <p style="margin-bottom:0">音效播放、3D 空间音频、音频总线与混音、实时效果（混响、EQ）。部分引擎集成 FMOD / Wwise。</p>
+  </div>
+  <div class="card accent-border">
+    <h4>输入系统</h4>
+    <p style="margin-bottom:0">键盘、鼠标、手柄、触屏的统一抽象。输入映射、死区处理、振动反馈、多设备热插拔。</p>
+  </div>
+  <div class="card accent-border">
+    <h4>资源管理</h4>
+    <p style="margin-bottom:0">纹理、模型、音频、场景的加载/卸载/缓存。资源引用、异步加载、打包与压缩。</p>
+  </div>
+  <div class="card accent-border">
+    <h4>脚本 / 编辑器</h4>
+    <p style="margin-bottom:0">可视化场景编辑器、属性检查器、调试工具、热重载。脚本系统让非程序员也能调整游戏逻辑。</p>
+  </div>
+</div>
+
+<p>此外，成熟引擎还提供：<strong>动画系统</strong>（骨骼动画、状态机、IK）、<strong>UI 系统</strong>、<strong>网络层</strong>、<strong>导航/寻路</strong>、<strong>本地化</strong>、<strong>版本控制集成</strong>、<strong>多平台导出</strong>等。</p>
+
+<h3>主流引擎深度对比</h3>
+
+<table>
+  <tr>
+    <th>维度</th>
+    <th>Godot 4</th>
+    <th>Unity</th>
+    <th>Unreal Engine 5</th>
+    <th>自研引擎</th>
+  </tr>
+  <tr>
+    <td><strong>开源</strong></td>
+    <td><span class="tag tag-green">MIT 协议</span></td>
+    <td><span class="tag tag-red">闭源</span></td>
+    <td><span class="tag tag-yellow">源码可见</span></td>
+    <td><span class="tag tag-green">完全控制</span></td>
+  </tr>
+  <tr>
+    <td><strong>费用</strong></td>
+    <td>完全免费，无任何分成</td>
+    <td>年收入 &gt; $200K 需订阅；曾有 Runtime Fee 争议</td>
+    <td>收入超 $1M 后 5% 分成</td>
+    <td>无费用，但时间成本极高</td>
+  </tr>
+  <tr>
+    <td><strong>语言</strong></td>
+    <td>GDScript, C#, C++ (GDExtension)</td>
+    <td>C#</td>
+    <td>C++, Blueprints</td>
+    <td>C/C++/Rust/自定义</td>
+  </tr>
+  <tr>
+    <td><strong>2D 能力</strong></td>
+    <td><span class="tag tag-green">优秀</span> 原生 2D 管线</td>
+    <td><span class="tag tag-yellow">良好</span></td>
+    <td><span class="tag tag-red">较弱</span></td>
+    <td>取决于实现</td>
+  </tr>
+  <tr>
+    <td><strong>3D 能力</strong></td>
+    <td><span class="tag tag-yellow">快速进步中</span></td>
+    <td><span class="tag tag-green">成熟</span></td>
+    <td><span class="tag tag-green">业界顶尖</span></td>
+    <td>取决于实现</td>
+  </tr>
+  <tr>
+    <td><strong>学习曲线</strong></td>
+    <td>低，文档友好</td>
+    <td>中等</td>
+    <td>高，系统复杂</td>
+    <td>极高</td>
+  </tr>
+  <tr>
+    <td><strong>社区/生态</strong></td>
+    <td>增长迅速，插件市场起步中</td>
+    <td>最大的生态，Asset Store 丰富</td>
+    <td>专业级，Marketplace 质量高</td>
+    <td>无现成生态</td>
+  </tr>
+  <tr>
+    <td><strong>适合项目</strong></td>
+    <td>独立游戏、2D 游戏、快速原型</td>
+    <td>移动游戏、中型 3D、跨平台</td>
+    <td>AAA 3D、写实画面、大型项目</td>
+    <td>极致性能、特殊需求、学习目的</td>
+  </tr>
+  <tr>
+    <td><strong>导出平台</strong></td>
+    <td>Windows, macOS, Linux, Android, iOS, Web, 主机</td>
+    <td>全平台</td>
+    <td>全平台（主机支持最好）</td>
+    <td>自行实现</td>
+  </tr>
+</table>
+
+<h4>Godot：独立开发者的利器</h4>
+
+<div class="card accent-border">
+  <p><strong>优势：</strong></p>
+  <ul>
+    <li>完全开源免费，MIT 协议——你的游戏赚多少钱都不用给引擎分一分</li>
+    <li>GDScript 语法类 Python，上手极快；节点系统直觉化</li>
+    <li>引擎本体仅 ~40MB，启动秒开，资源占用低</li>
+    <li>2D 拥有独立的渲染管线，不是"3D 引擎的 2D 模式"</li>
+    <li>Godot 4 引入 Vulkan 渲染器，3D 能力大幅提升</li>
+    <li>社区驱动开发，不受单一公司商业决策影响</li>
+  </ul>
+  <p><strong>劣势：</strong></p>
+  <ul>
+    <li>3D 在大型开放世界场景下仍不及 Unreal</li>
+    <li>主机导出需要付费第三方方案（W4 Games 提供）</li>
+    <li>生态相对年轻，高质量插件/资产数量有限</li>
+    <li>大型团队的工作流支持不如 Unity/Unreal 成熟</li>
+  </ul>
+  <p style="margin-bottom:0"><strong>推荐场景：</strong>独立开发者、2D 游戏、Game Jam、学习游戏开发、对自由度有极高要求的项目。</p>
+</div>
+
+<h4>Unity：最大公约数</h4>
+
+<div class="card info-border">
+  <p><strong>优势：</strong></p>
+  <ul>
+    <li>最大的社区和生态系统，几乎任何问题都能搜到答案</li>
+    <li>Asset Store 插件和美术资产数量碾压其他引擎</li>
+    <li>C# 是优秀的工业级语言，IDE 支持完善</li>
+    <li>移动平台优化做得好，市场占有率极高</li>
+    <li>DOTS/ECS 提供了面向数据设计的高性能路径</li>
+  </ul>
+  <p><strong>劣势：</strong></p>
+  <ul>
+    <li>2023 年 Runtime Fee 事件严重伤害了开发者信任</li>
+    <li>引擎代码闭源，遇到引擎 Bug 只能等官方修</li>
+    <li>版本升级经常引入 Breaking Changes</li>
+    <li>渲染管线碎片化（Built-in / URP / HDRP），选择困难</li>
+    <li>编辑器启动慢，内存占用大</li>
+  </ul>
+  <p style="margin-bottom:0"><strong>推荐场景：</strong>移动端游戏、中等规模 3D 游戏、需要大量现成资产的项目、团队有 C# 经验。</p>
+</div>
+
+<h4>Unreal Engine 5：工业级重炮</h4>
+
+<div class="card warning-border">
+  <p><strong>优势：</strong></p>
+  <ul>
+    <li>Nanite 虚拟几何体——可以直接导入电影级模型，无需手动减面</li>
+    <li>Lumen 全局光照——实时的、动态的全局光照和反射</li>
+    <li>Blueprints 可视化编程——策划和美术也能写逻辑</li>
+    <li>MetaHuman / Chaos Physics / World Partition 等前沿技术</li>
+    <li>主机平台支持最好，AAA 工作室首选</li>
+  </ul>
+  <p><strong>劣势：</strong></p>
+  <ul>
+    <li>学习曲线陡峭，C++ 入门门槛高</li>
+    <li>项目体积大，编译时间长</li>
+    <li>不适合小型 2D 游戏——用 UE 做小游戏是"杀鸡用牛刀"</li>
+    <li>收入超 $1M 后 5% 的分成对独立开发者是较大负担</li>
+    <li>硬件要求高，开发机至少 32GB RAM + 好显卡</li>
+  </ul>
+  <p style="margin-bottom:0"><strong>推荐场景：</strong>3A 或写实风格的 3D 游戏、需要最前沿渲染技术、团队有 C++ 经验、电影级过场动画。</p>
+</div>
+
+<h4>自研引擎：极客之路</h4>
+
+<div class="card danger-border">
+  <p><strong>什么时候考虑自研：</strong></p>
+  <ul>
+    <li>你的游戏有极其特殊的渲染或架构需求，现有引擎无法满足</li>
+    <li>你对极致性能有要求（如 Noita 的物理像素模拟）</li>
+    <li>你的核心目标就是学习底层技术</li>
+    <li>你在做一个需要长期维护 10+ 年的项目</li>
+  </ul>
+  <p><strong>自研的代价：</strong></p>
+  <ul>
+    <li>80% 的时间在做"引擎"而不是"游戏"</li>
+    <li>所有 Bug 都是你的 Bug，没有社区帮你</li>
+    <li>需要深厚的图形学、操作系统、编译器知识</li>
+    <li>多平台支持需要自己写每个平台的适配层</li>
+  </ul>
+  <p style="margin-bottom:0"><strong>知名自研案例：</strong>id Tech（Doom）、RE Engine（Capcom）、Noita（自研 Falling Sand 引擎）、Celeste（FNA/MonoGame 框架）。</p>
+</div>
+
+<h3>引擎选择决策树</h3>
+
+<div class="decision-tree">
+  <div class="decision-node question">你做什么类型的游戏？</div>
+  <div class="decision-branch">
+    <div>
+      <div class="decision-arrow">↓ 2D 游戏</div>
+      <div class="decision-node question">团队规模？</div>
+      <div class="decision-branch">
+        <div>
+          <div class="decision-arrow">↓ 1-3 人</div>
+          <div class="decision-node answer">→ Godot 4</div>
+        </div>
+        <div>
+          <div class="decision-arrow">↓ 大团队 / 需要大量资产</div>
+          <div class="decision-node answer">→ Unity</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="decision-arrow">↓ 3D 游戏</div>
+      <div class="decision-node question">画面风格？</div>
+      <div class="decision-branch">
+        <div>
+          <div class="decision-arrow">↓ 风格化 / 低多边形</div>
+          <div class="decision-node answer">→ Godot 4 / Unity</div>
+        </div>
+        <div>
+          <div class="decision-arrow">↓ 写实 / AAA 级别</div>
+          <div class="decision-node answer">→ Unreal Engine 5</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+    <div class="decision-node question">特殊情况</div>
+    <div class="decision-branch">
+      <div>
+        <div class="decision-arrow">↓ 想学底层技术</div>
+        <div class="decision-node answer">→ 自研 / Raylib / SDL</div>
+      </div>
+      <div>
+        <div class="decision-arrow">↓ 极简 2D / Game Jam</div>
+        <div class="decision-node answer">→ Godot / Love2D / Pygame</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 2: 编程语言选择
+     ════════════════════════════════════════════════════════ -->
+<section id="languages">
+<h2>02 &mdash; 编程语言选择</h2>
+
+<h3>游戏开发语言全景</h3>
+
+<table>
+  <tr>
+    <th>语言</th>
+    <th>主要用途</th>
+    <th>性能</th>
+    <th>学习难度</th>
+    <th>所属引擎</th>
+  </tr>
+  <tr>
+    <td><strong>GDScript</strong></td>
+    <td>Godot 专用脚本语言</td>
+    <td><span class="tag tag-yellow">中等</span></td>
+    <td><span class="tag tag-green">低</span></td>
+    <td>Godot</td>
+  </tr>
+  <tr>
+    <td><strong>C#</strong></td>
+    <td>Unity 主力 / Godot 可选</td>
+    <td><span class="tag tag-green">较高</span></td>
+    <td><span class="tag tag-yellow">中等</span></td>
+    <td>Unity, Godot</td>
+  </tr>
+  <tr>
+    <td><strong>C++</strong></td>
+    <td>引擎开发 / AAA 游戏</td>
+    <td><span class="tag tag-green">最高</span></td>
+    <td><span class="tag tag-red">高</span></td>
+    <td>UE, 自研引擎</td>
+  </tr>
+  <tr>
+    <td><strong>Rust</strong></td>
+    <td>新兴引擎 / 高性能模块</td>
+    <td><span class="tag tag-green">最高</span></td>
+    <td><span class="tag tag-red">很高</span></td>
+    <td>Bevy, 自研</td>
+  </tr>
+  <tr>
+    <td><strong>Lua</strong></td>
+    <td>嵌入式脚本 / Mod 系统</td>
+    <td><span class="tag tag-yellow">中等</span></td>
+    <td><span class="tag tag-green">低</span></td>
+    <td>Love2D, 嵌入各引擎</td>
+  </tr>
+</table>
+
+<h3>GDScript 深入</h3>
+
+<p>GDScript 是 Godot 专门设计的脚本语言。它的语法受 Python 启发，但做了大量游戏开发特化。</p>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># GDScript 基本语法示例</span>
+<span class="kw">extends</span> <span class="type">CharacterBody2D</span>
+
+<span class="cm"># 导出变量——在编辑器中可直接调整</span>
+<span class="kw">@export var</span> <span class="var">speed</span>: <span class="type">float</span> = <span class="num">200.0</span>
+<span class="kw">@export var</span> <span class="var">jump_force</span>: <span class="type">float</span> = <span class="num">-400.0</span>
+
+<span class="kw">var</span> <span class="var">gravity</span>: <span class="type">float</span> = ProjectSettings.<span class="fn">get_setting</span>(<span class="str">"physics/2d/default_gravity"</span>)
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>: <span class="type">float</span>) -&gt; <span class="type">void</span>:
+    <span class="cm"># 应用重力</span>
+    <span class="kw">if not</span> <span class="fn">is_on_floor</span>():
+        <span class="var">velocity</span>.<span class="var">y</span> += <span class="var">gravity</span> * <span class="var">delta</span>
+
+    <span class="cm"># 跳跃</span>
+    <span class="kw">if</span> Input.<span class="fn">is_action_just_pressed</span>(<span class="str">"jump"</span>) <span class="kw">and</span> <span class="fn">is_on_floor</span>():
+        <span class="var">velocity</span>.<span class="var">y</span> = <span class="var">jump_force</span>
+
+    <span class="cm"># 水平移动</span>
+    <span class="kw">var</span> <span class="var">direction</span> = Input.<span class="fn">get_axis</span>(<span class="str">"move_left"</span>, <span class="str">"move_right"</span>)
+    <span class="var">velocity</span>.<span class="var">x</span> = <span class="var">direction</span> * <span class="var">speed</span>
+
+    <span class="fn">move_and_slide</span>()</code></pre>
+
+<p><strong>GDScript 的独特优势：</strong></p>
+<ul>
+  <li><strong>一等公民集成</strong>——节点路径、信号、导出变量都是语言级特性，不是"绑定"</li>
+  <li><strong>热重载</strong>——修改脚本后游戏无需重启，实时生效</li>
+  <li><strong>紧凑</strong>——同样逻辑比 C# 少写 40-60% 的代码</li>
+  <li><strong>类型提示可选</strong>——快速原型用动态类型，正式项目用静态类型</li>
+</ul>
+
+<h3>C# 在游戏开发中</h3>
+
+<pre><code><span class="label">C# (Unity)</span>
+<span class="kw">using</span> UnityEngine;
+
+<span class="kw">public class</span> <span class="type">PlayerController</span> : <span class="type">MonoBehaviour</span>
+{
+    [<span class="type">SerializeField</span>] <span class="kw">private float</span> <span class="var">speed</span> = <span class="num">5f</span>;
+    [<span class="type">SerializeField</span>] <span class="kw">private float</span> <span class="var">jumpForce</span> = <span class="num">10f</span>;
+
+    <span class="kw">private</span> <span class="type">Rigidbody2D</span> <span class="var">rb</span>;
+    <span class="kw">private bool</span> <span class="var">isGrounded</span>;
+
+    <span class="kw">void</span> <span class="fn">Start</span>()
+    {
+        <span class="var">rb</span> = <span class="fn">GetComponent</span>&lt;<span class="type">Rigidbody2D</span>&gt;();
+    }
+
+    <span class="kw">void</span> <span class="fn">Update</span>()
+    {
+        <span class="kw">float</span> <span class="var">moveX</span> = Input.<span class="fn">GetAxisRaw</span>(<span class="str">"Horizontal"</span>);
+        <span class="var">rb</span>.<span class="var">velocity</span> = <span class="kw">new</span> <span class="type">Vector2</span>(<span class="var">moveX</span> * <span class="var">speed</span>, <span class="var">rb</span>.<span class="var">velocity</span>.<span class="var">y</span>);
+
+        <span class="kw">if</span> (Input.<span class="fn">GetButtonDown</span>(<span class="str">"Jump"</span>) && <span class="var">isGrounded</span>)
+        {
+            <span class="var">rb</span>.<span class="fn">AddForce</span>(<span class="type">Vector2</span>.<span class="var">up</span> * <span class="var">jumpForce</span>, <span class="type">ForceMode2D</span>.<span class="var">Impulse</span>);
+        }
+    }
+}</code></pre>
+
+<h3>C++ 与 Unreal</h3>
+
+<pre><code><span class="label">C++ (Unreal Engine)</span>
+<span class="cm">// PlayerCharacter.h</span>
+<span class="kw">#include</span> <span class="str">"CoreMinimal.h"</span>
+<span class="kw">#include</span> <span class="str">"GameFramework/Character.h"</span>
+
+<span class="fn">UCLASS</span>()
+<span class="kw">class</span> <span class="type">APlayerCharacter</span> : <span class="kw">public</span> <span class="type">ACharacter</span>
+{
+    <span class="fn">GENERATED_BODY</span>()
+
+<span class="kw">public</span>:
+    <span class="fn">UPROPERTY</span>(EditAnywhere, Category = <span class="str">"Movement"</span>)
+    <span class="kw">float</span> <span class="var">MoveSpeed</span> = <span class="num">600.0f</span>;
+
+    <span class="kw">virtual void</span> <span class="fn">SetupPlayerInputComponent</span>(<span class="type">UInputComponent</span>* <span class="var">Input</span>) <span class="kw">override</span>;
+
+<span class="kw">private</span>:
+    <span class="kw">void</span> <span class="fn">MoveForward</span>(<span class="kw">float</span> <span class="var">Value</span>);
+    <span class="kw">void</span> <span class="fn">MoveRight</span>(<span class="kw">float</span> <span class="var">Value</span>);
+};</code></pre>
+
+<p>C++ 在游戏开发中的核心地位无可替代——几乎所有引擎的底层都是 C/C++ 写的。但直接用 C++ 写游戏逻辑的开发效率远低于 GDScript 或 C#。Unreal 的 Blueprint 就是为了缓解这个问题而生的。</p>
+
+<h3>Rust：新兴势力</h3>
+
+<p>Rust 在游戏开发中的存在感正在快速上升。<strong>Bevy</strong> 引擎是最有代表性的 Rust 游戏引擎，采用 ECS 架构。</p>
+
+<pre><code><span class="label">Rust (Bevy)</span>
+<span class="kw">use</span> bevy::prelude::*;
+
+<span class="cm">// 组件定义</span>
+<span class="kw">#[derive(Component)]</span>
+<span class="kw">struct</span> <span class="type">Player</span>;
+
+<span class="kw">#[derive(Component)]</span>
+<span class="kw">struct</span> <span class="type">Speed</span>(<span class="kw">f32</span>);
+
+<span class="cm">// 系统</span>
+<span class="kw">fn</span> <span class="fn">player_movement</span>(
+    <span class="var">keyboard</span>: <span class="type">Res</span>&lt;<span class="type">ButtonInput</span>&lt;<span class="type">KeyCode</span>&gt;&gt;,
+    <span class="kw">mut</span> <span class="var">query</span>: <span class="type">Query</span>&lt;(&amp;<span class="kw">mut</span> <span class="type">Transform</span>, &amp;<span class="type">Speed</span>), <span class="type">With</span>&lt;<span class="type">Player</span>&gt;&gt;,
+    <span class="var">time</span>: <span class="type">Res</span>&lt;<span class="type">Time</span>&gt;,
+) {
+    <span class="kw">for</span> (<span class="kw">mut</span> <span class="var">transform</span>, <span class="var">speed</span>) <span class="kw">in</span> &amp;<span class="kw">mut</span> <span class="var">query</span> {
+        <span class="kw">if</span> <span class="var">keyboard</span>.<span class="fn">pressed</span>(<span class="type">KeyCode</span>::<span class="var">ArrowRight</span>) {
+            <span class="var">transform</span>.<span class="var">translation</span>.<span class="var">x</span> += <span class="var">speed</span>.<span class="num">0</span> * <span class="var">time</span>.<span class="fn">delta_secs</span>();
+        }
+    }
+}</code></pre>
+
+<p><strong>Rust 的游戏开发优势：</strong>内存安全保证、零成本抽象、无 GC 停顿、强大的类型系统、Cargo 包管理。<br><strong>劣势：</strong>学习曲线极陡、编译时间长、生态不成熟、热重载支持弱。</p>
+
+<h3>性能 vs 开发效率 权衡矩阵</h3>
+
+<div style="margin-bottom: 24px;">
+  <p style="margin-bottom: 12px; color: var(--text-primary); font-weight: 600;">运行性能</p>
+  <div class="comparison-bar">
+    <span class="bar-label">C++</span>
+    <div class="bar-track"><div class="bar-fill" style="width:98%; background: var(--success);"></div></div>
+    <span class="bar-value">98</span>
+  </div>
+  <div class="comparison-bar">
+    <span class="bar-label">Rust</span>
+    <div class="bar-track"><div class="bar-fill" style="width:96%; background: var(--success);"></div></div>
+    <span class="bar-value">96</span>
+  </div>
+  <div class="comparison-bar">
+    <span class="bar-label">C#</span>
+    <div class="bar-track"><div class="bar-fill" style="width:72%; background: var(--accent);"></div></div>
+    <span class="bar-value">72</span>
+  </div>
+  <div class="comparison-bar">
+    <span class="bar-label">GDScript</span>
+    <div class="bar-track"><div class="bar-fill" style="width:45%; background: var(--warning);"></div></div>
+    <span class="bar-value">45</span>
+  </div>
+  <div class="comparison-bar">
+    <span class="bar-label">Lua</span>
+    <div class="bar-track"><div class="bar-fill" style="width:40%; background: var(--warning);"></div></div>
+    <span class="bar-value">40</span>
+  </div>
+</div>
+
+<div style="margin-bottom: 24px;">
+  <p style="margin-bottom: 12px; color: var(--text-primary); font-weight: 600;">开发效率</p>
+  <div class="comparison-bar">
+    <span class="bar-label">GDScript</span>
+    <div class="bar-track"><div class="bar-fill" style="width:95%; background: var(--success);"></div></div>
+    <span class="bar-value">95</span>
+  </div>
+  <div class="comparison-bar">
+    <span class="bar-label">Lua</span>
+    <div class="bar-track"><div class="bar-fill" style="width:88%; background: var(--success);"></div></div>
+    <span class="bar-value">88</span>
+  </div>
+  <div class="comparison-bar">
+    <span class="bar-label">C#</span>
+    <div class="bar-track"><div class="bar-fill" style="width:80%; background: var(--accent);"></div></div>
+    <span class="bar-value">80</span>
+  </div>
+  <div class="comparison-bar">
+    <span class="bar-label">C++</span>
+    <div class="bar-track"><div class="bar-fill" style="width:35%; background: var(--danger);"></div></div>
+    <span class="bar-value">35</span>
+  </div>
+  <div class="comparison-bar">
+    <span class="bar-label">Rust</span>
+    <div class="bar-track"><div class="bar-fill" style="width:30%; background: var(--danger);"></div></div>
+    <span class="bar-value">30</span>
+  </div>
+</div>
+
+<div class="warning-box">
+  <div class="warning-label">关键认知</div>
+  <p style="margin-bottom:0"><strong>对 99% 的独立游戏来说，语言性能不是瓶颈。</strong>GDScript/C# 的性能足以驱动一个 60fps 的 2D 或中等规模 3D 游戏。只有在极端场景（海量实体模拟、复杂物理、大规模开放世界）下才需要 C++/Rust。永远优先选择让你<strong>更快出活</strong>的语言。</p>
+</div>
+
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 3: 游戏架构模式
+     ════════════════════════════════════════════════════════ -->
+<section id="architecture">
+<h2>03 &mdash; 游戏架构模式</h2>
+
+<p>好的架构让代码<strong>易于修改</strong>。游戏开发的核心挑战是：需求变化极快——今天设计的敌人明天可能要加新行为、换新武器、变成 Boss。好的架构模式能让这些变化的成本最小化。</p>
+
+<h3>Entity-Component-System (ECS)</h3>
+
+<div class="concept-box">
+  <div class="concept-label">核心思想</div>
+  <p style="margin-bottom:0"><strong>组合优于继承。</strong>ECS 将游戏对象分解为三个概念：<br>
+  <strong>Entity</strong>（实体）= 一个 ID，什么都不是<br>
+  <strong>Component</strong>（组件）= 纯数据，没有行为<br>
+  <strong>System</strong>（系统）= 纯行为，操作特定组件组合的数据</p>
+</div>
+
+<h4>为什么需要 ECS？传统继承的问题</h4>
+
+<pre><code><span class="label">传统继承的灾难</span>
+<span class="cm"># 经典的"菱形继承"问题</span>
+<span class="cm"># 你的游戏有这些东西：</span>
+<span class="cm">#   - 玩家：能移动、有血量、能攻击</span>
+<span class="cm">#   - 敌人：能移动、有血量、能攻击</span>
+<span class="cm">#   - 炮塔：有血量、能攻击、不能移动</span>
+<span class="cm">#   - 宝箱：有血量、不能攻击、不能移动</span>
+<span class="cm">#   - 子弹：能移动、能攻击、没血量</span>
+<span class="cm">#</span>
+<span class="cm"># 用继承怎么组织？</span>
+<span class="cm"># GameObject → MovableObject → AttackableMovable → Player?</span>
+<span class="cm"># 那炮塔放哪？子弹放哪？</span>
+<span class="cm"># 答案是：继承树无法优雅地表达"特性的任意组合"</span></code></pre>
+
+<h4>ECS 的解法</h4>
+
+<pre><code><span class="label">GDScript 风格伪代码</span>
+<span class="cm"># ===== 组件：纯数据 =====</span>
+<span class="kw">class</span> <span class="type">PositionComponent</span>:
+    <span class="kw">var</span> <span class="var">x</span>: <span class="type">float</span>
+    <span class="kw">var</span> <span class="var">y</span>: <span class="type">float</span>
+
+<span class="kw">class</span> <span class="type">VelocityComponent</span>:
+    <span class="kw">var</span> <span class="var">vx</span>: <span class="type">float</span>
+    <span class="kw">var</span> <span class="var">vy</span>: <span class="type">float</span>
+
+<span class="kw">class</span> <span class="type">HealthComponent</span>:
+    <span class="kw">var</span> <span class="var">current</span>: <span class="type">float</span>
+    <span class="kw">var</span> <span class="var">max_hp</span>: <span class="type">float</span>
+
+<span class="kw">class</span> <span class="type">AttackComponent</span>:
+    <span class="kw">var</span> <span class="var">damage</span>: <span class="type">float</span>
+    <span class="kw">var</span> <span class="var">cooldown</span>: <span class="type">float</span>
+
+<span class="cm"># ===== 实体：组件的组合 =====</span>
+<span class="cm"># 玩家 = Position + Velocity + Health + Attack</span>
+<span class="cm"># 炮塔 = Position + Health + Attack (没有 Velocity！)</span>
+<span class="cm"># 子弹 = Position + Velocity + Attack (没有 Health！)</span>
+<span class="cm"># 宝箱 = Position + Health (只有这两个！)</span>
+
+<span class="cm"># ===== 系统：操作特定组件的逻辑 =====</span>
+<span class="kw">class</span> <span class="type">MovementSystem</span>:
+    <span class="cm"># 只处理同时拥有 Position 和 Velocity 的实体</span>
+    <span class="kw">func</span> <span class="fn">update</span>(<span class="var">delta</span>):
+        <span class="kw">for</span> <span class="var">entity</span> <span class="kw">in</span> <span class="fn">query</span>(<span class="type">PositionComponent</span>, <span class="type">VelocityComponent</span>):
+            <span class="var">entity</span>.<span class="var">position</span>.<span class="var">x</span> += <span class="var">entity</span>.<span class="var">velocity</span>.<span class="var">vx</span> * <span class="var">delta</span>
+            <span class="var">entity</span>.<span class="var">position</span>.<span class="var">y</span> += <span class="var">entity</span>.<span class="var">velocity</span>.<span class="var">vy</span> * <span class="var">delta</span>
+
+<span class="kw">class</span> <span class="type">DamageSystem</span>:
+    <span class="cm"># 处理碰撞时的伤害计算</span>
+    <span class="kw">func</span> <span class="fn">on_collision</span>(<span class="var">attacker</span>, <span class="var">target</span>):
+        <span class="kw">if</span> <span class="var">attacker</span>.<span class="fn">has</span>(<span class="type">AttackComponent</span>) <span class="kw">and</span> <span class="var">target</span>.<span class="fn">has</span>(<span class="type">HealthComponent</span>):
+            <span class="var">target</span>.<span class="var">health</span>.<span class="var">current</span> -= <span class="var">attacker</span>.<span class="var">attack</span>.<span class="var">damage</span></code></pre>
+
+<p><strong>ECS 的关键优势：</strong></p>
+<ul>
+  <li><strong>缓存友好</strong>——同类组件在内存中连续排列，CPU 缓存命中率极高</li>
+  <li><strong>并行化</strong>——不同 System 如果操作不同组件，可以并行执行</li>
+  <li><strong>灵活组合</strong>——新增实体类型只需要组合已有组件，无需改代码</li>
+  <li><strong>解耦彻底</strong>——MovementSystem 完全不知道 DamageSystem 的存在</li>
+</ul>
+
+<div class="warning-box">
+  <div class="warning-label">Godot 中的 ECS</div>
+  <p style="margin-bottom:0">Godot 用的是<strong>节点+场景</strong>架构，不是传统 ECS，但它的节点系统本身就体现了组合思想。你可以把 Node 看作 Entity，子节点看作 Component。纯 ECS 架构可以看 Bevy（Rust）或 Unity DOTS。</p>
+</div>
+
+<h3>状态机（FSM）与层级状态机（HFSM）</h3>
+
+<p>状态机是游戏中最常用的模式之一，特别适合管理角色的行为状态。</p>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 简单有限状态机 =====</span>
+<span class="kw">extends</span> <span class="type">Node</span>
+<span class="kw">class_name</span> <span class="type">StateMachine</span>
+
+<span class="kw">var</span> <span class="var">current_state</span>: <span class="type">State</span>
+<span class="kw">var</span> <span class="var">states</span>: <span class="type">Dictionary</span> = {}
+
+<span class="kw">func</span> <span class="fn">_ready</span>():
+    <span class="cm"># 将所有子节点注册为状态</span>
+    <span class="kw">for</span> <span class="var">child</span> <span class="kw">in</span> <span class="fn">get_children</span>():
+        <span class="kw">if</span> <span class="var">child</span> <span class="kw">is</span> <span class="type">State</span>:
+            <span class="var">states</span>[<span class="var">child</span>.<span class="var">name</span>] = <span class="var">child</span>
+            <span class="var">child</span>.<span class="var">state_machine</span> = <span class="kw">self</span>
+    <span class="cm"># 初始化第一个状态</span>
+    <span class="var">current_state</span> = <span class="fn">get_child</span>(<span class="num">0</span>)
+    <span class="var">current_state</span>.<span class="fn">enter</span>()
+
+<span class="kw">func</span> <span class="fn">transition_to</span>(<span class="var">state_name</span>: <span class="type">String</span>):
+    <span class="kw">if not</span> <span class="var">states</span>.<span class="fn">has</span>(<span class="var">state_name</span>):
+        <span class="kw">return</span>
+    <span class="var">current_state</span>.<span class="fn">exit</span>()
+    <span class="var">current_state</span> = <span class="var">states</span>[<span class="var">state_name</span>]
+    <span class="var">current_state</span>.<span class="fn">enter</span>()
+
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):
+    <span class="var">current_state</span>.<span class="fn">update</span>(<span class="var">delta</span>)
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>):
+    <span class="var">current_state</span>.<span class="fn">physics_update</span>(<span class="var">delta</span>)
+</code></pre>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 基础状态类 =====</span>
+<span class="kw">extends</span> <span class="type">Node</span>
+<span class="kw">class_name</span> <span class="type">State</span>
+
+<span class="kw">var</span> <span class="var">state_machine</span>: <span class="type">StateMachine</span>
+
+<span class="kw">func</span> <span class="fn">enter</span>() -> <span class="type">void</span>:
+    <span class="kw">pass</span>
+
+<span class="kw">func</span> <span class="fn">exit</span>() -> <span class="type">void</span>:
+    <span class="kw">pass</span>
+
+<span class="kw">func</span> <span class="fn">update</span>(<span class="var">_delta</span>: <span class="type">float</span>) -> <span class="type">void</span>:
+    <span class="kw">pass</span>
+
+<span class="kw">func</span> <span class="fn">physics_update</span>(<span class="var">_delta</span>: <span class="type">float</span>) -> <span class="type">void</span>:
+    <span class="kw">pass</span>
+
+<span class="cm"># ===== 具体状态示例：Idle =====</span>
+<span class="kw">class_name</span> <span class="type">IdleState</span>
+<span class="kw">extends</span> <span class="type">State</span>
+
+<span class="kw">func</span> <span class="fn">enter</span>():
+    <span class="var">owner</span>.<span class="var">animation_player</span>.<span class="fn">play</span>(<span class="str">"idle"</span>)
+
+<span class="kw">func</span> <span class="fn">physics_update</span>(<span class="var">delta</span>):
+    <span class="cm"># 检测输入，决定是否切换状态</span>
+    <span class="kw">if</span> Input.<span class="fn">get_axis</span>(<span class="str">"left"</span>, <span class="str">"right"</span>) != <span class="num">0</span>:
+        <span class="var">state_machine</span>.<span class="fn">transition_to</span>(<span class="str">"Run"</span>)
+    <span class="kw">if</span> Input.<span class="fn">is_action_just_pressed</span>(<span class="str">"jump"</span>):
+        <span class="var">state_machine</span>.<span class="fn">transition_to</span>(<span class="str">"Jump"</span>)
+</code></pre>
+
+<h4>层级状态机（HFSM）</h4>
+
+<p>当状态数量增多时，简单 FSM 会出现"状态爆炸"。HFSM 通过嵌套状态来解决。</p>
+
+<pre><code><span class="label">概念</span>
+<span class="cm"># 层级状态机示例结构：</span>
+<span class="cm">#</span>
+<span class="cm"># Alive（存活状态）</span>
+<span class="cm">#   ├── OnGround（在地面）</span>
+<span class="cm">#   │   ├── Idle（待机）</span>
+<span class="cm">#   │   ├── Run（跑动）</span>
+<span class="cm">#   │   └── Attack（攻击）</span>
+<span class="cm">#   ├── InAir（在空中）</span>
+<span class="cm">#   │   ├── Jump（跳跃上升）</span>
+<span class="cm">#   │   ├── Fall（下落）</span>
+<span class="cm">#   │   └── AirAttack（空中攻击）</span>
+<span class="cm">#   └── OnWall（在墙上）</span>
+<span class="cm">#       ├── WallSlide（滑墙）</span>
+<span class="cm">#       └── WallJump（蹬墙跳）</span>
+<span class="cm"># Dead（死亡状态）</span>
+<span class="cm">#</span>
+<span class="cm"># 好处：Alive 状态的公共逻辑（受伤判定）只写一次</span>
+<span class="cm"># 而不是在每个叶子状态里都写</span></code></pre>
+
+<h3>观察者模式 / 事件系统</h3>
+
+<p>游戏中大量逻辑是"当 X 发生时，做 Y"。观察者模式（在 Godot 中就是<strong>信号系统</strong>）是解耦这种关系的标准方案。</p>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 事件总线（全局信号）=====</span>
+<span class="cm"># event_bus.gd — 注册为 AutoLoad</span>
+<span class="kw">extends</span> <span class="type">Node</span>
+
+<span class="cm"># 定义全局信号</span>
+<span class="kw">signal</span> <span class="fn">player_died</span>
+<span class="kw">signal</span> <span class="fn">score_changed</span>(<span class="var">new_score</span>: <span class="type">int</span>)
+<span class="kw">signal</span> <span class="fn">enemy_spawned</span>(<span class="var">enemy</span>: <span class="type">Node2D</span>)
+<span class="kw">signal</span> <span class="fn">item_collected</span>(<span class="var">item_type</span>: <span class="type">String</span>, <span class="var">value</span>: <span class="type">int</span>)
+<span class="kw">signal</span> <span class="fn">level_completed</span>(<span class="var">level_index</span>: <span class="type">int</span>)
+
+<span class="cm"># --- 在 Player 脚本中发射信号 ---</span>
+<span class="kw">func</span> <span class="fn">die</span>():
+    EventBus.<span class="fn">player_died</span>.<span class="fn">emit</span>()
+
+<span class="kw">func</span> <span class="fn">collect_coin</span>():
+    <span class="var">score</span> += <span class="num">10</span>
+    EventBus.<span class="fn">score_changed</span>.<span class="fn">emit</span>(<span class="var">score</span>)
+
+<span class="cm"># --- 在 UI 脚本中监听信号 ---</span>
+<span class="kw">func</span> <span class="fn">_ready</span>():
+    EventBus.<span class="fn">score_changed</span>.<span class="fn">connect</span>(<span class="fn">_on_score_changed</span>)
+    EventBus.<span class="fn">player_died</span>.<span class="fn">connect</span>(<span class="fn">_on_player_died</span>)
+
+<span class="kw">func</span> <span class="fn">_on_score_changed</span>(<span class="var">new_score</span>: <span class="type">int</span>):
+    <span class="var">score_label</span>.<span class="var">text</span> = <span class="str">"Score: %d"</span> % <span class="var">new_score</span></code></pre>
+
+<p><strong>关键好处：</strong>Player 不需要知道 UI 的存在，UI 也不需要直接引用 Player。它们通过事件总线间接通信。</p>
+
+<h3>命令模式（Command Pattern）</h3>
+
+<p>命令模式将"动作"封装为对象。这在<strong>撤销/重做</strong>、<strong>回放系统</strong>、<strong>输入缓冲</strong>中极其有用。</p>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 命令模式——用于关卡编辑器的撤销/重做 =====</span>
+<span class="kw">class_name</span> <span class="type">Command</span>
+
+<span class="kw">func</span> <span class="fn">execute</span>() -> <span class="type">void</span>:
+    <span class="kw">pass</span>
+
+<span class="kw">func</span> <span class="fn">undo</span>() -> <span class="type">void</span>:
+    <span class="kw">pass</span>
+
+<span class="cm"># 具体命令：放置方块</span>
+<span class="kw">class</span> <span class="type">PlaceBlockCommand</span> <span class="kw">extends</span> <span class="type">Command</span>:
+    <span class="kw">var</span> <span class="var">position</span>: <span class="type">Vector2i</span>
+    <span class="kw">var</span> <span class="var">block_type</span>: <span class="type">int</span>
+    <span class="kw">var</span> <span class="var">previous_block</span>: <span class="type">int</span>  <span class="cm"># 记住之前的值，用于 undo</span>
+    <span class="kw">var</span> <span class="var">tilemap</span>: <span class="type">TileMap</span>
+
+    <span class="kw">func</span> <span class="fn">_init</span>(<span class="var">_pos</span>, <span class="var">_type</span>, <span class="var">_tilemap</span>):
+        <span class="var">position</span> = <span class="var">_pos</span>
+        <span class="var">block_type</span> = <span class="var">_type</span>
+        <span class="var">tilemap</span> = <span class="var">_tilemap</span>
+        <span class="var">previous_block</span> = <span class="var">tilemap</span>.<span class="fn">get_cell_source_id</span>(<span class="num">0</span>, <span class="var">position</span>)
+
+    <span class="kw">func</span> <span class="fn">execute</span>():
+        <span class="var">tilemap</span>.<span class="fn">set_cell</span>(<span class="num">0</span>, <span class="var">position</span>, <span class="var">block_type</span>, <span class="type">Vector2i</span>.<span class="var">ZERO</span>)
+
+    <span class="kw">func</span> <span class="fn">undo</span>():
+        <span class="kw">if</span> <span class="var">previous_block</span> == -<span class="num">1</span>:
+            <span class="var">tilemap</span>.<span class="fn">erase_cell</span>(<span class="num">0</span>, <span class="var">position</span>)
+        <span class="kw">else</span>:
+            <span class="var">tilemap</span>.<span class="fn">set_cell</span>(<span class="num">0</span>, <span class="var">position</span>, <span class="var">previous_block</span>, <span class="type">Vector2i</span>.<span class="var">ZERO</span>)
+
+<span class="cm"># 命令历史管理器</span>
+<span class="kw">class</span> <span class="type">CommandHistory</span>:
+    <span class="kw">var</span> <span class="var">history</span>: <span class="type">Array</span>[<span class="type">Command</span>] = []
+    <span class="kw">var</span> <span class="var">redo_stack</span>: <span class="type">Array</span>[<span class="type">Command</span>] = []
+
+    <span class="kw">func</span> <span class="fn">execute_command</span>(<span class="var">cmd</span>: <span class="type">Command</span>):
+        <span class="var">cmd</span>.<span class="fn">execute</span>()
+        <span class="var">history</span>.<span class="fn">append</span>(<span class="var">cmd</span>)
+        <span class="var">redo_stack</span>.<span class="fn">clear</span>()  <span class="cm"># 新操作清空重做栈</span>
+
+    <span class="kw">func</span> <span class="fn">undo</span>():
+        <span class="kw">if</span> <span class="var">history</span>.<span class="fn">is_empty</span>():
+            <span class="kw">return</span>
+        <span class="kw">var</span> <span class="var">cmd</span> = <span class="var">history</span>.<span class="fn">pop_back</span>()
+        <span class="var">cmd</span>.<span class="fn">undo</span>()
+        <span class="var">redo_stack</span>.<span class="fn">append</span>(<span class="var">cmd</span>)
+
+    <span class="kw">func</span> <span class="fn">redo</span>():
+        <span class="kw">if</span> <span class="var">redo_stack</span>.<span class="fn">is_empty</span>():
+            <span class="kw">return</span>
+        <span class="kw">var</span> <span class="var">cmd</span> = <span class="var">redo_stack</span>.<span class="fn">pop_back</span>()
+        <span class="var">cmd</span>.<span class="fn">execute</span>()
+        <span class="var">history</span>.<span class="fn">append</span>(<span class="var">cmd</span>)</code></pre>
+
+<h3>对象池模式（Object Pool）</h3>
+
+<p>频繁创建和销毁对象（子弹、粒子、敌人）会导致 GC 压力和性能抖动。对象池预先创建一批对象，用完放回池中而不是销毁。</p>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 通用对象池 =====</span>
+<span class="kw">class_name</span> <span class="type">ObjectPool</span>
+<span class="kw">extends</span> <span class="type">Node</span>
+
+<span class="kw">@export var</span> <span class="var">scene</span>: <span class="type">PackedScene</span>
+<span class="kw">@export var</span> <span class="var">pool_size</span>: <span class="type">int</span> = <span class="num">20</span>
+
+<span class="kw">var</span> <span class="var">available</span>: <span class="type">Array</span>[<span class="type">Node</span>] = []
+<span class="kw">var</span> <span class="var">active</span>: <span class="type">Array</span>[<span class="type">Node</span>] = []
+
+<span class="kw">func</span> <span class="fn">_ready</span>():
+    <span class="cm"># 预创建对象</span>
+    <span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="var">pool_size</span>:
+        <span class="kw">var</span> <span class="var">obj</span> = <span class="var">scene</span>.<span class="fn">instantiate</span>()
+        <span class="var">obj</span>.<span class="fn">set_process</span>(<span class="kw">false</span>)
+        <span class="var">obj</span>.<span class="var">visible</span> = <span class="kw">false</span>
+        <span class="fn">add_child</span>(<span class="var">obj</span>)
+        <span class="var">available</span>.<span class="fn">append</span>(<span class="var">obj</span>)
+
+<span class="kw">func</span> <span class="fn">acquire</span>() -> <span class="type">Node</span>:
+    <span class="kw">if</span> <span class="var">available</span>.<span class="fn">is_empty</span>():
+        <span class="fn">print</span>(<span class="str">"Pool exhausted! Consider increasing size."</span>)
+        <span class="kw">return null</span>
+    <span class="kw">var</span> <span class="var">obj</span> = <span class="var">available</span>.<span class="fn">pop_back</span>()
+    <span class="var">obj</span>.<span class="fn">set_process</span>(<span class="kw">true</span>)
+    <span class="var">obj</span>.<span class="var">visible</span> = <span class="kw">true</span>
+    <span class="var">active</span>.<span class="fn">append</span>(<span class="var">obj</span>)
+    <span class="kw">return</span> <span class="var">obj</span>
+
+<span class="kw">func</span> <span class="fn">release</span>(<span class="var">obj</span>: <span class="type">Node</span>):
+    <span class="var">obj</span>.<span class="fn">set_process</span>(<span class="kw">false</span>)
+    <span class="var">obj</span>.<span class="var">visible</span> = <span class="kw">false</span>
+    <span class="var">active</span>.<span class="fn">erase</span>(<span class="var">obj</span>)
+    <span class="var">available</span>.<span class="fn">append</span>(<span class="var">obj</span>)
+
+<span class="cm"># 使用示例</span>
+<span class="cm"># var bullet = bullet_pool.acquire()</span>
+<span class="cm"># bullet.global_position = gun.global_position</span>
+<span class="cm"># bullet.direction = aim_direction</span>
+<span class="cm"># ...</span>
+<span class="cm"># 子弹飞出屏幕后: bullet_pool.release(bullet)</span></code></pre>
+
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 4: 游戏循环的技术实现
+     ════════════════════════════════════════════════════════ -->
+<section id="game-loop">
+<h2>04 &mdash; 游戏循环的技术实现</h2>
+
+<p>游戏循环是所有游戏的心跳。它是一个不断重复的过程：<strong>处理输入 → 更新状态 → 渲染画面</strong>。听起来简单，但细节决定了游戏运行是否流畅。</p>
+
+<div class="flow-diagram">
+  <div class="flow-step">处理输入</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step highlight">更新逻辑</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">物理模拟</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step highlight">渲染画面</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step" style="color: var(--text-muted);">循环</div>
+</div>
+
+<h3>Delta Time：帧率独立的基石</h3>
+
+<div class="concept-box">
+  <div class="concept-label">核心概念</div>
+  <p style="margin-bottom:0"><code>delta</code>（或 <code>dt</code>）是上一帧到当前帧之间经过的秒数。60fps 时约为 0.0167 秒，30fps 时约为 0.0333 秒。乘以 delta 的运动在任何帧率下都会以相同速度运行。</p>
+</div>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 错误做法：帧率依赖的运动 =====</span>
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">_delta</span>):
+    <span class="var">position</span>.<span class="var">x</span> += <span class="num">5</span>  <span class="cm"># 每帧移动 5 像素</span>
+    <span class="cm"># 60fps → 每秒移动 300 像素</span>
+    <span class="cm"># 30fps → 每秒移动 150 像素</span>
+    <span class="cm"># 144fps → 每秒移动 720 像素  ← 不同机器表现不同！</span>
+
+<span class="cm"># ===== 正确做法：帧率独立的运动 =====</span>
+<span class="kw">@export var</span> <span class="var">speed</span> = <span class="num">300.0</span>  <span class="cm"># 每秒 300 像素</span>
+
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):
+    <span class="var">position</span>.<span class="var">x</span> += <span class="var">speed</span> * <span class="var">delta</span>
+    <span class="cm"># 60fps → 300 * 0.0167 = 5.0 像素/帧</span>
+    <span class="cm"># 30fps → 300 * 0.0333 = 10.0 像素/帧</span>
+    <span class="cm"># 结果：不论帧率，每秒都是 300 像素 ✓</span></code></pre>
+
+<h3>固定时间步 vs 可变时间步</h3>
+
+<table>
+  <tr>
+    <th>特性</th>
+    <th>可变时间步 (_process)</th>
+    <th>固定时间步 (_physics_process)</th>
+  </tr>
+  <tr>
+    <td><strong>调用频率</strong></td>
+    <td>尽可能快，取决于帧率</td>
+    <td>固定间隔（Godot 默认 60次/秒）</td>
+  </tr>
+  <tr>
+    <td><strong>delta 值</strong></td>
+    <td>每帧不同</td>
+    <td>始终相同（默认 0.01667）</td>
+  </tr>
+  <tr>
+    <td><strong>适合</strong></td>
+    <td>渲染、动画、UI、视觉效果</td>
+    <td>物理、碰撞检测、网络同步</td>
+  </tr>
+  <tr>
+    <td><strong>确定性</strong></td>
+    <td>不确定——不同帧率结果不同</td>
+    <td>确定——可精确回放/同步</td>
+  </tr>
+  <tr>
+    <td><strong>卡顿行为</strong></td>
+    <td>大 delta → 可能穿墙</td>
+    <td>累积 → 追帧，但不会穿墙</td>
+  </tr>
+</table>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== Godot 的双循环设计 =====</span>
+
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):
+    <span class="cm"># 可变时间步——用于视觉/非物理逻辑</span>
+    <span class="var">sprite</span>.<span class="var">rotation</span> += <span class="var">rotation_speed</span> * <span class="var">delta</span>
+    <span class="var">camera</span>.<span class="var">position</span> = <span class="var">camera</span>.<span class="var">position</span>.<span class="fn">lerp</span>(<span class="var">target_pos</span>, <span class="num">0.1</span>)
+    <span class="fn">update_ui</span>()
+    <span class="fn">update_particles</span>()
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>):
+    <span class="cm"># 固定时间步——用于物理/碰撞/移动</span>
+    <span class="var">velocity</span>.<span class="var">y</span> += <span class="var">gravity</span> * <span class="var">delta</span>
+    <span class="fn">move_and_slide</span>()
+    <span class="fn">check_attack_collision</span>()</code></pre>
+
+<h3>物理帧 vs 渲染帧的脱耦</h3>
+
+<p>在现代引擎中，物理更新和渲染更新是解耦的。这意味着：</p>
+
+<pre><code><span class="label">时间线示意</span>
+<span class="cm"># 假设物理 60Hz，渲染 144Hz</span>
+<span class="cm">#</span>
+<span class="cm"># 时间 →</span>
+<span class="cm"># 物理:  |---P---|---P---|---P---|---P---|</span>
+<span class="cm"># 渲染:  |-R-|-R-|-R-|-R-|-R-|-R-|-R-|-R-|-R-|</span>
+<span class="cm">#</span>
+<span class="cm"># 渲染帧之间，物理状态可能没有更新</span>
+<span class="cm"># 解决方案：物理插值（Physics Interpolation）</span>
+<span class="cm">#</span>
+<span class="cm"># Godot 4 中启用：</span>
+<span class="cm"># Project Settings → Physics → Common → Physics Interpolation = true</span>
+<span class="cm"># 或代码中：</span>
+<span class="cm"># ProjectSettings.set_setting(</span>
+<span class="cm">#     "physics/common/physics_interpolation", true</span>
+<span class="cm"># )</span></code></pre>
+
+<div class="practice-box">
+  <div class="practice-label">最佳实践</div>
+  <ul style="margin-bottom:0">
+    <li><strong>移动/物理</strong>放 <code>_physics_process</code>——确保碰撞检测正确</li>
+    <li><strong>动画/视觉</strong>放 <code>_process</code>——尽可能流畅</li>
+    <li>始终使用 <code>delta</code> 乘以速度值</li>
+    <li>开启物理插值避免低物理帧率下的视觉抖动</li>
+    <li>不要在 <code>_process</code> 里直接修改物理体的 <code>velocity</code></li>
+  </ul>
+</div>
+
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 5: 物理引擎原理
+     ════════════════════════════════════════════════════════ -->
+<section id="physics">
+<h2>05 &mdash; 物理引擎原理</h2>
+
+<h3>碰撞检测算法</h3>
+
+<p>碰撞检测是物理引擎最核心的职责。它分为两个阶段：</p>
+
+<div class="flow-diagram">
+  <div class="flow-step">宽相检测<br><small>Broad Phase</small></div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step highlight">窄相检测<br><small>Narrow Phase</small></div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">碰撞响应<br><small>Response</small></div>
+</div>
+
+<p><strong>宽相检测</strong>用简单的包围盒快速排除不可能碰撞的对象对，把 O(n^2) 的问题缩小到一个小子集。<strong>窄相检测</strong>对候选对进行精确的几何碰撞测试。</p>
+
+<h4>AABB（轴对齐包围盒）</h4>
+
+<p>最简单的碰撞检测。只需要比较矩形的边界——不涉及旋转。</p>
+
+<pre><code><span class="label">伪代码</span>
+<span class="cm"># AABB 碰撞检测——两个矩形是否重叠</span>
+<span class="kw">func</span> <span class="fn">aabb_overlap</span>(<span class="var">a</span>: <span class="type">Rect2</span>, <span class="var">b</span>: <span class="type">Rect2</span>) -> <span class="type">bool</span>:
+    <span class="kw">return</span> (
+        <span class="var">a</span>.<span class="var">position</span>.<span class="var">x</span> &lt; <span class="var">b</span>.<span class="var">position</span>.<span class="var">x</span> + <span class="var">b</span>.<span class="var">size</span>.<span class="var">x</span> <span class="kw">and</span>
+        <span class="var">a</span>.<span class="var">position</span>.<span class="var">x</span> + <span class="var">a</span>.<span class="var">size</span>.<span class="var">x</span> &gt; <span class="var">b</span>.<span class="var">position</span>.<span class="var">x</span> <span class="kw">and</span>
+        <span class="var">a</span>.<span class="var">position</span>.<span class="var">y</span> &lt; <span class="var">b</span>.<span class="var">position</span>.<span class="var">y</span> + <span class="var">b</span>.<span class="var">size</span>.<span class="var">y</span> <span class="kw">and</span>
+        <span class="var">a</span>.<span class="var">position</span>.<span class="var">y</span> + <span class="var">a</span>.<span class="var">size</span>.<span class="var">y</span> &gt; <span class="var">b</span>.<span class="var">position</span>.<span class="var">y</span>
+    )
+
+<span class="cm"># 原理：如果两个矩形在 X 轴和 Y 轴上都有重叠，则碰撞</span>
+<span class="cm"># 时间复杂度: O(1) 每对</span>
+<span class="cm"># 适用: 宽相检测、不旋转的矩形碰撞体</span></code></pre>
+
+<h4>SAT（分离轴定理）</h4>
+
+<p>SAT 可以检测任意<strong>凸多边形</strong>的碰撞。核心思想：如果两个凸形状不碰撞，那么一定存在一条轴，将它们的投影分开。</p>
+
+<pre><code><span class="label">伪代码</span>
+<span class="cm"># SAT 碰撞检测核心逻辑</span>
+<span class="kw">func</span> <span class="fn">sat_overlap</span>(<span class="var">poly_a</span>, <span class="var">poly_b</span>) -> <span class="type">bool</span>:
+    <span class="cm"># 获取所有需要检查的轴（两个多边形的所有边的法线）</span>
+    <span class="kw">var</span> <span class="var">axes</span> = <span class="fn">get_normals</span>(<span class="var">poly_a</span>) + <span class="fn">get_normals</span>(<span class="var">poly_b</span>)
+
+    <span class="kw">for</span> <span class="var">axis</span> <span class="kw">in</span> <span class="var">axes</span>:
+        <span class="cm"># 将两个多边形投影到这条轴上</span>
+        <span class="kw">var</span> <span class="var">proj_a</span> = <span class="fn">project_polygon</span>(<span class="var">poly_a</span>, <span class="var">axis</span>)
+        <span class="kw">var</span> <span class="var">proj_b</span> = <span class="fn">project_polygon</span>(<span class="var">poly_b</span>, <span class="var">axis</span>)
+
+        <span class="cm"># 如果投影不重叠——找到了分离轴，不碰撞</span>
+        <span class="kw">if not</span> <span class="fn">projections_overlap</span>(<span class="var">proj_a</span>, <span class="var">proj_b</span>):
+            <span class="kw">return false</span>
+
+    <span class="cm"># 所有轴上都重叠——碰撞！</span>
+    <span class="kw">return true</span>
+
+<span class="kw">func</span> <span class="fn">get_normals</span>(<span class="var">polygon</span>) -> <span class="type">Array</span>:
+    <span class="kw">var</span> <span class="var">normals</span> = []
+    <span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="var">polygon</span>.<span class="fn">size</span>():
+        <span class="kw">var</span> <span class="var">edge</span> = <span class="var">polygon</span>[(<span class="var">i</span>+<span class="num">1</span>) % <span class="var">polygon</span>.<span class="fn">size</span>()] - <span class="var">polygon</span>[<span class="var">i</span>]
+        <span class="cm"># 法线 = 将边向量旋转 90 度</span>
+        <span class="var">normals</span>.<span class="fn">append</span>(<span class="type">Vector2</span>(-<span class="var">edge</span>.<span class="var">y</span>, <span class="var">edge</span>.<span class="var">x</span>).<span class="fn">normalized</span>())
+    <span class="kw">return</span> <span class="var">normals</span></code></pre>
+
+<h4>GJK（Gilbert-Johnson-Keerthi）</h4>
+
+<p>GJK 是更高级的碰撞检测算法，基于<strong>闵可夫斯基差</strong>（Minkowski Difference）。如果两个形状的闵可夫斯基差包含原点，则碰撞。</p>
+
+<div class="card accent-border">
+  <h4>GJK vs SAT 对比</h4>
+  <table>
+    <tr><th>特性</th><th>SAT</th><th>GJK</th></tr>
+    <tr><td>适用形状</td><td>凸多边形</td><td>任意凸形状（含圆、胶囊体）</td></tr>
+    <tr><td>性能</td><td>多边形顶点少时快</td><td>迭代算法，收敛快</td></tr>
+    <tr><td>碰撞信息</td><td>直接得到穿透深度和法线</td><td>需要 EPA 算法补充</td></tr>
+    <tr><td>实现难度</td><td>中等</td><td>较高</td></tr>
+    <tr><td>在引擎中</td><td>Box2D 使用</td><td>Bullet / PhysX 使用</td></tr>
+  </table>
+</div>
+
+<h3>刚体物理</h3>
+
+<p>刚体物理模拟物体在力的作用下的运动。核心是牛顿运动定律的离散化。</p>
+
+<pre><code><span class="label">伪代码</span>
+<span class="cm"># 刚体物理的基本更新步骤</span>
+<span class="kw">func</span> <span class="fn">physics_step</span>(<span class="var">body</span>, <span class="var">dt</span>):
+    <span class="cm"># 1. 累加所有外力（重力、推力、摩擦...）</span>
+    <span class="kw">var</span> <span class="var">total_force</span> = <span class="type">Vector2</span>.<span class="var">ZERO</span>
+    <span class="var">total_force</span> += <span class="type">Vector2</span>(<span class="num">0</span>, <span class="var">GRAVITY</span>) * <span class="var">body</span>.<span class="var">mass</span>   <span class="cm"># 重力</span>
+    <span class="var">total_force</span> += <span class="var">body</span>.<span class="var">applied_force</span>                <span class="cm"># 外部施加的力</span>
+    <span class="var">total_force</span> += -<span class="var">body</span>.<span class="var">velocity</span> * <span class="var">body</span>.<span class="var">drag</span>        <span class="cm"># 阻力</span>
+
+    <span class="cm"># 2. F = ma → a = F/m</span>
+    <span class="kw">var</span> <span class="var">acceleration</span> = <span class="var">total_force</span> / <span class="var">body</span>.<span class="var">mass</span>
+
+    <span class="cm"># 3. 半隐式欧拉积分（Semi-implicit Euler）</span>
+    <span class="var">body</span>.<span class="var">velocity</span> += <span class="var">acceleration</span> * <span class="var">dt</span>        <span class="cm"># 先更新速度</span>
+    <span class="var">body</span>.<span class="var">position</span> += <span class="var">body</span>.<span class="var">velocity</span> * <span class="var">dt</span>       <span class="cm"># 再用新速度更新位置</span>
+
+    <span class="cm"># 4. 清除本帧施加的力</span>
+    <span class="var">body</span>.<span class="var">applied_force</span> = <span class="type">Vector2</span>.<span class="var">ZERO</span></code></pre>
+
+<h3>触发器 vs 碰撞体</h3>
+
+<p>这是初学者常常混淆的两个概念。</p>
+
+<div class="card-grid">
+  <div class="card accent-border">
+    <h4>碰撞体（Collider）</h4>
+    <ul style="margin-bottom:0">
+      <li>产生<strong>物理碰撞响应</strong>——物体会弹开</li>
+      <li>用于墙壁、地面、实体障碍物</li>
+      <li>Godot: <code>StaticBody2D</code>, <code>CharacterBody2D</code>, <code>RigidBody2D</code></li>
+      <li>有质量、摩擦力、弹性系数</li>
+    </ul>
+  </div>
+  <div class="card info-border">
+    <h4>触发器 / 区域（Trigger / Area）</h4>
+    <ul style="margin-bottom:0">
+      <li><strong>检测重叠</strong>但不阻挡物体通过</li>
+      <li>用于拾取物、伤害区域、触发剧情</li>
+      <li>Godot: <code>Area2D</code></li>
+      <li>通过信号通知进入/退出</li>
+    </ul>
+  </div>
+</div>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 使用 Area2D 作为拾取触发器 =====</span>
+<span class="kw">extends</span> <span class="type">Area2D</span>
+
+<span class="kw">@export var</span> <span class="var">heal_amount</span>: <span class="type">int</span> = <span class="num">25</span>
+
+<span class="kw">func</span> <span class="fn">_ready</span>():
+    <span class="cm"># 当有物体进入此区域时触发</span>
+    <span class="var">body_entered</span>.<span class="fn">connect</span>(<span class="fn">_on_body_entered</span>)
+
+<span class="kw">func</span> <span class="fn">_on_body_entered</span>(<span class="var">body</span>: <span class="type">Node2D</span>):
+    <span class="kw">if</span> <span class="var">body</span>.<span class="fn">is_in_group</span>(<span class="str">"player"</span>):
+        <span class="var">body</span>.<span class="fn">heal</span>(<span class="var">heal_amount</span>)
+        <span class="fn">queue_free</span>()  <span class="cm"># 拾取后销毁自己</span></code></pre>
+
+<h3>物理引擎最佳实践</h3>
+
+<div class="practice-box">
+  <div class="practice-label">实践指南</div>
+  <ol style="margin-bottom:0">
+    <li><strong>永远不要在 _process 中移动物理体</strong>——用 <code>_physics_process</code></li>
+    <li><strong>使用碰撞层和掩码</strong>——让子弹只和敌人碰撞，不和其他子弹碰撞</li>
+    <li><strong>简化碰撞形状</strong>——用简单的矩形/圆形代替复杂的多边形轮廓</li>
+    <li><strong>避免缩放碰撞形状</strong>——会产生意外的物理行为，直接改形状大小</li>
+    <li><strong>RigidBody 不要直接设 position</strong>——用 <code>apply_force()</code> 或 <code>apply_impulse()</code></li>
+    <li><strong>高速物体用 CCD</strong>——连续碰撞检测防止"子弹穿墙"</li>
+    <li><strong>射线检测代替碰撞</strong>——命中扫描武器用 Raycast，不用实体子弹</li>
+  </ol>
+</div>
+
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 6: 游戏 AI 编程
+     ════════════════════════════════════════════════════════ -->
+<section id="ai">
+<h2>06 &mdash; 游戏 AI 编程</h2>
+
+<p>游戏 AI 不追求"真正的智能"，而是追求<strong>让玩家觉得好玩的行为</strong>。一个"太聪明"的 AI 可能让游戏无趣，一个"看起来聪明但有弱点"的 AI 才是好设计。</p>
+
+<h3>有限状态机 AI</h3>
+
+<p>最经典的 AI 实现方式。每个敌人在有限个状态之间切换。</p>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 敌人 AI 状态机 =====</span>
+<span class="kw">extends</span> <span class="type">CharacterBody2D</span>
+
+<span class="kw">enum</span> <span class="type">AIState</span> { <span class="var">IDLE</span>, <span class="var">PATROL</span>, <span class="var">CHASE</span>, <span class="var">ATTACK</span>, <span class="var">FLEE</span> }
+
+<span class="kw">var</span> <span class="var">state</span>: <span class="type">AIState</span> = <span class="type">AIState</span>.<span class="var">PATROL</span>
+<span class="kw">var</span> <span class="var">player</span>: <span class="type">Node2D</span>
+
+<span class="kw">@export var</span> <span class="var">detection_range</span> = <span class="num">200.0</span>
+<span class="kw">@export var</span> <span class="var">attack_range</span> = <span class="num">50.0</span>
+<span class="kw">@export var</span> <span class="var">flee_hp_threshold</span> = <span class="num">20.0</span>
+<span class="kw">@export var</span> <span class="var">patrol_speed</span> = <span class="num">60.0</span>
+<span class="kw">@export var</span> <span class="var">chase_speed</span> = <span class="num">120.0</span>
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>):
+    <span class="kw">match</span> <span class="var">state</span>:
+        <span class="type">AIState</span>.<span class="var">PATROL</span>:
+            <span class="fn">do_patrol</span>(<span class="var">delta</span>)
+            <span class="kw">if</span> <span class="fn">can_see_player</span>():
+                <span class="var">state</span> = <span class="type">AIState</span>.<span class="var">CHASE</span>
+
+        <span class="type">AIState</span>.<span class="var">CHASE</span>:
+            <span class="fn">do_chase</span>(<span class="var">delta</span>)
+            <span class="kw">if</span> <span class="fn">distance_to_player</span>() &lt; <span class="var">attack_range</span>:
+                <span class="var">state</span> = <span class="type">AIState</span>.<span class="var">ATTACK</span>
+            <span class="kw">elif</span> <span class="fn">distance_to_player</span>() &gt; <span class="var">detection_range</span> * <span class="num">1.5</span>:
+                <span class="var">state</span> = <span class="type">AIState</span>.<span class="var">PATROL</span>
+            <span class="kw">if</span> <span class="var">health</span> &lt; <span class="var">flee_hp_threshold</span>:
+                <span class="var">state</span> = <span class="type">AIState</span>.<span class="var">FLEE</span>
+
+        <span class="type">AIState</span>.<span class="var">ATTACK</span>:
+            <span class="fn">do_attack</span>()
+            <span class="kw">if</span> <span class="fn">distance_to_player</span>() &gt; <span class="var">attack_range</span> * <span class="num">1.2</span>:
+                <span class="var">state</span> = <span class="type">AIState</span>.<span class="var">CHASE</span>
+
+        <span class="type">AIState</span>.<span class="var">FLEE</span>:
+            <span class="fn">do_flee</span>(<span class="var">delta</span>)
+
+<span class="kw">func</span> <span class="fn">can_see_player</span>() -> <span class="type">bool</span>:
+    <span class="kw">if not</span> <span class="var">player</span>:
+        <span class="kw">return false</span>
+    <span class="kw">var</span> <span class="var">dist</span> = <span class="var">global_position</span>.<span class="fn">distance_to</span>(<span class="var">player</span>.<span class="var">global_position</span>)
+    <span class="kw">if</span> <span class="var">dist</span> &gt; <span class="var">detection_range</span>:
+        <span class="kw">return false</span>
+    <span class="cm"># 射线检测——确保没有墙挡住</span>
+    <span class="kw">var</span> <span class="var">space</span> = <span class="fn">get_world_2d</span>().<span class="var">direct_space_state</span>
+    <span class="kw">var</span> <span class="var">query</span> = <span class="type">PhysicsRayQueryParameters2D</span>.<span class="fn">create</span>(
+        <span class="var">global_position</span>, <span class="var">player</span>.<span class="var">global_position</span>
+    )
+    <span class="kw">var</span> <span class="var">result</span> = <span class="var">space</span>.<span class="fn">intersect_ray</span>(<span class="var">query</span>)
+    <span class="kw">return</span> <span class="var">result</span> <span class="kw">and</span> <span class="var">result</span>.<span class="var">collider</span> == <span class="var">player</span></code></pre>
+
+<h3>行为树（Behavior Tree）</h3>
+
+<p>行为树比状态机更灵活、更可扩展。它是 AAA 游戏 AI 的标准方案。</p>
+
+<div class="concept-box">
+  <div class="concept-label">行为树核心节点类型</div>
+  <p><strong>Sequence（顺序）</strong>：依次执行子节点，全部成功则成功，任一失败则失败（类似 AND）<br>
+  <strong>Selector（选择）</strong>：依次尝试子节点，任一成功则成功，全部失败则失败（类似 OR）<br>
+  <strong>Decorator（装饰器）</strong>：修改子节点的行为（取反、重复、条件守卫）<br>
+  <strong>Leaf（叶子）</strong>：执行具体动作或检查条件</p>
+</div>
+
+<pre><code><span class="label">行为树结构示例</span>
+<span class="cm"># 一个巡逻兵的行为树</span>
+<span class="cm">#</span>
+<span class="cm"># Selector (根)</span>
+<span class="cm"># ├── Sequence [战斗]</span>
+<span class="cm"># │   ├── Condition: 看见玩家？</span>
+<span class="cm"># │   ├── Selector [战斗策略]</span>
+<span class="cm"># │   │   ├── Sequence [近战]</span>
+<span class="cm"># │   │   │   ├── Condition: 距离 &lt; 攻击范围？</span>
+<span class="cm"># │   │   │   └── Action: 攻击</span>
+<span class="cm"># │   │   └── Action: 追击玩家</span>
+<span class="cm"># │   └── Decorator [血量低时]</span>
+<span class="cm"># │       ├── Condition: HP &lt; 20%？</span>
+<span class="cm"># │       └── Action: 逃跑</span>
+<span class="cm"># └── Sequence [巡逻]</span>
+<span class="cm">#     ├── Action: 移动到巡逻点</span>
+<span class="cm">#     ├── Action: 等待 2 秒</span>
+<span class="cm">#     └── Action: 切换到下一个巡逻点</span></code></pre>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 简化的行为树实现 =====</span>
+<span class="kw">class_name</span> <span class="type">BTNode</span>
+
+<span class="kw">enum</span> <span class="type">Status</span> { <span class="var">SUCCESS</span>, <span class="var">FAILURE</span>, <span class="var">RUNNING</span> }
+
+<span class="kw">func</span> <span class="fn">tick</span>(<span class="var">actor</span>, <span class="var">delta</span>) -> <span class="type">Status</span>:
+    <span class="kw">return</span> <span class="type">Status</span>.<span class="var">FAILURE</span>
+
+<span class="cm"># Sequence 节点</span>
+<span class="kw">class</span> <span class="type">BTSequence</span> <span class="kw">extends</span> <span class="type">BTNode</span>:
+    <span class="kw">var</span> <span class="var">children</span>: <span class="type">Array</span>[<span class="type">BTNode</span>] = []
+
+    <span class="kw">func</span> <span class="fn">tick</span>(<span class="var">actor</span>, <span class="var">delta</span>) -> <span class="type">Status</span>:
+        <span class="kw">for</span> <span class="var">child</span> <span class="kw">in</span> <span class="var">children</span>:
+            <span class="kw">var</span> <span class="var">result</span> = <span class="var">child</span>.<span class="fn">tick</span>(<span class="var">actor</span>, <span class="var">delta</span>)
+            <span class="kw">if</span> <span class="var">result</span> != <span class="type">Status</span>.<span class="var">SUCCESS</span>:
+                <span class="kw">return</span> <span class="var">result</span>  <span class="cm"># FAILURE 或 RUNNING</span>
+        <span class="kw">return</span> <span class="type">Status</span>.<span class="var">SUCCESS</span>
+
+<span class="cm"># Selector 节点</span>
+<span class="kw">class</span> <span class="type">BTSelector</span> <span class="kw">extends</span> <span class="type">BTNode</span>:
+    <span class="kw">var</span> <span class="var">children</span>: <span class="type">Array</span>[<span class="type">BTNode</span>] = []
+
+    <span class="kw">func</span> <span class="fn">tick</span>(<span class="var">actor</span>, <span class="var">delta</span>) -> <span class="type">Status</span>:
+        <span class="kw">for</span> <span class="var">child</span> <span class="kw">in</span> <span class="var">children</span>:
+            <span class="kw">var</span> <span class="var">result</span> = <span class="var">child</span>.<span class="fn">tick</span>(<span class="var">actor</span>, <span class="var">delta</span>)
+            <span class="kw">if</span> <span class="var">result</span> != <span class="type">Status</span>.<span class="var">FAILURE</span>:
+                <span class="kw">return</span> <span class="var">result</span>  <span class="cm"># SUCCESS 或 RUNNING</span>
+        <span class="kw">return</span> <span class="type">Status</span>.<span class="var">FAILURE</span>
+
+<span class="cm"># 条件叶子节点示例</span>
+<span class="kw">class</span> <span class="type">CanSeePlayer</span> <span class="kw">extends</span> <span class="type">BTNode</span>:
+    <span class="kw">func</span> <span class="fn">tick</span>(<span class="var">actor</span>, <span class="var">delta</span>) -> <span class="type">Status</span>:
+        <span class="kw">if</span> <span class="var">actor</span>.<span class="fn">can_see_player</span>():
+            <span class="kw">return</span> <span class="type">Status</span>.<span class="var">SUCCESS</span>
+        <span class="kw">return</span> <span class="type">Status</span>.<span class="var">FAILURE</span>
+
+<span class="cm"># 动作叶子节点示例</span>
+<span class="kw">class</span> <span class="type">ChasePlayer</span> <span class="kw">extends</span> <span class="type">BTNode</span>:
+    <span class="kw">func</span> <span class="fn">tick</span>(<span class="var">actor</span>, <span class="var">delta</span>) -> <span class="type">Status</span>:
+        <span class="kw">var</span> <span class="var">dir</span> = (<span class="var">actor</span>.<span class="var">player</span>.<span class="var">position</span> - <span class="var">actor</span>.<span class="var">position</span>).<span class="fn">normalized</span>()
+        <span class="var">actor</span>.<span class="var">velocity</span> = <span class="var">dir</span> * <span class="var">actor</span>.<span class="var">chase_speed</span>
+        <span class="var">actor</span>.<span class="fn">move_and_slide</span>()
+        <span class="kw">return</span> <span class="type">Status</span>.<span class="var">RUNNING</span></code></pre>
+
+<h3>A* 寻路算法</h3>
+
+<p>A* 是游戏中最常用的寻路算法。它在 Dijkstra 的基础上加入了<strong>启发式估计</strong>，大幅减少搜索范围。</p>
+
+<pre><code><span class="label">伪代码</span>
+<span class="cm"># ===== A* 寻路核心算法 =====</span>
+<span class="kw">func</span> <span class="fn">astar</span>(<span class="var">start</span>, <span class="var">goal</span>, <span class="var">grid</span>):
+    <span class="cm"># open_set: 待探索的节点（优先队列，按 f_score 排序）</span>
+    <span class="kw">var</span> <span class="var">open_set</span> = <span class="type">PriorityQueue</span>()
+    <span class="var">open_set</span>.<span class="fn">push</span>(<span class="var">start</span>, <span class="num">0</span>)
+
+    <span class="cm"># g_score: 从起点到该节点的实际代价</span>
+    <span class="kw">var</span> <span class="var">g_score</span> = { <span class="var">start</span>: <span class="num">0</span> }
+
+    <span class="cm"># came_from: 路径回溯用</span>
+    <span class="kw">var</span> <span class="var">came_from</span> = {}
+
+    <span class="kw">while not</span> <span class="var">open_set</span>.<span class="fn">is_empty</span>():
+        <span class="kw">var</span> <span class="var">current</span> = <span class="var">open_set</span>.<span class="fn">pop</span>()
+
+        <span class="cm"># 到达目标！</span>
+        <span class="kw">if</span> <span class="var">current</span> == <span class="var">goal</span>:
+            <span class="kw">return</span> <span class="fn">reconstruct_path</span>(<span class="var">came_from</span>, <span class="var">current</span>)
+
+        <span class="kw">for</span> <span class="var">neighbor</span> <span class="kw">in</span> <span class="fn">get_neighbors</span>(<span class="var">current</span>, <span class="var">grid</span>):
+            <span class="cm"># 经过 current 到达 neighbor 的代价</span>
+            <span class="kw">var</span> <span class="var">tentative_g</span> = <span class="var">g_score</span>[<span class="var">current</span>] + <span class="fn">cost</span>(<span class="var">current</span>, <span class="var">neighbor</span>)
+
+            <span class="kw">if</span> <span class="var">tentative_g</span> &lt; <span class="var">g_score</span>.<span class="fn">get</span>(<span class="var">neighbor</span>, <span class="var">INF</span>):
+                <span class="var">came_from</span>[<span class="var">neighbor</span>] = <span class="var">current</span>
+                <span class="var">g_score</span>[<span class="var">neighbor</span>] = <span class="var">tentative_g</span>
+
+                <span class="cm"># f_score = g_score + h(启发式估计)</span>
+                <span class="kw">var</span> <span class="var">f_score</span> = <span class="var">tentative_g</span> + <span class="fn">heuristic</span>(<span class="var">neighbor</span>, <span class="var">goal</span>)
+                <span class="var">open_set</span>.<span class="fn">push</span>(<span class="var">neighbor</span>, <span class="var">f_score</span>)
+
+    <span class="kw">return</span> []  <span class="cm"># 无路径</span>
+
+<span class="cm"># 启发式函数——曼哈顿距离（网格寻路）</span>
+<span class="kw">func</span> <span class="fn">heuristic</span>(<span class="var">a</span>, <span class="var">b</span>) -> <span class="type">float</span>:
+    <span class="kw">return</span> <span class="fn">abs</span>(<span class="var">a</span>.<span class="var">x</span> - <span class="var">b</span>.<span class="var">x</span>) + <span class="fn">abs</span>(<span class="var">a</span>.<span class="var">y</span> - <span class="var">b</span>.<span class="var">y</span>)</code></pre>
+
+<div class="card accent-border">
+  <h4>A* 的关键要素</h4>
+  <ul style="margin-bottom:0">
+    <li><strong>f(n) = g(n) + h(n)</strong> —— 总估计代价 = 实际代价 + 启发式估计</li>
+    <li><strong>启发式要可容许（admissible）</strong>——不能高估实际距离，否则可能找到非最优路径</li>
+    <li><strong>常见启发式</strong>：曼哈顿距离（4方向网格）、欧几里得距离（任意方向）、切比雪夫距离（8方向网格）</li>
+    <li><strong>Godot 内置 AStarGrid2D</strong>——直接用，不需要自己实现</li>
+  </ul>
+</div>
+
+<h3>导航网格（NavMesh）</h3>
+
+<p>对于非网格的、连续空间的 3D/2D 场景，NavMesh 比 A* 网格更高效。它将可行走区域划分为<strong>凸多边形</strong>，然后在多边形之间寻路。</p>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 在 Godot 中使用 NavigationAgent2D =====</span>
+<span class="kw">extends</span> <span class="type">CharacterBody2D</span>
+
+<span class="kw">@onready var</span> <span class="var">nav_agent</span> = $<span class="type">NavigationAgent2D</span>
+
+<span class="kw">@export var</span> <span class="var">speed</span> = <span class="num">150.0</span>
+
+<span class="kw">func</span> <span class="fn">set_target</span>(<span class="var">target_pos</span>: <span class="type">Vector2</span>):
+    <span class="var">nav_agent</span>.<span class="var">target_position</span> = <span class="var">target_pos</span>
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(<span class="var">delta</span>):
+    <span class="kw">if</span> <span class="var">nav_agent</span>.<span class="fn">is_navigation_finished</span>():
+        <span class="kw">return</span>
+
+    <span class="cm"># 获取下一个路径点</span>
+    <span class="kw">var</span> <span class="var">next_pos</span> = <span class="var">nav_agent</span>.<span class="fn">get_next_path_position</span>()
+    <span class="kw">var</span> <span class="var">direction</span> = (<span class="var">next_pos</span> - <span class="var">global_position</span>).<span class="fn">normalized</span>()
+
+    <span class="var">velocity</span> = <span class="var">direction</span> * <span class="var">speed</span>
+    <span class="fn">move_and_slide</span>()</code></pre>
+
+<h3>感知系统</h3>
+
+<p>AI 需要"感官"来获取游戏世界的信息。</p>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 视野锥检测 =====</span>
+<span class="kw">func</span> <span class="fn">is_in_vision_cone</span>(<span class="var">target_pos</span>: <span class="type">Vector2</span>) -> <span class="type">bool</span>:
+    <span class="kw">var</span> <span class="var">to_target</span> = <span class="var">target_pos</span> - <span class="var">global_position</span>
+    <span class="kw">var</span> <span class="var">distance</span> = <span class="var">to_target</span>.<span class="fn">length</span>()
+
+    <span class="cm"># 距离检查</span>
+    <span class="kw">if</span> <span class="var">distance</span> &gt; <span class="var">vision_range</span>:
+        <span class="kw">return false</span>
+
+    <span class="cm"># 角度检查——面朝方向和目标方向的夹角</span>
+    <span class="kw">var</span> <span class="var">facing_dir</span> = <span class="type">Vector2</span>.<span class="fn">from_angle</span>(<span class="var">rotation</span>)
+    <span class="kw">var</span> <span class="var">angle_to_target</span> = <span class="var">facing_dir</span>.<span class="fn">angle_to</span>(<span class="var">to_target</span>.<span class="fn">normalized</span>())
+
+    <span class="kw">if</span> <span class="fn">abs</span>(<span class="var">angle_to_target</span>) &gt; <span class="fn">deg_to_rad</span>(<span class="var">vision_angle</span> / <span class="num">2.0</span>):
+        <span class="kw">return false</span>
+
+    <span class="cm"># 射线检查——确保没有遮挡</span>
+    <span class="kw">var</span> <span class="var">space</span> = <span class="fn">get_world_2d</span>().<span class="var">direct_space_state</span>
+    <span class="kw">var</span> <span class="var">query</span> = <span class="type">PhysicsRayQueryParameters2D</span>.<span class="fn">create</span>(
+        <span class="var">global_position</span>, <span class="var">target_pos</span>, <span class="var">wall_layer_mask</span>
+    )
+    <span class="kw">var</span> <span class="var">result</span> = <span class="var">space</span>.<span class="fn">intersect_ray</span>(<span class="var">query</span>)
+    <span class="kw">return</span> <span class="var">result</span>.<span class="fn">is_empty</span>()  <span class="cm"># 没有撞到墙 = 可以看到</span>
+
+<span class="cm"># ===== 听觉系统——基于距离和音量的检测 =====</span>
+<span class="kw">func</span> <span class="fn">can_hear</span>(<span class="var">sound_pos</span>: <span class="type">Vector2</span>, <span class="var">sound_volume</span>: <span class="type">float</span>) -> <span class="type">bool</span>:
+    <span class="kw">var</span> <span class="var">distance</span> = <span class="var">global_position</span>.<span class="fn">distance_to</span>(<span class="var">sound_pos</span>)
+    <span class="cm"># 声音在传播中衰减</span>
+    <span class="kw">var</span> <span class="var">perceived_volume</span> = <span class="var">sound_volume</span> / (<span class="num">1.0</span> + <span class="var">distance</span> * <span class="num">0.01</span>)
+    <span class="kw">return</span> <span class="var">perceived_volume</span> &gt; <span class="var">hearing_threshold</span></code></pre>
+
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 7: 网络编程基础
+     ════════════════════════════════════════════════════════ -->
+<section id="networking">
+<h2>07 &mdash; 网络编程基础</h2>
+
+<p>网络多人游戏是游戏开发中最复杂的领域之一。它不仅涉及编程技术，还涉及分布式系统、网络工程、安全性。</p>
+
+<h3>架构模式</h3>
+
+<div class="card-grid">
+  <div class="card accent-border">
+    <h4>客户端-服务器（Client-Server）</h4>
+    <p><strong>一个权威服务器</strong>运行游戏逻辑，客户端发送输入、接收状态更新。</p>
+    <ul>
+      <li>服务器是"真相的唯一来源"</li>
+      <li>反作弊天然优势——客户端无法篡改游戏状态</li>
+      <li>需要运维服务器成本</li>
+      <li>延迟 = 客户端到服务器的往返时间</li>
+    </ul>
+    <p style="margin-bottom:0"><strong>代表：</strong>几乎所有竞技类多人游戏（CS2、Valorant、LOL）</p>
+  </div>
+  <div class="card info-border">
+    <h4>点对点（Peer-to-Peer）</h4>
+    <p>所有玩家<strong>直接互联</strong>，每个客户端既是服务器也是客户端。</p>
+    <ul>
+      <li>无需专用服务器——降低成本</li>
+      <li>延迟取决于玩家之间的网络距离</li>
+      <li>同步问题更复杂</li>
+      <li>反作弊困难——每个客户端都有完整游戏状态</li>
+    </ul>
+    <p style="margin-bottom:0"><strong>代表：</strong>格斗游戏（GGPO回滚式）、部分 RTS</p>
+  </div>
+</div>
+
+<h3>状态同步 vs 帧同步</h3>
+
+<table>
+  <tr>
+    <th>维度</th>
+    <th>状态同步</th>
+    <th>帧同步（Lockstep）</th>
+  </tr>
+  <tr>
+    <td><strong>传输内容</strong></td>
+    <td>游戏对象的状态（位置、血量...）</td>
+    <td>玩家的输入指令</td>
+  </tr>
+  <tr>
+    <td><strong>带宽需求</strong></td>
+    <td>随实体数量增长</td>
+    <td>仅与玩家数量相关，极低</td>
+  </tr>
+  <tr>
+    <td><strong>确定性要求</strong></td>
+    <td>不需要——服务器是权威</td>
+    <td>必须完全确定性（同输入 = 同结果）</td>
+  </tr>
+  <tr>
+    <td><strong>断线重连</strong></td>
+    <td>容易——发送当前状态快照</td>
+    <td>困难——需要从头快进所有历史输入</td>
+  </tr>
+  <tr>
+    <td><strong>适合类型</strong></td>
+    <td>FPS、MMO、大部分动作游戏</td>
+    <td>RTS（星际争霸）、格斗游戏、MOBA</td>
+  </tr>
+  <tr>
+    <td><strong>实现难度</strong></td>
+    <td>中等</td>
+    <td>高（需要确定性物理、固定点数等）</td>
+  </tr>
+</table>
+
+<h3>延迟补偿技术</h3>
+
+<p>网络延迟是多人游戏的头号敌人。以下是对抗延迟的核心技术。</p>
+
+<h4>客户端预测（Client-side Prediction）</h4>
+
+<pre><code><span class="label">伪代码</span>
+<span class="cm"># ===== 客户端预测 =====</span>
+<span class="cm"># 问题：玩家按下"前进"，要等服务器确认才能动？太卡了！</span>
+<span class="cm"># 解决：客户端立即执行移动，同时发送给服务器</span>
+
+<span class="kw">var</span> <span class="var">pending_inputs</span> = []  <span class="cm"># 已发送但未被服务器确认的输入</span>
+<span class="kw">var</span> <span class="var">input_sequence</span> = <span class="num">0</span>
+
+<span class="kw">func</span> <span class="fn">client_update</span>(<span class="var">delta</span>):
+    <span class="kw">var</span> <span class="var">input</span> = <span class="fn">get_player_input</span>()
+    <span class="var">input</span>.<span class="var">sequence</span> = <span class="var">input_sequence</span>
+    <span class="var">input_sequence</span> += <span class="num">1</span>
+
+    <span class="cm"># 1. 立即在本地执行（预测）</span>
+    <span class="fn">apply_input</span>(<span class="var">input</span>, <span class="var">delta</span>)
+
+    <span class="cm"># 2. 发送给服务器</span>
+    <span class="fn">send_to_server</span>(<span class="var">input</span>)
+
+    <span class="cm"># 3. 保存到待确认队列</span>
+    <span class="var">pending_inputs</span>.<span class="fn">append</span>(<span class="var">input</span>)
+
+<span class="kw">func</span> <span class="fn">on_server_state_received</span>(<span class="var">server_state</span>):
+    <span class="cm"># 服务器发来了权威状态</span>
+    <span class="var">position</span> = <span class="var">server_state</span>.<span class="var">position</span>
+
+    <span class="cm"># 丢弃已被服务器处理的输入</span>
+    <span class="var">pending_inputs</span> = <span class="var">pending_inputs</span>.<span class="fn">filter</span>(
+        <span class="kw">func</span>(<span class="var">input</span>): <span class="kw">return</span> <span class="var">input</span>.<span class="var">sequence</span> &gt; <span class="var">server_state</span>.<span class="var">last_processed_input</span>
+    )
+
+    <span class="cm"># 重新应用尚未确认的输入（和解/Reconciliation）</span>
+    <span class="kw">for</span> <span class="var">input</span> <span class="kw">in</span> <span class="var">pending_inputs</span>:
+        <span class="fn">apply_input</span>(<span class="var">input</span>, <span class="var">FIXED_DELTA</span>)</code></pre>
+
+<h4>实体插值（Entity Interpolation）</h4>
+
+<pre><code><span class="label">伪代码</span>
+<span class="cm"># ===== 实体插值 =====</span>
+<span class="cm"># 问题：其他玩家的位置更新是离散的，每 50ms 收到一次</span>
+<span class="cm"># 直接设置位置 → 瞬移/抖动</span>
+<span class="cm"># 解决：在两个已知状态之间平滑插值</span>
+
+<span class="kw">var</span> <span class="var">state_buffer</span> = []  <span class="cm"># 存储最近收到的服务器状态</span>
+<span class="kw">var</span> <span class="var">interpolation_delay</span> = <span class="num">0.1</span>  <span class="cm"># 100ms 延迟换取平滑</span>
+
+<span class="kw">func</span> <span class="fn">render_other_player</span>():
+    <span class="cm"># 渲染时间 = 当前时间 - 插值延迟</span>
+    <span class="kw">var</span> <span class="var">render_time</span> = <span class="var">current_time</span> - <span class="var">interpolation_delay</span>
+
+    <span class="cm"># 找到 render_time 前后的两个状态</span>
+    <span class="kw">var</span> <span class="var">before</span> = <span class="fn">find_state_before</span>(<span class="var">render_time</span>)
+    <span class="kw">var</span> <span class="var">after</span> = <span class="fn">find_state_after</span>(<span class="var">render_time</span>)
+
+    <span class="kw">if</span> <span class="var">before</span> <span class="kw">and</span> <span class="var">after</span>:
+        <span class="cm"># 在两个状态之间线性插值</span>
+        <span class="kw">var</span> <span class="var">t</span> = (<span class="var">render_time</span> - <span class="var">before</span>.<span class="var">timestamp</span>) / (<span class="var">after</span>.<span class="var">timestamp</span> - <span class="var">before</span>.<span class="var">timestamp</span>)
+        <span class="var">display_position</span> = <span class="var">before</span>.<span class="var">position</span>.<span class="fn">lerp</span>(<span class="var">after</span>.<span class="var">position</span>, <span class="var">t</span>)</code></pre>
+
+<h4>回滚式网络代码（Rollback Netcode）</h4>
+
+<div class="card accent-border">
+  <h4>GGPO / 回滚系统</h4>
+  <p>格斗游戏和快节奏 P2P 游戏的黄金标准。核心思想：</p>
+  <ol>
+    <li><strong>预测</strong>——假设对方重复上一帧的输入</li>
+    <li><strong>当收到实际输入时</strong>——如果预测正确，什么都不用做</li>
+    <li><strong>如果预测错误</strong>——回滚到上一个确认状态，用正确输入重新模拟到当前帧</li>
+  </ol>
+  <p style="margin-bottom:0"><strong>关键要求：</strong>游戏状态必须可序列化（保存/加载）、物理必须确定性、回滚+重模拟必须在一帧内完成。</p>
+</div>
+
+<h3>网络架构选择指南</h3>
+
+<div class="practice-box">
+  <div class="practice-label">推荐方案</div>
+  <ul style="margin-bottom:0">
+    <li><strong>合作 PvE（2-4人）</strong>→ 主机制 P2P（一个玩家当 host），状态同步</li>
+    <li><strong>竞技 FPS</strong>→ 专用服务器 + 客户端预测 + 服务器和解 + 实体插值</li>
+    <li><strong>格斗游戏</strong>→ P2P + 回滚式帧同步（GGPO）</li>
+    <li><strong>RTS</strong>→ 帧同步（所有客户端运行确定性模拟）</li>
+    <li><strong>MMO</strong>→ 分区服务器集群 + 状态同步 + 兴趣管理</li>
+    <li><strong>独立开发者首选</strong>→ Godot 内置的 <code>MultiplayerPeer</code> + ENet，从简单的 P2P 开始</li>
+  </ul>
+</div>
+
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 8: 性能优化原则
+     ════════════════════════════════════════════════════════ -->
+<section id="optimization">
+<h2>08 &mdash; 性能优化原则</h2>
+
+<blockquote>
+  <strong>"过早优化是万恶之源。"</strong> —— Donald Knuth<br>
+  但这句话的后半段经常被省略："然而我们不应该放弃那关键的 3% 的机会。"
+</blockquote>
+
+<h3>性能分析方法论</h3>
+
+<div class="concept-box">
+  <div class="concept-label">优化铁律</div>
+  <p style="margin-bottom:0"><strong>不要猜，要测。</strong>先用 Profiler 找到实际瓶颈，再优化。你以为慢的地方往往不是真正慢的地方。Godot 内置 Profiler（Debugger → Profiler），Unity 有 Profiler Window，UE 有 Unreal Insights。</p>
+</div>
+
+<div class="flow-diagram">
+  <div class="flow-step">测量/Profile</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step highlight">找到瓶颈</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">优化</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step highlight">再次测量</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">确认改善</div>
+</div>
+
+<h3>CPU vs GPU 瓶颈</h3>
+
+<table>
+  <tr>
+    <th>特征</th>
+    <th>CPU 瓶颈</th>
+    <th>GPU 瓶颈</th>
+  </tr>
+  <tr>
+    <td><strong>表现</strong></td>
+    <td>降低分辨率不影响帧率</td>
+    <td>降低分辨率帧率提升</td>
+  </tr>
+  <tr>
+    <td><strong>常见原因</strong></td>
+    <td>过多的游戏逻辑计算、物理模拟、AI 寻路、GC 停顿</td>
+    <td>过多的 Draw Call、高分辨率纹理、复杂着色器、后处理过多</td>
+  </tr>
+  <tr>
+    <td><strong>GPU 利用率</strong></td>
+    <td>GPU 等 CPU（利用率低）</td>
+    <td>GPU 满载</td>
+  </tr>
+  <tr>
+    <td><strong>优化方向</strong></td>
+    <td>算法优化、减少计算量、空间分区、对象池</td>
+    <td>减少 Draw Call、LOD、遮挡剔除、降低着色器复杂度</td>
+  </tr>
+</table>
+
+<h3>空间分区数据结构</h3>
+
+<p>当场景中有大量物体时，"每个物体和其他所有物体检测碰撞"是 O(n^2) 的灾难。空间分区将空间划分为区域，只检测<strong>同一区域或相邻区域</strong>内的物体。</p>
+
+<h4>四叉树（Quadtree）——2D 空间分区</h4>
+
+<pre><code><span class="label">伪代码</span>
+<span class="cm"># ===== 四叉树——2D 空间分区 =====</span>
+<span class="kw">class</span> <span class="type">QuadTree</span>:
+    <span class="kw">var</span> <span class="var">boundary</span>: <span class="type">Rect2</span>        <span class="cm"># 本节点覆盖的区域</span>
+    <span class="kw">var</span> <span class="var">capacity</span>: <span class="type">int</span> = <span class="num">4</span>      <span class="cm"># 分裂前最多容纳的对象数</span>
+    <span class="kw">var</span> <span class="var">objects</span>: <span class="type">Array</span> = []
+    <span class="kw">var</span> <span class="var">divided</span>: <span class="type">bool</span> = <span class="kw">false</span>
+    <span class="kw">var</span> <span class="var">nw</span>: <span class="type">QuadTree</span>            <span class="cm"># 四个子节点</span>
+    <span class="kw">var</span> <span class="var">ne</span>: <span class="type">QuadTree</span>
+    <span class="kw">var</span> <span class="var">sw</span>: <span class="type">QuadTree</span>
+    <span class="kw">var</span> <span class="var">se</span>: <span class="type">QuadTree</span>
+
+    <span class="kw">func</span> <span class="fn">insert</span>(<span class="var">obj</span>):
+        <span class="kw">if not</span> <span class="var">boundary</span>.<span class="fn">has_point</span>(<span class="var">obj</span>.<span class="var">position</span>):
+            <span class="kw">return false</span>
+
+        <span class="kw">if</span> <span class="var">objects</span>.<span class="fn">size</span>() &lt; <span class="var">capacity</span>:
+            <span class="var">objects</span>.<span class="fn">append</span>(<span class="var">obj</span>)
+            <span class="kw">return true</span>
+
+        <span class="kw">if not</span> <span class="var">divided</span>:
+            <span class="fn">subdivide</span>()
+
+        <span class="kw">return</span> (<span class="var">nw</span>.<span class="fn">insert</span>(<span class="var">obj</span>) <span class="kw">or</span> <span class="var">ne</span>.<span class="fn">insert</span>(<span class="var">obj</span>) <span class="kw">or</span>
+                <span class="var">sw</span>.<span class="fn">insert</span>(<span class="var">obj</span>) <span class="kw">or</span> <span class="var">se</span>.<span class="fn">insert</span>(<span class="var">obj</span>))
+
+    <span class="kw">func</span> <span class="fn">query</span>(<span class="var">range</span>: <span class="type">Rect2</span>) -> <span class="type">Array</span>:
+        <span class="kw">var</span> <span class="var">found</span> = []
+
+        <span class="kw">if not</span> <span class="var">boundary</span>.<span class="fn">intersects</span>(<span class="var">range</span>):
+            <span class="kw">return</span> <span class="var">found</span>
+
+        <span class="kw">for</span> <span class="var">obj</span> <span class="kw">in</span> <span class="var">objects</span>:
+            <span class="kw">if</span> <span class="var">range</span>.<span class="fn">has_point</span>(<span class="var">obj</span>.<span class="var">position</span>):
+                <span class="var">found</span>.<span class="fn">append</span>(<span class="var">obj</span>)
+
+        <span class="kw">if</span> <span class="var">divided</span>:
+            <span class="var">found</span> += <span class="var">nw</span>.<span class="fn">query</span>(<span class="var">range</span>)
+            <span class="var">found</span> += <span class="var">ne</span>.<span class="fn">query</span>(<span class="var">range</span>)
+            <span class="var">found</span> += <span class="var">sw</span>.<span class="fn">query</span>(<span class="var">range</span>)
+            <span class="var">found</span> += <span class="var">se</span>.<span class="fn">query</span>(<span class="var">range</span>)
+
+        <span class="kw">return</span> <span class="var">found</span>
+
+<span class="cm"># 使用：</span>
+<span class="cm"># 每帧重建四叉树，然后对每个对象只查询周围区域</span>
+<span class="cm"># 从 O(n²) 降为 O(n log n)</span></code></pre>
+
+<h4>八叉树（Octree）与 BVH</h4>
+
+<div class="card-grid">
+  <div class="card accent-border">
+    <h4>八叉树（3D 版四叉树）</h4>
+    <p style="margin-bottom:0">将 3D 空间递归切分为 8 个子立方体。适合均匀分布的物体。<strong>Minecraft 的区块系统</strong>本质上是一种空间分区。</p>
+  </div>
+  <div class="card info-border">
+    <h4>BVH（层级包围盒）</h4>
+    <p style="margin-bottom:0">以物体为中心构建树，而不是以空间为中心。对不均匀分布的物体更高效。<strong>现代物理引擎</strong>（Box2D、Bullet）的宽相检测首选。</p>
+  </div>
+</div>
+
+<h3>渲染优化技术</h3>
+
+<h4>LOD（Level of Detail）</h4>
+
+<pre><code><span class="label">概念</span>
+<span class="cm"># LOD 策略：物体离摄像机越远，使用越简单的模型</span>
+<span class="cm">#</span>
+<span class="cm"># LOD 0 (近): 10000 三角面，完整纹理，法线贴图</span>
+<span class="cm"># LOD 1 (中): 3000 三角面，简化纹理</span>
+<span class="cm"># LOD 2 (远): 500 三角面，低分辨率纹理</span>
+<span class="cm"># LOD 3 (极远): 100 三角面 或 Billboard（面片）</span>
+<span class="cm"># 超出距离: 不渲染</span>
+<span class="cm">#</span>
+<span class="cm"># UE5 的 Nanite 自动处理 LOD——你导入电影级模型，</span>
+<span class="cm"># 引擎实时流式加载合适精度的几何体</span></code></pre>
+
+<h4>遮挡剔除（Occlusion Culling）</h4>
+
+<p>被其他物体完全挡住的物体不需要渲染。引擎可以通过预计算或实时检测来跳过这些物体。</p>
+
+<ul>
+  <li><strong>视锥剔除（Frustum Culling）</strong>——不在摄像机视野内的物体不渲染（所有引擎自动做）</li>
+  <li><strong>遮挡剔除</strong>——被墙/大建筑挡住的物体不渲染（需要配置或手动设置遮挡体）</li>
+  <li><strong>距离剔除</strong>——超出一定距离的物体不渲染</li>
+</ul>
+
+<h4>批处理（Batching）</h4>
+
+<div class="concept-box">
+  <div class="concept-label">Draw Call 优化</div>
+  <p style="margin-bottom:0">每次 CPU 告诉 GPU "画这个东西"就是一个 Draw Call。<strong>Draw Call 本身的开销 &gt; 实际绘制的开销。</strong>所以 1000 个小 Draw Call 远比 1 个大 Draw Call 慢。<br><br>
+  <strong>批处理</strong>将多个使用相同材质的物体合并为一次 Draw Call。在 Godot 中，使用相同材质的 CanvasItem 会自动批处理。在 3D 中，可以用 <code>MultiMeshInstance3D</code> 来渲染大量相同模型（草、树、石头）。</p>
+</div>
+
+<h3>内存管理与对象池</h3>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 常见内存问题与解决方案 =====</span>
+
+<span class="cm"># 问题 1：频繁实例化/销毁</span>
+<span class="cm"># 坏：每次发射都创建新子弹</span>
+<span class="kw">func</span> <span class="fn">shoot_bad</span>():
+    <span class="kw">var</span> <span class="var">bullet</span> = <span class="var">bullet_scene</span>.<span class="fn">instantiate</span>()  <span class="cm"># 分配内存</span>
+    <span class="fn">add_child</span>(<span class="var">bullet</span>)
+    <span class="cm"># 子弹离开屏幕后 queue_free()  # 释放内存 + 触发 GC</span>
+
+<span class="cm"># 好：使用对象池（见前面的 ObjectPool 实现）</span>
+<span class="kw">func</span> <span class="fn">shoot_good</span>():
+    <span class="kw">var</span> <span class="var">bullet</span> = <span class="var">bullet_pool</span>.<span class="fn">acquire</span>()
+    <span class="kw">if</span> <span class="var">bullet</span>:
+        <span class="var">bullet</span>.<span class="var">global_position</span> = <span class="var">muzzle</span>.<span class="var">global_position</span>
+        <span class="var">bullet</span>.<span class="fn">fire</span>(<span class="var">aim_direction</span>)
+
+<span class="cm"># 问题 2：每帧分配临时数组</span>
+<span class="cm"># 坏：</span>
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):
+    <span class="kw">var</span> <span class="var">nearby</span> = <span class="fn">get_nearby_enemies</span>()  <span class="cm"># 每帧新建数组</span>
+
+<span class="cm"># 好：复用数组</span>
+<span class="kw">var</span> <span class="var">_nearby_cache</span>: <span class="type">Array</span> = []
+
+<span class="kw">func</span> <span class="fn">_process</span>(<span class="var">delta</span>):
+    <span class="var">_nearby_cache</span>.<span class="fn">clear</span>()
+    <span class="fn">get_nearby_enemies_into</span>(<span class="var">_nearby_cache</span>)  <span class="cm"># 填充已有数组</span>
+
+<span class="cm"># 问题 3：信号/回调泄漏</span>
+<span class="cm"># 记得在节点销毁前断开外部信号连接</span>
+<span class="kw">func</span> <span class="fn">_exit_tree</span>():
+    EventBus.<span class="var">player_died</span>.<span class="fn">disconnect</span>(<span class="fn">_on_player_died</span>)</code></pre>
+
+<h3>性能优化 Checklist</h3>
+
+<div class="practice-box">
+  <div class="practice-label">优化检查清单</div>
+  <ul style="margin-bottom:0">
+    <li><strong>先让游戏跑起来，再优化。</strong>过早优化是最大的坑</li>
+    <li><strong>用 Profiler 找真正的瓶颈。</strong>不要凭直觉猜</li>
+    <li>使用对象池处理频繁创建/销毁的对象（子弹、粒子、敌人）</li>
+    <li>减少 <code>_process</code> 中的工作——不是每帧都需要更新所有逻辑</li>
+    <li>使用信号/事件代替轮询（polling）</li>
+    <li>空间分区——四叉树/八叉树用于大量实体的碰撞检测</li>
+    <li>合理使用 LOD——远处的物体不需要高精度</li>
+    <li>合批渲染——相同材质的物体尽量合并</li>
+    <li>避免在 GDScript 热路径中做复杂计算——性能关键代码用 C++ GDExtension</li>
+    <li>纹理使用合适的压缩格式和尺寸</li>
+    <li>使用 <code>MultiMeshInstance</code> 渲染大量相同模型</li>
+    <li>物理——简化碰撞形状、合理设置碰撞层</li>
+  </ul>
+</div>
+
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 9: 实践：引擎选择与第一个项目
+     ════════════════════════════════════════════════════════ -->
+<section id="practice">
+<h2>09 &mdash; 实践：引擎选择与第一个项目</h2>
+
+<h3>根据项目类型选引擎</h3>
+
+<table>
+  <tr>
+    <th>项目类型</th>
+    <th>推荐引擎</th>
+    <th>理由</th>
+  </tr>
+  <tr>
+    <td>2D 平台跳跃</td>
+    <td><strong>Godot 4</strong></td>
+    <td>原生 2D，TileMap 系统强，开源免费</td>
+  </tr>
+  <tr>
+    <td>2D Roguelike</td>
+    <td><strong>Godot 4</strong></td>
+    <td>快速原型，程序生成友好</td>
+  </tr>
+  <tr>
+    <td>像素风动作</td>
+    <td><strong>Godot 4</strong></td>
+    <td>像素完美渲染、AnimationPlayer 强大</td>
+  </tr>
+  <tr>
+    <td>视觉小说</td>
+    <td><strong>Ren'Py / Godot</strong></td>
+    <td>Ren'Py 专精于此；Godot 需要更多搭建</td>
+  </tr>
+  <tr>
+    <td>手机休闲游戏</td>
+    <td><strong>Unity</strong></td>
+    <td>移动端成熟、广告 SDK 集成完善</td>
+  </tr>
+  <tr>
+    <td>3D 独立游戏</td>
+    <td><strong>Godot 4 / Unity</strong></td>
+    <td>风格化选 Godot，复杂选 Unity</td>
+  </tr>
+  <tr>
+    <td>写实 3D 大作</td>
+    <td><strong>Unreal Engine 5</strong></td>
+    <td>Nanite + Lumen 无可替代</td>
+  </tr>
+  <tr>
+    <td>大型开放世界</td>
+    <td><strong>Unreal Engine 5</strong></td>
+    <td>World Partition、Nanite 流式加载</td>
+  </tr>
+  <tr>
+    <td>Game Jam（48h）</td>
+    <td><strong>Godot 4</strong></td>
+    <td>启动快、原型快、一人 hold 住</td>
+  </tr>
+  <tr>
+    <td>学习底层原理</td>
+    <td><strong>Raylib / SDL + C/Rust</strong></td>
+    <td>最小抽象，理解每一层发生了什么</td>
+  </tr>
+</table>
+
+<h3>独立开发者技术栈推荐</h3>
+
+<div class="card accent-border">
+  <h4>推荐技术栈：一人团队</h4>
+  <table>
+    <tr><th>领域</th><th>选择</th><th>理由</th></tr>
+    <tr><td>引擎</td><td><strong>Godot 4</strong></td><td>开源、轻量、学习曲线平缓</td></tr>
+    <tr><td>语言</td><td><strong>GDScript</strong>（主）+ C++（性能关键模块）</td><td>快速开发 + 性能后备</td></tr>
+    <tr><td>版本控制</td><td><strong>Git + GitHub</strong></td><td>行业标准，免费</td></tr>
+    <tr><td>美术</td><td><strong>Aseprite</strong>（像素）/ <strong>Krita</strong>（绘画）</td><td>专业且对独立开发友好</td></tr>
+    <tr><td>音效</td><td><strong>sfxr</strong> + <strong>Audacity</strong></td><td>快速生成 + 后期处理</td></tr>
+    <tr><td>音乐</td><td><strong>Bosca Ceoil</strong> / <strong>LMMS</strong></td><td>免费 + 简单</td></tr>
+    <tr><td>项目管理</td><td><strong>GitHub Issues / Trello</strong></td><td>够用就行</td></tr>
+    <tr><td>发行平台</td><td><strong>itch.io</strong>（初期）→ <strong>Steam</strong>（正式发行）</td><td>itch.io 零门槛测试市场</td></tr>
+  </table>
+</div>
+
+<h3>代码组织最佳实践</h3>
+
+<pre><code><span class="label">推荐项目结构</span>
+<span class="cm"># Godot 项目目录结构推荐</span>
+<span class="cm">#</span>
+<span class="cm"># my_game/</span>
+<span class="cm"># ├── project.godot</span>
+<span class="cm"># ├── scenes/                   # 场景文件</span>
+<span class="cm"># │   ├── levels/               # 关卡场景</span>
+<span class="cm"># │   │   ├── level_01.tscn</span>
+<span class="cm"># │   │   └── level_02.tscn</span>
+<span class="cm"># │   ├── characters/           # 角色场景</span>
+<span class="cm"># │   │   ├── player.tscn</span>
+<span class="cm"># │   │   └── enemies/</span>
+<span class="cm"># │   ├── ui/                   # UI 场景</span>
+<span class="cm"># │   │   ├── hud.tscn</span>
+<span class="cm"># │   │   ├── main_menu.tscn</span>
+<span class="cm"># │   │   └── pause_menu.tscn</span>
+<span class="cm"># │   └── objects/              # 道具、机关等</span>
+<span class="cm"># ├── scripts/                  # 脚本文件</span>
+<span class="cm"># │   ├── autoload/             # 全局单例</span>
+<span class="cm"># │   │   ├── game_manager.gd</span>
+<span class="cm"># │   │   ├── event_bus.gd</span>
+<span class="cm"># │   │   └── audio_manager.gd</span>
+<span class="cm"># │   ├── components/           # 可复用组件</span>
+<span class="cm"># │   │   ├── health_component.gd</span>
+<span class="cm"># │   │   ├── hitbox_component.gd</span>
+<span class="cm"># │   │   └── state_machine.gd</span>
+<span class="cm"># │   ├── resources/            # 自定义 Resource 类</span>
+<span class="cm"># │   │   └── weapon_data.gd</span>
+<span class="cm"># │   └── utils/                # 工具函数</span>
+<span class="cm"># ├── assets/                   # 资源文件</span>
+<span class="cm"># │   ├── sprites/</span>
+<span class="cm"># │   ├── audio/</span>
+<span class="cm"># │   │   ├── sfx/</span>
+<span class="cm"># │   │   └── music/</span>
+<span class="cm"># │   ├── fonts/</span>
+<span class="cm"># │   └── shaders/</span>
+<span class="cm"># └── addons/                   # 第三方插件</span></code></pre>
+
+<h4>代码原则</h4>
+
+<div class="card-grid">
+  <div class="card accent-border">
+    <h4>KISS（Keep It Simple）</h4>
+    <p style="margin-bottom:0">不要过度设计。一个简单的 <code>if-else</code> 可能比精心设计的设计模式更好。先让它工作，再让它优雅。</p>
+  </div>
+  <div class="card accent-border">
+    <h4>单一职责</h4>
+    <p style="margin-bottom:0">一个脚本做一件事。<code>Player.gd</code> 不应该同时处理移动、攻击、UI、存档。把它们拆成组件。</p>
+  </div>
+  <div class="card accent-border">
+    <h4>数据驱动</h4>
+    <p style="margin-bottom:0">武器伤害、敌人血量、关卡配置用 Resource 文件存储，不要硬编码在脚本里。策划可以直接在编辑器里调。</p>
+  </div>
+  <div class="card accent-border">
+    <h4>防御性编程</h4>
+    <p style="margin-bottom:0">检查 null、验证数组边界、用 <code>assert()</code> 标注前提条件。你未来的自己会感谢你。</p>
+  </div>
+</div>
+
+<pre><code><span class="label">GDScript</span>
+<span class="cm"># ===== 数据驱动设计示例——武器系统 =====</span>
+
+<span class="cm"># weapon_data.gd — 自定义 Resource</span>
+<span class="kw">class_name</span> <span class="type">WeaponData</span>
+<span class="kw">extends</span> <span class="type">Resource</span>
+
+<span class="kw">@export var</span> <span class="var">name</span>: <span class="type">String</span>
+<span class="kw">@export var</span> <span class="var">damage</span>: <span class="type">float</span>
+<span class="kw">@export var</span> <span class="var">attack_speed</span>: <span class="type">float</span>  <span class="cm"># 次/秒</span>
+<span class="kw">@export var</span> <span class="var">range</span>: <span class="type">float</span>
+<span class="kw">@export var</span> <span class="var">knockback_force</span>: <span class="type">float</span>
+<span class="kw">@export var</span> <span class="var">sprite</span>: <span class="type">Texture2D</span>
+<span class="kw">@export var</span> <span class="var">swing_animation</span>: <span class="type">SpriteFrames</span>
+<span class="kw">@export var</span> <span class="var">hit_sound</span>: <span class="type">AudioStream</span>
+
+<span class="cm"># 然后你可以在编辑器中创建多个 .tres 文件：</span>
+<span class="cm"># sword.tres: damage=25, attack_speed=2, range=40</span>
+<span class="cm"># axe.tres:   damage=50, attack_speed=1, range=35</span>
+<span class="cm"># dagger.tres: damage=15, attack_speed=4, range=30</span>
+
+<span class="cm"># weapon.gd — 通用武器脚本</span>
+<span class="kw">extends</span> <span class="type">Node2D</span>
+
+<span class="kw">@export var</span> <span class="var">data</span>: <span class="type">WeaponData</span>  <span class="cm"># 在编辑器中拖入 .tres</span>
+
+<span class="kw">var</span> <span class="var">cooldown_timer</span>: <span class="type">float</span> = <span class="num">0</span>
+
+<span class="kw">func</span> <span class="fn">attack</span>():
+    <span class="kw">if</span> <span class="var">cooldown_timer</span> &gt; <span class="num">0</span>:
+        <span class="kw">return</span>
+    <span class="cm"># 一套代码，通过不同的 data 文件驱动不同行为</span>
+    <span class="fn">deal_damage</span>(<span class="var">data</span>.<span class="var">damage</span>)
+    <span class="fn">apply_knockback</span>(<span class="var">data</span>.<span class="var">knockback_force</span>)
+    <span class="fn">play_sound</span>(<span class="var">data</span>.<span class="var">hit_sound</span>)
+    <span class="var">cooldown_timer</span> = <span class="num">1.0</span> / <span class="var">data</span>.<span class="var">attack_speed</span></code></pre>
+
+<h3>你的第一个项目该怎么选？</h3>
+
+<div class="warning-box">
+  <div class="warning-label">新手最常犯的错误</div>
+  <p style="margin-bottom:0">第一个项目是"开放世界 RPG"或"多人在线 Battle Royale"。这些项目的工作量是你预估的 <strong>10-50 倍</strong>。你会在"80% 完成"的状态下放弃，因为最后 20% 花了 80% 的时间。<strong>从能在 2-4 周内完成的项目开始。</strong></p>
+</div>
+
+<div class="card accent-border">
+  <h4>第一个项目推荐路径</h4>
+  <ol>
+    <li><strong>Pong</strong>（1-2 天）——学会游戏循环、输入处理、碰撞检测</li>
+    <li><strong>打砖块 / Breakout</strong>（3-5 天）——关卡设计、更复杂的碰撞、得分系统</li>
+    <li><strong>2D 平台跳跃</strong>（1-2 周）——角色控制器、地图编辑、敌人 AI、动画</li>
+    <li><strong>Top-down Shooter / Roguelike</strong>（2-4 周）——程序生成、多种武器、存档</li>
+    <li><strong>你自己的创意项目</strong>——但范围要控制在 1-3 个月</li>
+  </ol>
+  <p style="margin-bottom:0"><strong>关键：每个项目都要完成到"可发布"的程度</strong>——有主菜单、有结算画面、有音效。完成一个小游戏比做一半大游戏有价值一万倍。</p>
+</div>
+
+<h3>总结：一张决策图</h3>
+
+<pre><code><span class="label">决策思路</span>
+<span class="cm"># ====================================</span>
+<span class="cm"># 你是谁？                    → 推荐路径</span>
+<span class="cm"># ====================================</span>
+<span class="cm"># 完全新手，想做 2D 游戏      → Godot + GDScript</span>
+<span class="cm"># 有编程经验，想做 2D/3D      → Godot + GDScript/C#</span>
+<span class="cm"># 职业开发者，要做手游        → Unity + C#</span>
+<span class="cm"># 想做 AAA 级别画面          → UE5 + Blueprints/C++</span>
+<span class="cm"># 想理解底层，喜欢 Rust      → Bevy / 自研</span>
+<span class="cm"># 想理解底层，喜欢 C         → Raylib / SDL</span>
+<span class="cm"># Game Jam 冲刺              → Godot（最快出活）</span>
+<span class="cm"># ====================================</span>
+<span class="cm">#</span>
+<span class="cm"># 不确定？就选 Godot。</span>
+<span class="cm"># 它免费、开源、轻量、社区友好。</span>
+<span class="cm"># 等你做了 2-3 个项目，自然知道要不要换。</span>
+<span class="cm"># ====================================</span></code></pre>
+
+</section>
+
+<!-- ===== 底部导航 ===== -->
+<div class="bottom-nav">
+  <a href="01-game-design.html">
+    <span class="label">&larr; 上一页</span>
+    <span class="title">游戏设计基础</span>
+  </a>
+  <a href="03-art.html">
+    <span class="label">下一页 &rarr;</span>
+    <span class="title">美术与视觉</span>
+  </a>
+</div>
+
+</main>
+
+<!-- ===== 页脚 ===== -->
+<footer>
+  <p>游戏开发完全指南 &middot; AI 生成 &middot; 2026</p>
+</footer>
+
+<script>
+(function() {
+  var saved = localStorage.getItem('gd-theme');
+  var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', theme);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+  btn && btn.addEventListener('click', function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gd-theme', next);
+    btn.textContent = next === 'light' ? '🌙' : '☀️';
+  });
+})();
+</script>
+</body>
+</html>

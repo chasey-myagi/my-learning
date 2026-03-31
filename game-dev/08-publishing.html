@@ -1,0 +1,3374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>08 — 发布与运营 | 游戏开发完全指南</title>
+<style>
+:root {
+  --bg-page: #08080f;
+  --bg-surface: #0d0d17;
+  --bg-card: #141425;
+  --bg-code: #0a0a18;
+  --card-hover: #1a1a30;
+  --border: #1e1e3a;
+  --border-bright: #2a2a4a;
+  --text-primary: #ffffff;
+  --text-body: #c8c8d8;
+  --text-muted: #7878a0;
+  --text-bright: #e0e0f0;
+  --accent: #10ac84;
+  --accent-light: #1dd1a1;
+  --accent-dark: #0d8a6a;
+  --accent-glow: rgba(16,172,132,0.15);
+  --accent-dim: rgba(16,172,132,0.1);
+  --accent-mid: rgba(16,172,132,0.25);
+  --accent-border: rgba(16,172,132,0.3);
+  --red: #ee5253;
+  --red-dim: rgba(238,82,83,0.12);
+  --orange: #feca57;
+  --orange-dim: rgba(254,202,87,0.12);
+  --blue: #54a0ff;
+  --blue-dim: rgba(84,160,255,0.12);
+  --purple: #a29bfe;
+  --purple-dim: rgba(162,155,254,0.12);
+  --pink: #fd79a8;
+  --pink-dim: rgba(253,121,168,0.12);
+  --gradient-accent: linear-gradient(135deg, #10ac84, #1dd1a1);
+  --gradient-hero: linear-gradient(135deg, #10ac84 0%, #0d8a6a 50%, #087f5b 100%);
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --max-width: 880px;
+  --nav-height: 60px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 40px rgba(16,172,132,0.12), 0 0 80px rgba(16,172,132,0.06);
+}
+
+[data-theme="light"] {
+  --bg-page: #f5f6fa;
+  --bg-surface: #ffffff;
+  --bg-card: #eeeef6;
+  --bg-code: #e6e6f0;
+  --card-hover: #e4e4f0;
+  --border: #d5d5e2;
+  --border-bright: #c5c5d5;
+  --text-body: #3a3a50;
+  --text-primary: #1a1a2e;
+  --text-muted: #6a6a85;
+  --text-bright: #2a2a40;
+  --accent-light: #0d8a6a;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+  --shadow-glow: 0 0 40px rgba(16,172,132,0.06), 0 0 80px rgba(16,172,132,0.03);
+}
+
+[data-theme="light"] nav,
+[data-theme="light"] .navbar {
+  background: rgba(245,246,250,0.88);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .hero-number {
+  color: rgba(0,0,0,0.03);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+/* ── 日间模式组件修复 ── */
+[data-theme="light"] .hero::before {
+  background: radial-gradient(ellipse at 30% 50%, rgba(16,172,132,0.06) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 30%, rgba(16,172,132,0.04) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 80%, rgba(29,209,161,0.03) 0%, transparent 40%);
+}
+[data-theme="light"] table {
+  border: 1px solid var(--border);
+}
+[data-theme="light"] th {
+  background: var(--bg-card);
+  border-bottom: 2px solid var(--accent);
+}
+[data-theme="light"] td {
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="light"] tr:nth-child(even) td {
+  background: rgba(0,0,0,0.025);
+}
+[data-theme="light"] tr:hover td {
+  background: rgba(0,0,0,0.03);
+}
+[data-theme="light"] code {
+  background: var(--bg-card);
+  color: #c0392b;
+  border-color: var(--border);
+}
+[data-theme="light"] blockquote {
+  color: var(--text-body);
+  background: var(--bg-card);
+}
+[data-theme="light"] .info-box {
+  background: rgba(16,172,132,0.05);
+}
+[data-theme="light"] .info-box.warning {
+  background: rgba(200,150,50,0.06);
+  border-color: rgba(200,150,50,0.25);
+}
+[data-theme="light"] .info-box.danger {
+  background: rgba(220,80,80,0.06);
+  border-color: rgba(220,80,80,0.25);
+}
+[data-theme="light"] .info-box.blue {
+  background: rgba(60,130,230,0.06);
+  border-color: rgba(60,130,230,0.25);
+}
+[data-theme="light"] .mod-card:hover {
+  border-color: var(--border-bright);
+}
+[data-theme="light"] .pipe-icon {
+  border-color: var(--border);
+}
+[data-theme="light"] .pipe-card:hover .pipe-label {
+  color: var(--text-primary);
+}
+[data-theme="light"] .tip-card:hover {
+  border-color: var(--border-bright);
+}
+[data-theme="light"] .checklist li::after {
+  border-color: #fff;
+}
+[data-theme="light"] .step-item {
+  color: var(--text-body);
+}
+
+#theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+#theme-toggle:hover {
+  border-color: var(--accent);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-page);
+  color: var(--text-body);
+  line-height: 1.8;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ============================
+   Navigation
+   ============================ */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(8,8,15,0.88);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  height: var(--nav-height);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+  transition: background 0.3s;
+}
+nav a {
+  color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 500;
+  transition: color 0.2s;
+}
+nav a:hover { color: var(--accent-light); }
+nav .nav-center {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  font-size: 14px; font-weight: 600; color: var(--text-bright);
+  letter-spacing: 0.5px;
+}
+nav .nav-right { color: var(--text-muted); font-size: 14px; }
+
+/* ============================
+   Hero Section
+   ============================ */
+.hero {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  background: var(--bg-page);
+}
+.hero::before {
+  content: '';
+  position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(16,172,132,0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 30%, rgba(16,172,132,0.05) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 80%, rgba(29,209,161,0.04) 0%, transparent 40%);
+  animation: heroFloat 20s ease-in-out infinite;
+}
+@keyframes heroFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(2%, -1%) rotate(1deg); }
+  66% { transform: translate(-1%, 2%) rotate(-1deg); }
+}
+.hero-content {
+  text-align: center; position: relative; z-index: 1;
+  padding: 0 24px;
+}
+.hero-chapter {
+  font-size: clamp(100px, 18vw, 200px);
+  font-weight: 900;
+  background: var(--gradient-accent);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  opacity: 0.15;
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -65%);
+  user-select: none;
+}
+.hero h1 {
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -1px;
+  margin-bottom: 20px;
+  line-height: 1.2;
+}
+.hero h1 span {
+  background: var(--gradient-accent);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: clamp(16px, 2vw, 22px);
+  color: var(--text-muted);
+  max-width: 640px; margin: 0 auto 40px;
+  line-height: 1.6;
+}
+.hero-stats {
+  display: flex; gap: 40px; justify-content: center; flex-wrap: wrap;
+}
+.hero-stat {
+  text-align: center;
+}
+.hero-stat .num {
+  font-size: 28px; font-weight: 800; color: var(--accent);
+  display: block;
+}
+.hero-stat .label {
+  font-size: 13px; color: var(--text-muted); margin-top: 4px;
+}
+.scroll-hint {
+  position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-muted); font-size: 12px;
+  animation: scrollBounce 2s ease-in-out infinite;
+}
+@keyframes scrollBounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}
+
+/* ============================
+   Table of Contents
+   ============================ */
+.toc-section {
+  max-width: 900px; margin: 0 auto; padding: 80px 24px;
+}
+.toc-title {
+  font-size: 14px; text-transform: uppercase; letter-spacing: 3px;
+  color: var(--accent); font-weight: 700; margin-bottom: 32px;
+}
+.toc-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.toc-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none; color: var(--text-body);
+  transition: all 0.25s;
+}
+.toc-item:hover {
+  background: var(--card-hover);
+  border-color: var(--accent-border);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.toc-num {
+  font-size: 13px; font-weight: 700; color: var(--accent);
+  background: var(--accent-dim);
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.toc-label { font-size: 14px; font-weight: 500; }
+
+/* ============================
+   Main Content
+   ============================ */
+.content-wrap {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px 120px;
+}
+
+/* Section */
+.section {
+  margin-bottom: 100px;
+}
+.section-anchor {
+  display: block;
+  position: relative;
+  top: -72px;
+  visibility: hidden;
+}
+.section-header {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.section-num {
+  font-size: 14px; font-weight: 800; color: var(--accent);
+  background: var(--accent-dim);
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+.section-title {
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 800; color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+/* Subsection */
+.subsection {
+  margin-bottom: 48px;
+}
+.subsection-title {
+  font-size: 20px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 16px;
+  padding-left: 14px;
+  border-left: 3px solid var(--accent);
+}
+
+/* Paragraph */
+p { margin-bottom: 16px; }
+p strong { color: var(--text-bright); font-weight: 600; }
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-bottom: 20px;
+  transition: border-color 0.25s;
+}
+.card:hover { border-color: var(--border-bright); }
+.card-title {
+  font-size: 16px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title .icon {
+  font-size: 18px;
+}
+
+/* Info box */
+.info-box {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  margin: 24px 0;
+}
+.info-box.warning {
+  background: var(--orange-dim);
+  border-color: rgba(254,202,87,0.3);
+}
+.info-box.danger {
+  background: var(--red-dim);
+  border-color: rgba(238,82,83,0.3);
+}
+.info-box.blue {
+  background: var(--blue-dim);
+  border-color: rgba(84,160,255,0.3);
+}
+.info-box .info-title {
+  font-size: 14px; font-weight: 700; color: var(--accent-light);
+  margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;
+}
+.info-box.warning .info-title { color: var(--orange); }
+.info-box.danger .info-title { color: var(--red); }
+.info-box.blue .info-title { color: var(--blue); }
+
+/* Lists */
+ul, ol {
+  margin: 12px 0 20px 24px;
+}
+li {
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+li strong { color: var(--text-bright); }
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+  margin: 20px 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+thead {
+  background: var(--bg-card);
+}
+th {
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-body);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(16,172,132,0.03); }
+td strong { color: var(--text-bright); }
+
+/* Checklist */
+.checklist {
+  list-style: none; margin-left: 0; padding: 0;
+}
+.checklist li {
+  padding: 10px 16px 10px 42px;
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.checklist li::before {
+  content: '';
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px;
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+}
+.checklist li.checked::before {
+  background: var(--accent);
+}
+.checklist li.checked::after {
+  content: '';
+  position: absolute; left: 20px; top: 50%; transform: translateY(-60%) rotate(45deg);
+  width: 5px; height: 9px;
+  border: 2px solid var(--bg-page);
+  border-top: none; border-left: none;
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding-left: 32px;
+  margin: 24px 0;
+}
+.timeline::before {
+  content: '';
+  position: absolute; left: 12px; top: 8px; bottom: 8px;
+  width: 2px; background: var(--border);
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.timeline-item::before {
+  content: '';
+  position: absolute; left: -26px; top: 20px;
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  border: 2px solid var(--bg-page);
+}
+.timeline-time {
+  font-size: 12px; font-weight: 700; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.timeline-title {
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.timeline-desc {
+  font-size: 14px; color: var(--text-muted);
+}
+
+/* Metric Cards */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+}
+.metric-value {
+  font-size: 28px; font-weight: 800; color: var(--accent);
+  line-height: 1.2;
+}
+.metric-label {
+  font-size: 12px; color: var(--text-muted); margin-top: 6px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* Tag */
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 2px 4px 2px 0;
+}
+.tag.red { background: var(--red-dim); color: var(--red); }
+.tag.orange { background: var(--orange-dim); color: var(--orange); }
+.tag.blue { background: var(--blue-dim); color: var(--blue); }
+.tag.purple { background: var(--purple-dim); color: var(--purple); }
+
+/* Code */
+code {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--accent-light);
+}
+
+/* Two Column */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+@media (max-width: 640px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+/* Comparison */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+.compare-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+.compare-card.pro { border-top: 3px solid var(--accent); }
+.compare-card.con { border-top: 3px solid var(--red); }
+.compare-title {
+  font-size: 14px; font-weight: 700; margin-bottom: 12px;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.compare-card.pro .compare-title { color: var(--accent); }
+.compare-card.con .compare-title { color: var(--red); }
+@media (max-width: 640px) {
+  .compare-grid { grid-template-columns: 1fr; }
+}
+
+/* Step Flow */
+.step-flow {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin: 20px 0; align-items: center;
+}
+.step-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-bright);
+}
+.step-arrow {
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Quote */
+blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 16px 20px;
+  margin: 20px 0;
+  background: var(--accent-dim);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+  color: var(--text-bright);
+}
+blockquote cite {
+  display: block; margin-top: 8px;
+  font-style: normal; font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Pagination */
+.pagination {
+  display: flex; justify-content: space-between; align-items: stretch;
+  gap: 16px; margin-top: 80px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+.page-link {
+  flex: 1;
+  padding: 20px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: all 0.25s;
+}
+.page-link:hover {
+  border-color: var(--accent-border);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.page-link.disabled {
+  opacity: 0.3; pointer-events: none;
+}
+.page-dir {
+  font-size: 12px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.page-name {
+  font-size: 16px; font-weight: 700; color: var(--text-primary);
+}
+.page-link.next { text-align: right; }
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 40px 24px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Animations */
+.fade-up {
+  opacity: 0; transform: translateY(28px);
+  transition: opacity 0.6s cubic-bezier(0.22,1,0.36,1), transform 0.6s cubic-bezier(0.22,1,0.36,1);
+}
+.fade-up.visible {
+  opacity: 1; transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  nav { padding: 0 16px; }
+  .hero-stats { gap: 24px; }
+  .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .pagination { flex-direction: column; }
+  .toc-grid { grid-template-columns: 1fr; }
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+}
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: Focus Styles ── */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <a href="index.html">← 索引</a>
+  <div class="nav-center">发布与运营</div>
+  <div class="nav-right">08 / 08</div>
+  <button id="theme-toggle" aria-label="切换主题">☀️</button>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-chapter">08</div>
+  <div class="hero-content">
+    <h1>发布与<span>运营</span></h1>
+    <p class="hero-sub">游戏做完只是起点。从商店页面优化到社区管理，从数据驱动到长线运营——这一章覆盖从「做完」到「做成」的全部路径。</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="num">10</span>
+        <span class="label">核心主题</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">72%</span>
+        <span class="label">独立游戏无法回本</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">30%</span>
+        <span class="label">Steam 平台抽成</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">14天</span>
+        <span class="label">Steam 关键窗口期</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>向下滚动</span>
+    <span>↓</span>
+  </div>
+</section>
+
+<!-- Table of Contents -->
+<div class="toc-section fade-up">
+  <div class="toc-title">本章目录</div>
+  <div class="toc-grid">
+    <a href="#s1" class="toc-item"><span class="toc-num">01</span><span class="toc-label">发布前准备</span></a>
+    <a href="#s2" class="toc-item"><span class="toc-num">02</span><span class="toc-label">平台选择与上架</span></a>
+    <a href="#s3" class="toc-item"><span class="toc-num">03</span><span class="toc-label">市场推广</span></a>
+    <a href="#s4" class="toc-item"><span class="toc-num">04</span><span class="toc-label">社区建设</span></a>
+    <a href="#s5" class="toc-item"><span class="toc-num">05</span><span class="toc-label">商业模式</span></a>
+    <a href="#s6" class="toc-item"><span class="toc-num">06</span><span class="toc-label">法律与版权</span></a>
+    <a href="#s7" class="toc-item"><span class="toc-num">07</span><span class="toc-label">数据分析与运维</span></a>
+    <a href="#s8" class="toc-item"><span class="toc-num">08</span><span class="toc-label">更新与长期运营</span></a>
+    <a href="#s9" class="toc-item"><span class="toc-num">09</span><span class="toc-label">独立游戏发行商</span></a>
+    <a href="#s10" class="toc-item"><span class="toc-num">10</span><span class="toc-label">实践：制定你的发布计划</span></a>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="content-wrap">
+
+<!-- ============================================================
+     SECTION 1: 发布前准备
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s1"></span>
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">发布前准备</h2>
+  </div>
+
+  <p>发布是一个不可逆的动作。一旦游戏上线，第一印象就已经形成。Steam 的算法会根据你发布首周的表现决定未来数月的曝光量。<strong>发布前的准备工作，直接决定了你的游戏是「一炮而红」还是「无人问津」</strong>。</p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">游戏完成度评估</h3>
+    <p>很多独立开发者犯的最大错误是「觉得差不多了就发」。以下是一个务实的完成度评估框架：</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>维度</th><th>最低标准</th><th>理想标准</th><th>权重</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>核心玩法循环</strong></td><td>可运行，有乐趣</td><td>打磨流畅，有深度</td><td>40%</td></tr>
+          <tr><td><strong>内容量</strong></td><td>承诺的主线内容完整</td><td>含端游内容 + 彩蛋</td><td>20%</td></tr>
+          <tr><td><strong>技术稳定性</strong></td><td>无崩溃、无卡关 Bug</td><td>流畅 60fps，加载快</td><td>20%</td></tr>
+          <tr><td><strong>UI/UX</strong></td><td>功能完整可用</td><td>直觉化，无需教程</td><td>10%</td></tr>
+          <tr><td><strong>音效与音乐</strong></td><td>关键交互有反馈</td><td>沉浸式音景设计</td><td>5%</td></tr>
+          <tr><td><strong>本地化</strong></td><td>英文+母语</td><td>覆盖 EFIGS + CJK</td><td>5%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">实战数据</div>
+      <p>据 GDC 2024 调查，<strong>62% 的独立游戏在发布时存在影响体验的已知 Bug</strong>。但发布当天有 CTD（Crash to Desktop）问题的游戏，其 Steam 评价比无崩溃游戏<strong>平均低 18 个百分点</strong>。技术稳定性是底线，不是锦上添花。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">Alpha / Beta / Gold 阶段定义</h3>
+
+    <div class="step-flow">
+      <div class="step-item">Pre-Alpha</div>
+      <span class="step-arrow">→</span>
+      <div class="step-item">Alpha</div>
+      <span class="step-arrow">→</span>
+      <div class="step-item">Beta</div>
+      <span class="step-arrow">→</span>
+      <div class="step-item">Release Candidate</div>
+      <span class="step-arrow">→</span>
+      <div class="step-item">Gold Master</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pre-Alpha — 概念验证</div>
+      <p>核心机制原型可运行，美术/音效多为占位素材。此阶段目标是验证「这个游戏好不好玩」。</p>
+      <ul>
+        <li>只关注核心循环，不做完善功能</li>
+        <li>适合内部测试或极小范围朋友测试</li>
+        <li>决策点：是否继续开发</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Alpha — 功能完整</div>
+      <p><strong>所有计划中的功能和系统均已实现</strong>，但可能存在大量 Bug 和临时素材。标志着从「做新东西」转向「打磨已有东西」的转折点。</p>
+      <ul>
+        <li>所有关卡/章节/系统已存在（即使粗糙）</li>
+        <li>主流程可以从头到尾走通</li>
+        <li>开始进行封闭测试（Closed Beta）招募</li>
+        <li>此时应启动商店页面和愿望单收集</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Beta — 内容完整</div>
+      <p>所有内容（美术、音效、文案、本地化）已到位。<strong>不再添加新功能</strong>（Feature Freeze），全力修 Bug 和优化性能。</p>
+      <ul>
+        <li>进行公开测试（Open Beta）或扩大测试范围</li>
+        <li>重点关注性能优化、兼容性测试</li>
+        <li>准备发布物料：预告片、截图、商店描述</li>
+        <li>通常距离发布 2-4 周</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Release Candidate → Gold Master</div>
+      <p>RC 版本是「如果没发现新问题就发这个」。Gold Master 是最终提交给平台审核的版本。</p>
+      <ul>
+        <li>仅修复 Blocker 和 Critical 级别 Bug</li>
+        <li>Day 1 Patch 准备就绪</li>
+        <li>主机平台需提前 4-6 周提交 Gold Master 进行认证</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">QA 与 Bug 修复优先级</h3>
+
+    <p>Bug 永远修不完。关键是<strong>知道什么必须修、什么可以留</strong>。业界标准的 Bug 严重度分级：</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>级别</th><th>定义</th><th>示例</th><th>发布前必须修？</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag red">Blocker</span></td>
+            <td>游戏无法运行或无法继续</td>
+            <td>启动崩溃、存档损坏、主线卡关</td>
+            <td><strong>必须。0 容忍。</strong></td>
+          </tr>
+          <tr>
+            <td><span class="tag orange">Critical</span></td>
+            <td>严重影响体验，无 workaround</td>
+            <td>严重掉帧、音效缺失、UI 错位</td>
+            <td><strong>必须。</strong></td>
+          </tr>
+          <tr>
+            <td><span class="tag blue">Major</span></td>
+            <td>影响体验但有 workaround</td>
+            <td>特定条件下的小 Bug、翻译错误</td>
+            <td>尽量修，可延后</td>
+          </tr>
+          <tr>
+            <td><span class="tag">Minor</span></td>
+            <td>轻微瑕疵</td>
+            <td>视觉小问题、文案 typo</td>
+            <td>可发布后修复</td>
+          </tr>
+          <tr>
+            <td><span class="tag purple">Cosmetic</span></td>
+            <td>美学建议</td>
+            <td>「这个按钮再大一点好看」</td>
+            <td>不影响发布</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="info-box warning">
+      <div class="info-title">血泪教训</div>
+      <p>《Cyberpunk 2077》2020 年发布时，PS4/Xbox One 版本存在大量 Blocker 级 Bug，最终被 Sony 从 PS Store 下架长达半年。<strong>CD Projekt Red 市值因此蒸发超过 50%</strong>。技术债不是能用热情补的。</p>
+    </div>
+
+    <p><strong>QA 实操建议：</strong></p>
+    <ul>
+      <li><strong>建立 Bug 数据库</strong> — 用 GitHub Issues、Jira、Notion 均可，关键是每个 Bug 有唯一 ID、复现步骤、严重度、指派人</li>
+      <li><strong>回归测试</strong> — 每次修 Bug 后，必须测试相关联的功能是否被影响</li>
+      <li><strong>多配置测试</strong> — PC 游戏至少测试 3 种典型配置（低/中/高端），注意 Intel/AMD、NVIDIA/AMD 显卡差异</li>
+      <li><strong>边界测试</strong> — 长时间挂机、快速连续操作、极端输入、Alt+Tab 切换</li>
+      <li><strong>招募外部测试者</strong> — 开发者自己永远测不出所有问题，至少找 10-20 个外部玩家测试</li>
+    </ul>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">发布清单（Launch Checklist）</h3>
+
+    <p>以下是一份经过实战验证的发布清单。<strong>每一项都不是可选项</strong>：</p>
+
+    <div class="card">
+      <div class="card-title">产品准备</div>
+      <ul class="checklist">
+        <li class="checked">所有 Blocker/Critical Bug 已修复</li>
+        <li class="checked">游戏可从头到尾完整通关</li>
+        <li class="checked">所有平台的构建版本均已测试</li>
+        <li class="checked">成就/奖杯系统正常工作</li>
+        <li class="checked">存档系统可靠（包括云存档）</li>
+        <li class="checked">手柄支持正常（Steam Deck 验证）</li>
+        <li class="checked">辅助功能（字幕大小、色盲模式等）</li>
+        <li class="checked">Day 1 Patch 已准备就绪</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">商店准备</div>
+      <ul class="checklist">
+        <li class="checked">商店页面描述完整且吸引人</li>
+        <li class="checked">至少 5 张高质量游戏截图</li>
+        <li class="checked">预告片已上传（建议 60-90 秒）</li>
+        <li class="checked">定价已设定（含区域定价）</li>
+        <li class="checked">标签/分类设置正确</li>
+        <li class="checked">年龄分级已完成（IARC/PEGI/ESRB）</li>
+        <li class="checked">系统需求已填写（最低 + 推荐配置）</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">营销准备</div>
+      <ul class="checklist">
+        <li class="checked">媒体/主播 Key 已分发（提前 1-2 周）</li>
+        <li class="checked">新闻稿已准备</li>
+        <li class="checked">社交媒体发布文案已写好</li>
+        <li class="checked">Discord 公告已准备</li>
+        <li class="checked">发布日直播计划（如果做）</li>
+        <li class="checked">邮件列表通知已准备</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">运营准备</div>
+      <ul class="checklist">
+        <li class="checked">客服渠道已建立（Discord/邮件）</li>
+        <li class="checked">已知问题 FAQ 已准备</li>
+        <li class="checked">数据埋点已部署并验证</li>
+        <li class="checked">崩溃报告系统已部署</li>
+        <li class="checked">热修复流程已建立并测试</li>
+        <li class="checked">团队成员发布日值班已排好</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 2: 平台选择与上架
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s2"></span>
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">平台选择与上架</h2>
+  </div>
+
+  <p>选择平台不是「能上就上」。每个平台有不同的用户画像、分成比例、审核流程和运营成本。<strong>对独立开发者来说，集中资源主攻 1-2 个平台远比全平台撒网有效</strong>。</p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">Steam（PC 主战场）</h3>
+
+    <p>截至 2025 年，Steam 月活跃用户超过 <strong>1.32 亿</strong>，是 PC 游戏的绝对主平台。超过 <strong>90% 的独立游戏</strong>选择 Steam 作为首发平台。</p>
+
+    <div class="card">
+      <div class="card-title">Steamworks 上架流程</div>
+      <ol>
+        <li><strong>注册 Steamworks 开发者账号</strong> — 需支付 $100 上架费（可在销售额达到 $1,000 后退还）</li>
+        <li><strong>创建应用</strong> — 填写基本信息，获得 AppID</li>
+        <li><strong>构建商店页面</strong> — 这是最关键的一步，详见下方「商店页面优化」</li>
+        <li><strong>上传游戏构建</strong> — 通过 SteamPipe 工具上传，支持分支管理</li>
+        <li><strong>配置功能</strong> — 成就、云存档、交易卡、创意工坊等</li>
+        <li><strong>提交审核</strong> — Valve 审核通常 2-5 个工作日</li>
+        <li><strong>发布</strong> — 可自选发布日期，建议选周二或周四</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <div class="card-title">商店页面优化（SSO - Steam Store Optimization）</div>
+      <p>商店页面是你的「销售员」。以下是经过验证的最佳实践：</p>
+
+      <p><strong>胶囊图（Capsule Image）：</strong></p>
+      <ul>
+        <li>Header Capsule（460x215）— 出现在搜索结果和推荐中，<strong>是转化率最高的单一元素</strong></li>
+        <li>必须在缩略图大小下仍能辨识游戏名称和核心视觉</li>
+        <li>避免放太多文字，1-2 个关键信息足够</li>
+        <li>用对比色让标题跳出来</li>
+      </ul>
+
+      <p><strong>截图：</strong></p>
+      <ul>
+        <li>至少 5 张，建议 8-10 张</li>
+        <li><strong>前 4 张最重要</strong>（多数用户不会点开看更多）</li>
+        <li>展示核心玩法多样性，而非同一场景</li>
+        <li>可加简短标注文字说明特色功能</li>
+        <li>分辨率至少 1920x1080，16:9 比例</li>
+      </ul>
+
+      <p><strong>简短描述（Short Description）：</strong></p>
+      <ul>
+        <li>300 字符内，出现在搜索结果中</li>
+        <li>公式：[游戏类型] + [核心特色] + [情感钩子]</li>
+        <li>例：「一款手绘风格的 Roguelike 卡牌游戏。在不断变化的迷宫中构建你的牌组，揭开被遗忘王国的秘密。」</li>
+      </ul>
+
+      <p><strong>标签：</strong></p>
+      <ul>
+        <li>最多 15 个，前 5 个权重最高</li>
+        <li>既要准确描述游戏，也要蹭热门标签的流量</li>
+        <li>研究同类竞品使用的标签</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">愿望单策略</div>
+      <p>愿望单是 Steam 生态中最强大的免费营销工具。<strong>愿望单数量直接影响 Steam 的推荐算法权重</strong>。</p>
+
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-value">7,000</div>
+          <div class="metric-label">发布前理想愿望单数</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">~15%</div>
+          <div class="metric-label">愿望单→首月购买转化率</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">50,000+</div>
+          <div class="metric-label">获得 Steam 首页推荐门槛</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">6-12月</div>
+          <div class="metric-label">理想的愿望单积累期</div>
+        </div>
+      </div>
+
+      <p><strong>提升愿望单的方法：</strong></p>
+      <ul>
+        <li>尽早创建商店页面（即使游戏还在早期开发）</li>
+        <li>参加 Steam 新品节（Next Fest）— 提供试玩 Demo</li>
+        <li>社交媒体的每一条帖子都附上 Steam 链接</li>
+        <li>开发日志（Devlog）定期更新</li>
+        <li>交叉推广：与同类型游戏开发者互相推荐</li>
+      </ul>
+
+      <div class="info-box">
+        <div class="info-title">数据透视</div>
+        <p>根据 Chris Zukowski（游戏营销专家）的研究数据：愿望单数量低于 2,000 的游戏，<strong>中位首月收入仅约 $1,500</strong>；愿望单达到 10,000 的游戏，中位首月收入约 <strong>$15,000</strong>；而超过 50,000 愿望单的游戏，中位首月收入可达 <strong>$100,000+</strong>。愿望单数量几乎可以线性预测收入。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Steam 定价策略</div>
+      <p>定价是科学也是艺术。以下是基于市场数据的建议：</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>游戏体量</th><th>游玩时长</th><th>建议价格（美元）</th><th>备注</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>超小型/Game Jam</td><td>&lt; 1h</td><td>免费 - $4.99</td><td>作品集/引流用</td></tr>
+            <tr><td>小型独立</td><td>2-5h</td><td>$6.99 - $14.99</td><td>大部分独立新作</td></tr>
+            <tr><td>中型独立</td><td>8-20h</td><td>$14.99 - $24.99</td><td>Hades, Celeste 级</td></tr>
+            <tr><td>大型独立/AA</td><td>20-40h</td><td>$24.99 - $39.99</td><td>Hollow Knight 级</td></tr>
+            <tr><td>3A 级</td><td>40h+</td><td>$49.99 - $69.99</td><td>大厂作品</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><strong>定价注意事项：</strong></p>
+      <ul>
+        <li><strong>区域定价</strong> — Steam 有建议定价表，中国区通常是美区的 55-65%，俄罗斯区更低。不要一刀切。</li>
+        <li><strong>首发折扣</strong> — Steam 允许首发 10-40% 折扣，建议 10-15%，太大会显得不自信。</li>
+        <li><strong>定价过低是常见错误</strong> — $1.99 的游戏不会比 $9.99 的卖出 5 倍，但收入只有 1/5。玩家不信任过于廉价的游戏。</li>
+        <li><strong>心理定价</strong> — $19.99 比 $20 好很多，但 $14.99 和 $15 差别不大。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">Epic Games Store</h3>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">优势</div>
+        <ul>
+          <li><strong>只抽 12%</strong>（vs Steam 的 30%）</li>
+          <li>Epic MegaGrants 资金支持</li>
+          <li>使用 Unreal Engine 可免除 5% 引擎分成</li>
+          <li>限时独占协议可获得保底收入</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">劣势</div>
+        <ul>
+          <li>用户基数远小于 Steam</li>
+          <li>缺少社区功能（评价、论坛、创意工坊）</li>
+          <li>发现机制弱，自然流量少</li>
+          <li>独占协议可能引发玩家反感</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">独占协议怎么谈</div>
+      <p>Epic 的限时独占协议通常为 <strong>6-12 个月</strong>，Epic 会支付<strong>保底收入（Minimum Guarantee, MG）</strong>，金额根据游戏品质和预期销量谈判。MG 通常覆盖 6-12 个月的预期 Steam 收入。对于小型独立游戏，MG 可能在 <strong>$50,000 - $500,000</strong> 之间。这笔钱可以极大降低财务风险，但代价是失去 Steam 首发的算法红利。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">主机平台</h3>
+
+    <div class="card">
+      <div class="card-title">Nintendo Switch</div>
+      <ul>
+        <li><strong>注册</strong>：申请 Nintendo Developer Program（免费），需公司实体</li>
+        <li><strong>开发机</strong>：价格约 $450，需审核通过后才能购买</li>
+        <li><strong>认证周期</strong>：首次提交到通过通常 4-8 周</li>
+        <li><strong>分成</strong>：通常 70/30（开发者/Nintendo）</li>
+        <li><strong>优势</strong>：独立游戏在 Switch 上表现极佳，eShop 竞争相对小</li>
+        <li><strong>注意</strong>：Switch 2 已于 2025 年发售，需评估是否适配新硬件</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">PlayStation</div>
+      <ul>
+        <li><strong>注册</strong>：PlayStation Partners Program</li>
+        <li><strong>开发机</strong>：PS5 TestKit 价格较高（约 $2,500+）</li>
+        <li><strong>认证</strong>：TRC（Technical Requirements Checklist）极其严格，首次通过率低</li>
+        <li><strong>分成</strong>：70/30</li>
+        <li><strong>特色</strong>：PS5 的 DualSense 触觉反馈和自适应扳机是差异化亮点</li>
+        <li><strong>独立游戏支持</strong>：PlayStation Indies 计划提供额外曝光</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Xbox</div>
+      <ul>
+        <li><strong>注册</strong>：ID@Xbox 计划（面向独立开发者，免费）</li>
+        <li><strong>开发机</strong>：可使用零售机进入开发模式（Dev Mode），门槛最低</li>
+        <li><strong>认证</strong>：相对宽松，Xbox Cert 流程清晰</li>
+        <li><strong>分成</strong>：70/30</li>
+        <li><strong>Game Pass</strong>：如果能进入 Xbox Game Pass，会获得大量玩家（但可能影响直接销售）</li>
+      </ul>
+    </div>
+
+    <div class="info-box warning">
+      <div class="info-title">主机移植成本</div>
+      <p>不要低估移植主机的成本。即使使用 Unity/Unreal，<strong>移植 + 认证的成本通常在 $10,000 - $50,000</strong>。如果请外包移植工作室（如 BlitWorks、Abstraction Games），费用可能更高。认证不通过需要反复修改重新提交，每次都有时间和金钱成本。<strong>建议：先在 PC 上验证市场，有了收入再考虑主机移植</strong>。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">移动端</h3>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Apple App Store</div>
+        <ul>
+          <li>开发者账号 $99/年</li>
+          <li>审核严格，通常 1-3 天</li>
+          <li><strong>抽成 30%</strong>（小型开发者 15%，年收入 &lt; $100 万）</li>
+          <li>iOS 用户付费意愿高于 Android</li>
+          <li>Apple Arcade 订阅模式可考虑</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Google Play</div>
+        <ul>
+          <li>开发者账号一次性 $25</li>
+          <li>审核相对宽松</li>
+          <li><strong>抽成 30%</strong>（首 $100 万收入抽 15%）</li>
+          <li>Android 碎片化问题严重，测试成本高</li>
+          <li>盗版问题比 iOS 严重</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">Web 平台</h3>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">itch.io</div>
+        <ul>
+          <li><strong>开发者自定分成比例</strong>（包括 0%）</li>
+          <li>对实验性/艺术游戏友好</li>
+          <li>Game Jam 文化浓厚</li>
+          <li>适合早期作品和免费游戏</li>
+          <li>支持 Web 版直接在线玩</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Newgrounds</div>
+        <ul>
+          <li>Flash 时代起家，现支持 HTML5</li>
+          <li>社区活跃，反馈及时</li>
+          <li>适合小型/实验性 Web 游戏</li>
+          <li>广告分成模式</li>
+          <li>可作为概念验证平台</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">各平台分成比例汇总</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>平台</th><th>分成（平台/开发者）</th><th>特殊条件</th><th>上架费</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Steam</strong></td><td>30/70</td><td>收入 &gt;$10M: 25/75; &gt;$50M: 20/80</td><td>$100/游戏</td></tr>
+          <tr><td><strong>Epic Games Store</strong></td><td>12/88</td><td>使用 UE 免引擎分成</td><td>免费</td></tr>
+          <tr><td><strong>Apple App Store</strong></td><td>30/70</td><td>小企业计划: 15/85（年收入&lt;$1M）</td><td>$99/年</td></tr>
+          <tr><td><strong>Google Play</strong></td><td>30/70</td><td>首 $1M: 15/85</td><td>$25 一次性</td></tr>
+          <tr><td><strong>Nintendo eShop</strong></td><td>30/70</td><td>-</td><td>免费（需审核）</td></tr>
+          <tr><td><strong>PlayStation Store</strong></td><td>30/70</td><td>-</td><td>免费（需审核）</td></tr>
+          <tr><td><strong>Xbox / Microsoft Store</strong></td><td>30/70</td><td>-</td><td>免费（ID@Xbox）</td></tr>
+          <tr><td><strong>itch.io</strong></td><td>自定义</td><td>开发者设定比例</td><td>免费</td></tr>
+          <tr><td><strong>GOG</strong></td><td>30/70</td><td>无 DRM，复古游戏社区</td><td>免费（需审核）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 3: 市场推广
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s3"></span>
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">市场推广</h2>
+  </div>
+
+  <p>好游戏不会自动被发现。Steam 上每年有超过 <strong>14,000 款新游戏</strong>发布（2024 年数据），你的游戏需要在这个洪流中脱颖而出。<strong>营销不是发布那天才开始的事情，而是从开发第一天就应该同步进行的工作。</strong></p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">独立游戏的营销策略</h3>
+
+    <p>独立游戏没有 3A 的营销预算，但有 3A 做不到的优势：<strong>真诚、个人化、灵活</strong>。</p>
+
+    <div class="card">
+      <div class="card-title">核心原则</div>
+      <ol>
+        <li><strong>公开开发（Build in Public）</strong> — 分享开发过程本身就是最好的内容。玩家喜欢看到游戏从零到一的过程。</li>
+        <li><strong>找到你的利基（Niche）</strong> — 不要试图让所有人都喜欢你的游戏。精准定位 1,000 个核心粉丝比泛泛吸引 100,000 个路人有效得多。</li>
+        <li><strong>一致性大于爆发性</strong> — 每周发 2-3 条高质量内容，持续 6 个月，效果远好于一次性砸钱推广。</li>
+        <li><strong>钩子（Hook）驱动</strong> — 你需要一句话说清楚你的游戏为什么值得关注。「一个像素风格的平台跳跃游戏」不够。「一个你画的每一笔都会变成关卡的平台跳跃游戏」就是好钩子。</li>
+      </ol>
+    </div>
+
+    <blockquote>
+      "Marketing is not about selling your game. It's about finding the people who are already looking for it."
+      <cite>— Derek Yu, Spelunky 开发者</cite>
+    </blockquote>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">社交媒体运营</h3>
+
+    <div class="card">
+      <div class="card-title">Twitter/X — 独立游戏开发者的主阵地</div>
+      <p><strong>为什么重要：</strong>游戏开发者社区最活跃的平台，#indiedev 和 #gamedev 标签日均数万条帖子。</p>
+
+      <p><strong>内容策略：</strong></p>
+      <ul>
+        <li><strong>GIF/短视频优先</strong> — 带动态画面的帖子互动率是纯图片的 3-5 倍</li>
+        <li><strong>开发进度展示</strong> — Before/After 对比、新功能演示、Bug 趣事</li>
+        <li><strong>每周固定标签</strong> — #ScreenshotSaturday、#WishlistWednesday、#MadeWithUnity</li>
+        <li><strong>互动</strong> — 评论其他开发者的作品，参与讨论，不要只发不聊</li>
+        <li><strong>发帖时间</strong> — 美西时间上午 9-11 点（覆盖欧美用户活跃时段）</li>
+      </ul>
+
+      <div class="info-box">
+        <div class="info-title">案例：Vampire Survivors</div>
+        <p>Poncle（开发者 Luca Galante）在 Twitter 上持续分享开发过程中的小更新和有趣互动。游戏以 $2.99 的低价和口碑传播，<strong>最终销量超过 600 万份</strong>。营销预算几乎为零，但 Twitter 上的有机传播功不可没。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">TikTok — 病毒式传播的机会</div>
+      <p><strong>为什么重要：</strong>TikTok 的算法不看粉丝数，一个好视频可以让零粉丝账号获得数百万播放。</p>
+
+      <p><strong>内容策略：</strong></p>
+      <ul>
+        <li><strong>前 3 秒决定一切</strong> — 直接展示最惊艳的画面或最有趣的玩法</li>
+        <li><strong>15-30 秒最佳</strong> — 短视频完播率越高，算法推荐越多</li>
+        <li><strong>趣味性 > 专业性</strong> — Bug 变成 Feature 的搞笑时刻、开发中的崩溃瞬间</li>
+        <li><strong>紧跟热门音乐和挑战</strong> — 将游戏内容与流行趋势结合</li>
+        <li><strong>日更</strong> — TikTok 奖励频繁发帖的创作者</li>
+      </ul>
+
+      <div class="info-box">
+        <div class="info-title">案例：Among Us</div>
+        <p>InnerSloth 的 Among Us 在发布两年后（2020 年）因 TikTok 和 Twitch 的病毒式传播突然爆火。一段搞笑的游戏片段可以获得数千万播放量，带动游戏从日活 50 人暴涨到<strong>日活 350 万人</strong>。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">YouTube — 长尾流量引擎</div>
+      <p><strong>内容类型：</strong></p>
+      <ul>
+        <li><strong>Devlog 开发日志</strong> — 10-20 分钟深度视频，展示开发过程和技术挑战</li>
+        <li><strong>预告片</strong> — 发布前最重要的视频物料</li>
+        <li><strong>教程/技术分享</strong> — 分享你解决的技术问题，吸引开发者社区</li>
+        <li><strong>Shorts</strong> — 60 秒内的竖版短视频，和 TikTok 类似的策略</li>
+      </ul>
+
+      <p><strong>优秀 Devlog 频道参考：</strong></p>
+      <ul>
+        <li>ThinMatrix — Equilinox 开发日志</li>
+        <li>Sebastian Lague — 程序化生成教程</li>
+        <li>Brackeys — 游戏开发教程（虽已停更但是标杆）</li>
+        <li>Game Maker's Toolkit — 游戏设计分析</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">B站 — 中国市场核心阵地</div>
+      <p>如果你的游戏面向中国市场，B 站是必争之地。</p>
+      <ul>
+        <li><strong>开发日志</strong> — 中文独立游戏开发者社区活跃</li>
+        <li><strong>弹幕文化</strong> — 利用弹幕互动增加视频趣味性</li>
+        <li><strong>UP 主合作</strong> — 联系游戏区 UP 主进行试玩推荐</li>
+        <li><strong>专栏文章</strong> — 深度技术分享或开发故事</li>
+        <li><strong>关键 UP 主</strong>：独立游戏侠、GameFun游戏铺、老番茄等</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">预告片制作要点</h3>
+
+    <p>预告片是投入产出比最高的营销物料。一个好预告片可以直接决定玩家是否点击「加入愿望单」。</p>
+
+    <div class="card">
+      <div class="card-title">预告片黄金法则</div>
+      <ol>
+        <li><strong>前 5 秒抓住眼球</strong> — 不要放 Logo 开头。直接展示最精彩的画面。</li>
+        <li><strong>60-90 秒为宜</strong> — 超过 2 分钟完播率断崖式下降</li>
+        <li><strong>展示玩法，而非 CG</strong> — 玩家想看到的是「玩起来是什么样」</li>
+        <li><strong>配合节奏感强的音乐</strong> — 画面切换要跟着音乐节拍走</li>
+        <li><strong>减少文字</strong> — 最多 3-5 行关键卖点文字</li>
+        <li><strong>结尾有行动号召</strong> — 「现在就加入愿望单」+ 平台 Logo</li>
+      </ol>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">预告片结构模板</div>
+      <p><strong>0-5s</strong>：最强画面钩子（爆炸、反转、惊艳视觉）<br>
+      <strong>5-20s</strong>：建立世界观和氛围<br>
+      <strong>20-50s</strong>：核心玩法展示（2-3 个不同系统）<br>
+      <strong>50-70s</strong>：高潮蒙太奇（快速剪辑展示多样性）<br>
+      <strong>70-90s</strong>：Logo + 发售日期 + 平台 + CTA</p>
+    </div>
+
+    <p><strong>制作建议：</strong></p>
+    <ul>
+      <li>如果预算有限，用 DaVinci Resolve（免费）就够了</li>
+      <li>请专业预告片制作者成本约 $2,000-$10,000，但效果差距巨大</li>
+      <li>知名游戏预告片制作者：Kert Gartner、Derek Lieu</li>
+      <li>不要忘记添加字幕（很多人在静音状态下刷视频）</li>
+    </ul>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">游戏展会</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>展会</th><th>时间</th><th>适合谁</th><th>费用</th><th>重要度</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Steam 新品节（Next Fest）</strong></td>
+            <td>每年 2月/6月/10月</td>
+            <td>所有 PC 独立开发者</td>
+            <td>免费</td>
+            <td><span class="tag">必参加</span></td>
+          </tr>
+          <tr>
+            <td><strong>PAX</strong></td>
+            <td>PAX West 9月/PAX East 3月</td>
+            <td>北美市场推广</td>
+            <td>展位 $1,200+</td>
+            <td><span class="tag blue">推荐</span></td>
+          </tr>
+          <tr>
+            <td><strong>GDC + IGF</strong></td>
+            <td>3月</td>
+            <td>业内交流/获奖曝光</td>
+            <td>通行证 $300+</td>
+            <td><span class="tag blue">推荐</span></td>
+          </tr>
+          <tr>
+            <td><strong>gamescom</strong></td>
+            <td>8月</td>
+            <td>欧洲市场推广</td>
+            <td>展位 $2,000+</td>
+            <td><span class="tag blue">推荐</span></td>
+          </tr>
+          <tr>
+            <td><strong>Tokyo Game Show (TGS)</strong></td>
+            <td>9月</td>
+            <td>日本市场推广</td>
+            <td>展位 $1,500+</td>
+            <td><span class="tag purple">视情况</span></td>
+          </tr>
+          <tr>
+            <td><strong>ChinaJoy</strong></td>
+            <td>7-8月</td>
+            <td>中国市场推广</td>
+            <td>展位 ¥30,000+</td>
+            <td><span class="tag purple">视情况</span></td>
+          </tr>
+          <tr>
+            <td><strong>Day of the Devs</strong></td>
+            <td>6月/11月</td>
+            <td>高品质独立游戏</td>
+            <td>受邀参加</td>
+            <td><span class="tag orange">有机会必去</span></td>
+          </tr>
+          <tr>
+            <td><strong>Indie World / Indie Showcase</strong></td>
+            <td>不定期</td>
+            <td>Nintendo/Xbox 官方活动</td>
+            <td>受邀</td>
+            <td><span class="tag orange">有机会必去</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">Steam 新品节实战数据</div>
+      <p>参加 Steam Next Fest 并提供 Demo 的游戏，平均可在活动期间获得 <strong>2,000-10,000 个愿望单</strong>。但要注意：Demo 的质量至关重要。一个糟糕的 Demo 不如没有 Demo。准备一个 <strong>15-30 分钟</strong>的精心打磨的体验，而非一个粗糙的完整游戏切片。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">媒体/主播关系</h3>
+
+    <p>媒体和主播（Content Creator）是游戏曝光的放大器。但他们每天收到数百封邮件，你需要脱颖而出。</p>
+
+    <div class="card">
+      <div class="card-title">媒体邮件模板要点</div>
+      <ul>
+        <li><strong>标题简洁有力</strong> — 「[游戏名] - [一句话描述] - [Steam Key]」</li>
+        <li><strong>正文不超过 200 字</strong> — 简短介绍游戏、为什么适合他们的受众、附上 Key</li>
+        <li><strong>附上 Press Kit 链接</strong> — 包含高分辨率截图、Logo、GIF、预告片下载</li>
+        <li><strong>不要群发</strong> — 在邮件中提到对方最近的内容，证明你是针对性联系</li>
+        <li><strong>提前 1-2 周发送</strong> — 不要发布当天才联系</li>
+        <li><strong>不要反复催</strong> — 最多一次跟进，不回复就算了</li>
+      </ul>
+    </div>
+
+    <p><strong>建立 Press Kit（媒体资料包）：</strong></p>
+    <ul>
+      <li>推荐使用 <code>presskit()</code>（dopresskit.com）— 免费的标准化媒体资料页</li>
+      <li>必须包含：游戏描述、截图（高分辨率）、Logo、预告片、开发者信息、联系方式</li>
+      <li>可选：GIF 动图、开发者照片、引用评价</li>
+    </ul>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">邮件列表与 Discord 社区</h3>
+
+    <p><strong>邮件列表</strong>是你拥有的、不受算法控制的渠道。社交媒体算法会变，但邮件永远直达。</p>
+    <ul>
+      <li>使用 Mailchimp 或 Buttondown（对独立开发者友好）</li>
+      <li>在 Steam 页面、官网、社交媒体 Bio 中放注册链接</li>
+      <li>每月 1-2 封更新邮件，不要过于频繁</li>
+      <li>发布前的邮件打开率通常在 <strong>35-50%</strong>（远高于社交媒体触达率）</li>
+    </ul>
+
+    <p><strong>Discord 社区</strong>是与核心玩家建立深度关系的最佳场所。详见第 4 节「社区建设」。</p>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">营销时间线规划</h3>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-time">发布前 12-18 个月</div>
+        <div class="timeline-title">品牌建立期</div>
+        <div class="timeline-desc">开始社交媒体运营，分享开发过程。建立 Discord 服务器。注册域名和邮件列表。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布前 6-12 个月</div>
+        <div class="timeline-title">商店页面上线</div>
+        <div class="timeline-desc">创建 Steam 商店页面，开始收集愿望单。发布首支预告片。开始联系媒体和主播建立关系。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布前 3-6 个月</div>
+        <div class="timeline-title">造势期</div>
+        <div class="timeline-desc">参加 Steam 新品节，发布 Demo。加大社交媒体发帖频率。启动邮件列表推送。发布第二支预告片。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布前 1 个月</div>
+        <div class="timeline-title">冲刺期</div>
+        <div class="timeline-desc">发送媒体/主播 Key。准备发布日物料。密集社交媒体宣传。确认发布日期并公告。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布前 1-2 周</div>
+        <div class="timeline-title">倒计时</div>
+        <div class="timeline-desc">发布 Launch Trailer。每日倒计时帖子。确认所有技术和运营准备就绪。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布日</div>
+        <div class="timeline-title">上线！</div>
+        <div class="timeline-desc">全平台同步宣布。回复每一条评论。监控技术问题。发布日直播（可选）。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布后 1-2 周</div>
+        <div class="timeline-title">关键窗口期</div>
+        <div class="timeline-desc">快速修复发布后发现的问题。收集玩家反馈。保持社交媒体活跃度。回复每一条 Steam 评价。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布后 1-3 个月</div>
+        <div class="timeline-title">持续运营</div>
+        <div class="timeline-desc">发布更新补丁。规划首次折扣促销。继续社区互动。分析数据并调整策略。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 4: 社区建设
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s4"></span>
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">社区建设</h2>
+  </div>
+
+  <p>社区是独立游戏最强大的资产之一。一个活跃的社区不仅提供反馈和测试，更是自发传播的引擎。<strong>一个 1,000 人的活跃 Discord 社区比 10,000 个 Twitter 粉丝更有价值。</strong></p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">Discord 服务器运营</h3>
+
+    <div class="card">
+      <div class="card-title">频道结构推荐</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>分类</th><th>频道</th><th>用途</th></tr>
+          </thead>
+          <tbody>
+            <tr><td rowspan="3"><strong>信息</strong></td><td>#公告</td><td>只有管理员可发帖，重要更新</td></tr>
+            <tr><td>#规则</td><td>社区行为准则</td></tr>
+            <tr><td>#常见问题</td><td>FAQ，减少重复提问</td></tr>
+            <tr><td rowspan="3"><strong>社区</strong></td><td>#综合聊天</td><td>主要交流区</td></tr>
+            <tr><td>#游戏讨论</td><td>玩法/攻略讨论</td></tr>
+            <tr><td>#分享作品</td><td>截图、同人、Mod</td></tr>
+            <tr><td rowspan="2"><strong>反馈</strong></td><td>#Bug报告</td><td>结构化 Bug 提交（使用模板）</td></tr>
+            <tr><td>#建议与反馈</td><td>功能建议和体验反馈</td></tr>
+            <tr><td rowspan="2"><strong>开发</strong></td><td>#开发日志</td><td>开发进度分享</td></tr>
+            <tr><td>#测试招募</td><td>Beta 测试者招募</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">社区管理最佳实践</div>
+      <ul>
+        <li><strong>每天至少出现一次</strong> — 即使只是聊几句闲天，社区需要感受到开发者的存在</li>
+        <li><strong>设立管理团队</strong> — 当社区超过 500 人时，你需要可信赖的版主帮忙</li>
+        <li><strong>奖励活跃成员</strong> — 给予特殊角色标识、提前体验新内容、鸣谢名单</li>
+        <li><strong>不要过度承诺</strong> — 「我们会考虑」比「一定会做」安全得多</li>
+        <li><strong>透明沟通延迟</strong> — 如果更新跳票，提前说明原因，比默默拖延好一百倍</li>
+        <li><strong>使用 Bot 自动化</strong> — Carl Bot、MEE6 等可以自动处理欢迎消息、角色分配、规则执行</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">Steam 社区管理</h3>
+
+    <p>Steam 社区（论坛、评价、讨论区）是公开的，对潜在买家有直接影响。</p>
+
+    <div class="card">
+      <div class="card-title">Steam 论坛管理策略</div>
+      <ul>
+        <li><strong>置顶已知问题帖</strong> — 减少重复帖子，展示你在积极处理问题</li>
+        <li><strong>回复 Bug 报告</strong> — 每一个 Bug 报告都至少回一句「已知悉，正在调查」</li>
+        <li><strong>更新日志详细</strong> — Steam 更新日志是免费的营销渠道，写得详细有趣</li>
+        <li><strong>不要和喷子对骂</strong> — 冷静、专业、简短回复，必要时静默处理</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">玩家反馈处理</h3>
+
+    <p>玩家反馈是金矿，但需要有效的筛选和处理机制。</p>
+
+    <div class="card">
+      <div class="card-title">反馈处理框架</div>
+
+      <div class="step-flow">
+        <div class="step-item">收集</div>
+        <span class="step-arrow">→</span>
+        <div class="step-item">分类</div>
+        <span class="step-arrow">→</span>
+        <div class="step-item">优先级</div>
+        <span class="step-arrow">→</span>
+        <div class="step-item">执行</div>
+        <span class="step-arrow">→</span>
+        <div class="step-item">回馈</div>
+      </div>
+
+      <ul>
+        <li><strong>收集</strong>：Discord、Steam 论坛、邮件、社交媒体评论</li>
+        <li><strong>分类</strong>：Bug / 功能请求 / 体验建议 / 内容需求</li>
+        <li><strong>优先级</strong>：高频出现的问题 > 个别需求；影响核心体验的 > 锦上添花的</li>
+        <li><strong>执行</strong>：加入开发路线图，分配到具体版本</li>
+        <li><strong>回馈</strong>：告诉玩家他们的建议被采纳了，在更新日志中鸣谢</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">关键区分</div>
+      <p>玩家说「我想要 X 功能」时，要理解的是背后的<strong>需求</strong>，而非表面的<strong>方案</strong>。「我想要小地图」可能真正意味着「我经常迷路」，而解决方案不一定是小地图——可能是更好的环境引导设计。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">社区活动策划</h3>
+
+    <ul>
+      <li><strong>截图比赛</strong> — 玩家分享最佳游戏截图，投票选出获胜者</li>
+      <li><strong>速通挑战</strong> — 适合 Roguelike/平台游戏，激发竞技心理</li>
+      <li><strong>同人创作</strong> — 征集 Fan Art、Mod、音乐混音</li>
+      <li><strong>AMA（Ask Me Anything）</strong> — 定期在 Discord 或 Reddit 举办开发者问答</li>
+      <li><strong>Beta 测试招募</strong> — 让社区成员提前体验新内容，增加归属感</li>
+      <li><strong>节日活动</strong> — 万圣节/圣诞节等特殊主题活动或更新</li>
+    </ul>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">负面评价应对</h3>
+
+    <p>Steam 好评率直接影响游戏的搜索排名和推荐频率。<strong>低于 70% 的好评率会导致「褒贬不一」标签</strong>，严重影响转化率。</p>
+
+    <div class="card">
+      <div class="card-title">应对策略</div>
+
+      <div class="compare-grid">
+        <div class="compare-card pro">
+          <div class="compare-title">正确做法</div>
+          <ul>
+            <li>认真阅读每条差评，理解核心诉求</li>
+            <li>如果是 Bug 导致的差评，修复后通知评价者</li>
+            <li>官方回复差评，展示专业态度</li>
+            <li>将合理批评转化为改进方向</li>
+            <li>保持情绪稳定，不要把差评当人身攻击</li>
+          </ul>
+        </div>
+        <div class="compare-card con">
+          <div class="compare-title">错误做法</div>
+          <ul>
+            <li>和差评玩家吵架</li>
+            <li>删除差评或屏蔽评价者</li>
+            <li>用小号刷好评</li>
+            <li>在社交媒体上公开嘲讽差评者</li>
+            <li>完全忽视差评中的合理批评</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box warning">
+      <div class="info-title">差评炸弹（Review Bombing）</div>
+      <p>有时游戏会遭遇与游戏品质无关的差评轰炸（如政治争议、定价争议等）。Steam 有「异常评价活动」检测系统，会自动标记并在评分计算中排除这些评价。遇到 Review Bombing 时：保持冷静，联系 Steam 支持团队，在论坛发表官方声明。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 5: 商业模式
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s5"></span>
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">商业模式</h2>
+  </div>
+
+  <p>商业模式的选择从第一天就应该纳入游戏设计之中。<strong>不是「做完游戏再想怎么赚钱」，而是「商业模式决定了游戏该怎么设计」</strong>。</p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">买断制（Premium）定价策略</h3>
+
+    <p>最传统、也最被玩家尊重的模式。<strong>一次付费，完整体验</strong>。</p>
+
+    <div class="card">
+      <div class="card-title">定价心理学</div>
+      <ul>
+        <li><strong>锚定效应</strong> — 先展示更高的「原价」，再展示折后价，感知价值更高</li>
+        <li><strong>价值感知</strong> — $1/小时游玩时间 是玩家心中的常见基准线。一个 10 小时的游戏标价 $9.99 会被认为物超所值</li>
+        <li><strong>竞品对标</strong> — 你的游戏和哪些同类型游戏价格接近？玩家会自然对比</li>
+        <li><strong>不要定价太低</strong> — $2.99 的游戏会被质疑品质，$9.99 是独立游戏的甜蜜点</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">折扣策略</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>促销时机</th><th>建议折扣</th><th>备注</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>首发折扣</td><td>10-15%</td><td>奖励愿望单用户</td></tr>
+            <tr><td>首次大促（发布后 2-3 月）</td><td>20-25%</td><td>Steam 季节性大促</td></tr>
+            <tr><td>发布后 6 个月</td><td>30-40%</td><td>二次销售高峰</td></tr>
+            <tr><td>发布后 1 年+</td><td>50-75%</td><td>长尾收入</td></tr>
+            <tr><td>捆绑包</td><td>额外 10-20%</td><td>与其他游戏组合</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="info-box warning">
+        <div class="info-title">折扣陷阱</div>
+        <p>过快降价会培养玩家「等折扣」的心理，损害全价销售。Steam 有规则：<strong>两次折扣之间至少间隔 28 天</strong>，且参与大促后 28 天内不能再打折。首次折扣建议在发布后至少 6 周才开始。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">免费游戏（F2P）设计</h3>
+
+    <p>F2P 模式的核心挑战：<strong>让免费玩家玩得开心，让付费玩家觉得值</strong>。</p>
+
+    <div class="card">
+      <div class="card-title">F2P 变现模型</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>变现方式</th><th>描述</th><th>适用类型</th><th>争议度</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>外观道具</strong></td>
+              <td>不影响玩法的装饰品</td>
+              <td>所有类型</td>
+              <td><span class="tag">低</span></td>
+            </tr>
+            <tr>
+              <td><strong>Battle Pass</strong></td>
+              <td>赛季通行证，分免费/付费轨道</td>
+              <td>竞技/对战游戏</td>
+              <td><span class="tag">低</span></td>
+            </tr>
+            <tr>
+              <td><strong>开箱/抽卡</strong></td>
+              <td>随机奖励机制</td>
+              <td>手游/卡牌</td>
+              <td><span class="tag red">高</span></td>
+            </tr>
+            <tr>
+              <td><strong>体力/能量系统</strong></td>
+              <td>限制游玩时间，付费加速</td>
+              <td>手游</td>
+              <td><span class="tag orange">中</span></td>
+            </tr>
+            <tr>
+              <td><strong>加速/便利道具</strong></td>
+              <td>缩短等待或降低难度</td>
+              <td>策略/养成</td>
+              <td><span class="tag orange">中</span></td>
+            </tr>
+            <tr>
+              <td><strong>广告</strong></td>
+              <td>激励广告/Banner 广告</td>
+              <td>休闲手游</td>
+              <td><span class="tag blue">视实现</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">F2P 关键指标</div>
+      <p>健康的 F2P 游戏数据基准：<br>
+      <strong>付费率</strong>：2-5%（仅 2-5% 的玩家会付费）<br>
+      <strong>ARPPU</strong>（付费玩家人均收入）：$10-50/月<br>
+      <strong>鲸鱼用户</strong>（前 1% 付费玩家）通常贡献 <strong>40-60% 的总收入</strong><br>
+      <strong>首日留存</strong>：40%+ 为健康值<br>
+      <strong>七日留存</strong>：15%+ 为及格线</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">订阅制</h3>
+
+    <p>订阅模式在游戏行业正在兴起，但更多是<strong>平台级</strong>的订阅，而非单个游戏的订阅。</p>
+
+    <ul>
+      <li><strong>Xbox Game Pass</strong> — 微软按月/按下载量向开发者支付费用。对独立游戏来说是不错的曝光+保底收入</li>
+      <li><strong>Apple Arcade</strong> — 苹果支付一次性开发费用，游戏在 Arcade 平台独占</li>
+      <li><strong>EA Play / Ubisoft+</strong> — 大厂自有订阅服务</li>
+      <li><strong>单游戏订阅</strong> — 如 WoW 月卡、FF14 月卡，适合 MMO 类游戏</li>
+    </ul>
+
+    <div class="info-box blue">
+      <div class="info-title">Game Pass 的双刃剑</div>
+      <p>进入 Game Pass 可以带来大量玩家和保底收入，但<strong>可能蚕食直接销售</strong>。研究表明，Game Pass 上的游戏在离开订阅后，销售量会有一个短期峰值（「转化效应」），但长期影响仍有争议。建议：如果你的游戏是「玩一次就够」的类型，Game Pass 可能不太适合；如果是「社区驱动型」，Game Pass 可以快速扩大用户基数。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">微交易设计（道德争议与最佳实践）</h3>
+
+    <p>微交易是一个雷区。设计得好是可持续的商业模式，设计得差是消费者信任的毒药。</p>
+
+    <div class="compare-grid">
+      <div class="compare-card pro">
+        <div class="compare-title">道德微交易</div>
+        <ul>
+          <li>仅出售外观/装饰物品</li>
+          <li>明码标价，不用随机概率</li>
+          <li>免费玩家不会感到被排斥</li>
+          <li>有明确的消费上限</li>
+          <li>未成年人保护机制</li>
+          <li>案例：Fortnite 的皮肤商店</li>
+        </ul>
+      </div>
+      <div class="compare-card con">
+        <div class="compare-title">掠夺性微交易</div>
+        <ul>
+          <li>Pay-to-Win（花钱变强）</li>
+          <li>利用 FOMO（限时/限量）施压</li>
+          <li>模糊虚拟货币隐藏真实花费</li>
+          <li>让人成瘾的开箱/抽卡机制</li>
+          <li>针对未成年人的诱导消费</li>
+          <li>案例：Star Wars Battlefront II 的发布事故</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box danger">
+      <div class="info-title">法律风险</div>
+      <p>比利时和荷兰已将部分开箱机制认定为赌博行为并予以禁止。中国要求公示抽奖概率。<strong>欧盟正在推进《数字公平法案》，可能进一步限制游戏内的概率性消费</strong>。设计微交易系统时，务必考虑法律合规性。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">DLC 与季票</h3>
+
+    <p>DLC 是延长游戏生命周期和增加收入的经典方式。</p>
+
+    <div class="card">
+      <div class="card-title">DLC 类型与定价</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>类型</th><th>内容</th><th>定价范围</th><th>开发成本</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>外观包</strong></td><td>皮肤、主题、配色</td><td>$0.99 - $4.99</td><td>低</td></tr>
+            <tr><td><strong>音乐包</strong></td><td>原声带</td><td>$4.99 - $9.99</td><td>低</td></tr>
+            <tr><td><strong>小型 DLC</strong></td><td>新角色/新关卡/新模式</td><td>$4.99 - $9.99</td><td>中</td></tr>
+            <tr><td><strong>大型 DLC/资料片</strong></td><td>新章节/新故事线/大量新内容</td><td>$14.99 - $29.99</td><td>高</td></tr>
+            <tr><td><strong>季票</strong></td><td>打包多个未来 DLC</td><td>$19.99 - $49.99</td><td>-</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p><strong>DLC 设计原则：</strong></p>
+    <ul>
+      <li>基础游戏必须是完整体验，DLC 是<strong>锦上添花</strong>而非<strong>补全缺失</strong></li>
+      <li>不要在发售日就推出付费 DLC（会被认为是割内容卖）</li>
+      <li>DLC 定价应与新增内容量匹配</li>
+      <li>提供「完全版/豪华版」给迟到的玩家</li>
+    </ul>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">众筹（Kickstarter）</h3>
+
+    <p>众筹可以同时解决<strong>资金</strong>和<strong>社区建设</strong>两个问题，但它本身就是一场需要精心准备的营销活动。</p>
+
+    <div class="card">
+      <div class="card-title">Kickstarter 成功要素</div>
+
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-value">30天</div>
+          <div class="metric-label">最佳活动时长</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">40%</div>
+          <div class="metric-label">首 48 小时目标完成率</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">$25</div>
+          <div class="metric-label">平均支持金额</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">~22%</div>
+          <div class="metric-label">游戏类项目成功率</div>
+        </div>
+      </div>
+
+      <ul>
+        <li><strong>发布前需要已有受众</strong> — 至少有 1,000 个对你游戏感兴趣的人</li>
+        <li><strong>有可运行的 Demo</strong> — 2025 年的 Kickstarter 用户不再相信纯概念</li>
+        <li><strong>奖励层级设计</strong> — $10（数字版）、$25（数字版+额外内容）、$50（实体周边）、$100+（鸣谢/参与设计）</li>
+        <li><strong>Stretch Goals 要务实</strong> — 不要承诺做不到的东西</li>
+        <li><strong>活动期间每天更新</strong> — 保持动量是关键</li>
+        <li><strong>考虑税务和手续费</strong> — Kickstarter 抽 5%，支付处理费 3-5%，税务根据地区不同</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">成功案例</div>
+      <p><strong>Hollow Knight: Silksong</strong> 的前作 Hollow Knight 通过 Kickstarter 筹集了 <strong>AU$ 57,138</strong>（目标 AU$ 35,000），最终以 $15 的售价销售超过 <strong>300 万份</strong>。<strong>Shovel Knight</strong> 筹集了 <strong>$311,502</strong>（目标 $75,000），成为独立游戏众筹的标杆之一。关键：这些游戏在众筹时都已经有可玩的 Demo 和清晰的愿景。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 6: 法律与版权
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s6"></span>
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">法律与版权</h2>
+  </div>
+
+  <p>法律问题不是「等出事再说」的事。一个版权纠纷可以让你数年的开发成果付之东流。<strong>花一点时间了解基础法律知识，能避免 90% 的法律风险。</strong></p>
+
+  <div class="info-box danger">
+    <div class="info-title">免责声明</div>
+    <p>本节内容仅供参考，不构成法律建议。涉及具体法律问题时，请咨询专业律师。</p>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">游戏版权基础</h3>
+
+    <div class="card">
+      <div class="card-title">游戏中受版权保护的元素</div>
+      <ul>
+        <li><strong>代码</strong> — 源代码受版权保护，但算法/玩法机制本身不受保护</li>
+        <li><strong>美术资产</strong> — 所有原创图形、模型、动画</li>
+        <li><strong>音乐与音效</strong> — 包括旋律、编曲、录音</li>
+        <li><strong>文案/剧情</strong> — 对话、故事、世界观设定</li>
+        <li><strong>角色设计</strong> — 具有独特性的角色外观和名称</li>
+      </ul>
+
+      <p><strong>不受版权保护的：</strong></p>
+      <ul>
+        <li>游戏玩法机制（你可以做一个类似 Tetris 的消除游戏，但不能叫 Tetris 或使用其美术）</li>
+        <li>游戏类型（「吃鸡」模式不被任何人拥有）</li>
+        <li>通用概念和想法</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">版权 vs 商标 vs 专利</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>保护类型</th><th>保护对象</th><th>时效</th><th>是否需注册</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>版权（Copyright）</strong></td>
+              <td>创意表达（代码、美术、音乐）</td>
+              <td>作者去世后 70 年</td>
+              <td>自动产生，注册加强保护</td>
+            </tr>
+            <tr>
+              <td><strong>商标（Trademark）</strong></td>
+              <td>品牌标识（游戏名、Logo）</td>
+              <td>可无限续期</td>
+              <td>需要注册</td>
+            </tr>
+            <tr>
+              <td><strong>专利（Patent）</strong></td>
+              <td>技术发明（特定技术实现）</td>
+              <td>20 年</td>
+              <td>需要注册</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p><strong>给独立开发者的建议：</strong></p>
+    <ul>
+      <li>注册你的游戏名作为<strong>商标</strong>（至少在你的主要市场），费用约 $250-$600</li>
+      <li>在游戏内和商店页面标注 <code>© 2026 [你的名字/公司名]. All Rights Reserved.</code></li>
+      <li>保留所有原始创作文件（PSD、项目文件等），这是版权归属的证据</li>
+    </ul>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">音乐/美术素材的授权</h3>
+
+    <p>使用他人创作的素材是最常见的法律风险来源。</p>
+
+    <div class="card">
+      <div class="card-title">素材授权类型</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>授权类型</th><th>含义</th><th>典型场景</th><th>风险</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Royalty-Free</strong></td>
+              <td>一次性付费，无限使用，无后续版税</td>
+              <td>素材商店购买的音乐/音效</td>
+              <td><span class="tag">低</span></td>
+            </tr>
+            <tr>
+              <td><strong>Rights-Managed</strong></td>
+              <td>按使用范围、时间收费</td>
+              <td>特定摄影作品</td>
+              <td><span class="tag orange">中</span></td>
+            </tr>
+            <tr>
+              <td><strong>Creative Commons</strong></td>
+              <td>免费使用，但有条件限制</td>
+              <td>开源素材</td>
+              <td><span class="tag blue">看具体条款</span></td>
+            </tr>
+            <tr>
+              <td><strong>独占授权</strong></td>
+              <td>仅你能使用</td>
+              <td>定制委托的音乐/美术</td>
+              <td><span class="tag">最低</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="info-box warning">
+      <div class="info-title">常见陷阱</div>
+      <p><strong>使用 Asset Store/素材商店的资产时</strong>，务必仔细阅读 EULA。有些素材仅允许用于游戏内，不允许用于营销材料。有些要求注明出处。有些禁止在特定平台（如 NFT/区块链）上使用。<strong>在 YouTube 上使用版权音乐</strong>即使获得了游戏内使用授权，预告片上传到 YouTube 后仍可能被 Content ID 系统标记。</p>
+    </div>
+
+    <p><strong>安全的素材来源：</strong></p>
+    <ul>
+      <li><strong>Kenney.nl</strong> — 完全免费的高质量游戏素材（CC0 协议）</li>
+      <li><strong>OpenGameArt.org</strong> — 开源游戏美术社区</li>
+      <li><strong>Freesound.org</strong> — 免费音效（注意各作品的具体授权）</li>
+      <li><strong>Incompetech</strong> — Kevin MacLeod 的免费音乐（需署名）</li>
+      <li><strong>委托创作</strong> — 最安全的方式，确保合同中明确版权转让条款</li>
+    </ul>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">开源协议理解</h3>
+
+    <p>使用开源代码和素材时，必须遵守其协议。以下是最常见的几种：</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>协议</th><th>可商用</th><th>需署名</th><th>需开源</th><th>要点</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>MIT</strong></td>
+            <td>是</td>
+            <td>是</td>
+            <td>否</td>
+            <td>最宽松，保留版权声明即可</td>
+          </tr>
+          <tr>
+            <td><strong>Apache 2.0</strong></td>
+            <td>是</td>
+            <td>是</td>
+            <td>否</td>
+            <td>类似 MIT，增加了专利保护</td>
+          </tr>
+          <tr>
+            <td><strong>BSD</strong></td>
+            <td>是</td>
+            <td>是</td>
+            <td>否</td>
+            <td>类似 MIT</td>
+          </tr>
+          <tr>
+            <td><strong>GPL v3</strong></td>
+            <td>是</td>
+            <td>是</td>
+            <td><strong>是！</strong></td>
+            <td>使用 GPL 代码的项目也必须开源（传染性）</td>
+          </tr>
+          <tr>
+            <td><strong>LGPL</strong></td>
+            <td>是</td>
+            <td>是</td>
+            <td>仅修改部分</td>
+            <td>可作为库链接使用而不传染</td>
+          </tr>
+          <tr>
+            <td><strong>CC BY 4.0</strong></td>
+            <td>是</td>
+            <td>是</td>
+            <td>否</td>
+            <td>Creative Commons，需署名</td>
+          </tr>
+          <tr>
+            <td><strong>CC BY-SA 4.0</strong></td>
+            <td>是</td>
+            <td>是</td>
+            <td>衍生作品同协议</td>
+            <td>相同方式共享</td>
+          </tr>
+          <tr>
+            <td><strong>CC BY-NC</strong></td>
+            <td><strong>否</strong></td>
+            <td>是</td>
+            <td>否</td>
+            <td>非商业用途！不能用于商业游戏</td>
+          </tr>
+          <tr>
+            <td><strong>CC0</strong></td>
+            <td>是</td>
+            <td>否</td>
+            <td>否</td>
+            <td>公有领域，完全自由</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="info-box danger">
+      <div class="info-title">GPL 警告</div>
+      <p>如果你的商业游戏中使用了 GPL 协议的代码库（哪怕只是一个小工具库），你可能需要将<strong>整个游戏代码开源</strong>。这是 GPL 的「传染性」特点。在使用任何第三方代码之前，一定要检查其协议。大多数情况下，选择 MIT/Apache 2.0 协议的替代品更安全。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">隐私政策与 GDPR</h3>
+
+    <p>如果你的游戏收集任何用户数据（包括分析数据、崩溃报告、账号信息），你需要隐私政策。</p>
+
+    <div class="card">
+      <div class="card-title">GDPR（欧盟通用数据保护条例）要点</div>
+      <ul>
+        <li><strong>适用范围</strong> — 只要有欧盟用户，就必须遵守（无论你的公司在哪）</li>
+        <li><strong>知情同意</strong> — 收集数据前必须获得用户明确同意</li>
+        <li><strong>数据最小化</strong> — 只收集业务必需的最少数据</li>
+        <li><strong>被遗忘权</strong> — 用户有权要求删除其所有数据</li>
+        <li><strong>数据泄露通知</strong> — 72 小时内报告数据泄露事件</li>
+        <li><strong>违规处罚</strong> — 最高 <strong>2,000 万欧元或全球年收入 4%</strong>（取较高值）</li>
+      </ul>
+    </div>
+
+    <p><strong>隐私政策应包含：</strong></p>
+    <ul>
+      <li>收集哪些数据</li>
+      <li>为什么收集</li>
+      <li>如何存储和保护</li>
+      <li>是否与第三方共享</li>
+      <li>用户如何查看、修改或删除自己的数据</li>
+      <li>Cookie 使用说明（如有网页版）</li>
+    </ul>
+
+    <p>对于小型独立游戏，可以使用模板生成器（如 Iubenda、TermsFeed）快速创建基础隐私政策。</p>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">EULA（最终用户许可协议）</h3>
+
+    <p>EULA 定义了玩家可以用你的游戏做什么、不能做什么。</p>
+
+    <ul>
+      <li><strong>知识产权声明</strong> — 游戏内容的版权归你所有</li>
+      <li><strong>使用限制</strong> — 禁止逆向工程、反编译、二次分发</li>
+      <li><strong>免责条款</strong> — 限制因使用游戏产生的责任</li>
+      <li><strong>Mod 政策</strong> — 是否允许修改游戏，修改后的内容版权归属</li>
+      <li><strong>退款政策</strong> — 通常遵循平台（Steam/App Store）的退款政策</li>
+    </ul>
+
+    <p>Steam 有内置的 Subscriber Agreement，大多数情况下独立开发者不需要额外的 EULA。但如果你有联机功能或用户生成内容，建议准备一份。</p>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">中国版号政策</h3>
+
+    <div class="info-box danger">
+      <div class="info-title">重要：中国市场特殊要求</div>
+      <p>在中国大陆正式发行和运营游戏（包括手游），需要获得<strong>游戏版号</strong>。这是中国特有的审批制度。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">版号申请要点</div>
+      <ul>
+        <li><strong>申请主体</strong> — 必须是中国境内注册的公司（外国开发者需与中国发行商合作）</li>
+        <li><strong>审批机构</strong> — 国家新闻出版署</li>
+        <li><strong>审批周期</strong> — 通常 6-18 个月不等，近年来大幅放缓</li>
+        <li><strong>内容审查</strong> — 需符合中国法律法规，包括：无赌博元素、无政治敏感内容、无过度暴力/色情、未成年人保护措施</li>
+        <li><strong>实名认证</strong> — 必须接入实名验证系统</li>
+        <li><strong>防沉迷系统</strong> — 未成年人每周最多 3 小时游戏时间（周五六日各 1 小时）</li>
+        <li><strong>费用</strong> — 版号本身不收费，但需要出版社代理费、测评费用等，综合成本约 ¥10,000-50,000</li>
+      </ul>
+    </div>
+
+    <p><strong>独立开发者的选项：</strong></p>
+    <ol>
+      <li><strong>找中国发行商</strong> — 让发行商处理版号申请，是最省心的方式</li>
+      <li><strong>只做 Steam 国际版</strong> — 中国玩家可以通过 Steam 国际服购买，无需版号（灰色地带）</li>
+      <li><strong>放弃中国市场</strong> — 如果内容不适合或成本过高</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 7: 数据分析与运维
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s7"></span>
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">数据分析与运维</h2>
+  </div>
+
+  <p>数据不是万能的，但没有数据是万万不能的。<strong>拍脑袋做决策的时代已经过去了</strong>。即使是独立开发者，也应该建立基本的数据分析能力。</p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">关键指标</h3>
+
+    <div class="card">
+      <div class="card-title">用户规模指标</div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-value">DAU</div>
+          <div class="metric-label">日活跃用户数</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">MAU</div>
+          <div class="metric-label">月活跃用户数</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">CCU</div>
+          <div class="metric-label">同时在线人数</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">PCU</div>
+          <div class="metric-label">最高同时在线</div>
+        </div>
+      </div>
+      <p><strong>DAU/MAU 比值</strong>（粘性）：衡量用户参与度。20%+ 表示高粘性，10-20% 正常，&lt;10% 需关注。社交游戏通常 20-30%，休闲游戏 10-20%。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">留存指标</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>指标</th><th>定义</th><th>健康基准（F2P 手游）</th><th>健康基准（PC 买断）</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>D1 留存</strong></td><td>次日回来的玩家比例</td><td>40%+</td><td>不太适用</td></tr>
+            <tr><td><strong>D7 留存</strong></td><td>第 7 天回来的比例</td><td>15-20%</td><td>30%+</td></tr>
+            <tr><td><strong>D30 留存</strong></td><td>第 30 天回来的比例</td><td>5-10%</td><td>10-15%</td></tr>
+            <tr><td><strong>D90 留存</strong></td><td>第 90 天回来的比例</td><td>2-5%</td><td>5%+</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>留存是最重要的产品健康度指标。<strong>低留存意味着核心体验有问题</strong>，无论怎么做营销都无法持续。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">收入指标</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>指标</th><th>定义</th><th>计算方式</th><th>备注</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>ARPU</strong></td>
+              <td>每用户平均收入</td>
+              <td>总收入 / 总用户数</td>
+              <td>包含免费用户</td>
+            </tr>
+            <tr>
+              <td><strong>ARPPU</strong></td>
+              <td>每付费用户平均收入</td>
+              <td>总收入 / 付费用户数</td>
+              <td>仅计算付费用户</td>
+            </tr>
+            <tr>
+              <td><strong>LTV</strong></td>
+              <td>用户生命周期价值</td>
+              <td>ARPU × 用户平均生命周期</td>
+              <td>最重要的商业指标</td>
+            </tr>
+            <tr>
+              <td><strong>CPI/CPA</strong></td>
+              <td>获客成本</td>
+              <td>广告花费 / 新增用户数</td>
+              <td>LTV > CPA 才盈利</td>
+            </tr>
+            <tr>
+              <td><strong>付费率</strong></td>
+              <td>付费用户占比</td>
+              <td>付费用户 / 总用户</td>
+              <td>F2P 基准: 2-5%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">黄金公式</div>
+      <p><strong>LTV > CPA</strong> — 用户生命周期价值必须大于获取用户的成本，否则你做的是亏本生意。对于买断制游戏，LTV 就是售价 × 平台分成后比例。例如 $14.99 的游戏，LTV ≈ $10.49（扣除 Steam 30% 分成）。如果获取一个购买用户的成本超过 $10.49，你就在亏钱。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">数据埋点设计</h3>
+
+    <p>数据埋点是在游戏代码中插入数据收集逻辑。<strong>不是什么都埋</strong>，而是围绕关键问题设计。</p>
+
+    <div class="card">
+      <div class="card-title">埋点设计原则</div>
+      <ol>
+        <li><strong>带着问题埋</strong> — 先问「我想知道什么」，再决定埋什么点</li>
+        <li><strong>关键路径优先</strong> — 新手引导完成率、核心循环参与度、付费转化漏斗</li>
+        <li><strong>事件 + 属性</strong> — 每个埋点事件带上必要的上下文属性</li>
+        <li><strong>命名规范</strong> — 统一的命名体系，如 <code>level_start</code>、<code>level_complete</code>、<code>level_fail</code></li>
+        <li><strong>验证</strong> — 上线前在测试环境验证每个埋点都在正确的时机触发</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <div class="card-title">常用埋点事件示例</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>事件名</th><th>触发时机</th><th>关键属性</th><th>分析用途</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>game_start</code></td><td>首次启动游戏</td><td>平台、设备、分辨率</td><td>用户画像</td></tr>
+            <tr><td><code>tutorial_step</code></td><td>完成教程各步骤</td><td>步骤编号、耗时</td><td>新手漏斗分析</td></tr>
+            <tr><td><code>level_start</code></td><td>进入关卡</td><td>关卡ID、难度、角色</td><td>内容消耗进度</td></tr>
+            <tr><td><code>level_complete</code></td><td>通关</td><td>耗时、得分、死亡次数</td><td>难度曲线分析</td></tr>
+            <tr><td><code>level_fail</code></td><td>关卡失败</td><td>关卡ID、失败原因、尝试次数</td><td>流失点定位</td></tr>
+            <tr><td><code>item_acquire</code></td><td>获得道具</td><td>道具ID、获取方式</td><td>经济系统平衡</td></tr>
+            <tr><td><code>purchase</code></td><td>付费行为</td><td>商品ID、金额、货币</td><td>付费转化分析</td></tr>
+            <tr><td><code>session_end</code></td><td>退出游戏</td><td>会话时长、最后行为</td><td>参与度分析</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">A/B 测试</h3>
+
+    <p>A/B 测试是用数据代替直觉做决策的方法。将用户随机分为两组，给他们展示不同的版本，比较哪个效果更好。</p>
+
+    <div class="card">
+      <div class="card-title">适合 A/B 测试的场景</div>
+      <ul>
+        <li><strong>新手引导流程</strong> — 哪种教程方式的完成率更高？</li>
+        <li><strong>商店定价</strong> — $0.99 还是 $1.99 的付费道具收入更高？</li>
+        <li><strong>UI 布局</strong> — 按钮位置对点击率的影响</li>
+        <li><strong>难度平衡</strong> — 新手关卡的难度是否导致流失</li>
+        <li><strong>推送内容</strong> — 哪种推送文案的回流率更高</li>
+      </ul>
+
+      <p><strong>注意事项：</strong></p>
+      <ul>
+        <li>样本量要足够（通常每组至少 1,000 用户）</li>
+        <li>只测试一个变量（否则无法归因）</li>
+        <li>运行足够长的时间（至少 7 天，覆盖一个完整周期）</li>
+        <li>统计显著性 p &lt; 0.05 才下结论</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">分析工具</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>工具</th><th>适用场景</th><th>价格</th><th>特点</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>GameAnalytics</strong></td>
+            <td>全平台游戏分析</td>
+            <td>免费（基础版）</td>
+            <td>游戏专用，内置留存/漏斗分析，独立开发者首选</td>
+          </tr>
+          <tr>
+            <td><strong>Unity Analytics</strong></td>
+            <td>Unity 游戏</td>
+            <td>免费（Unity 内置）</td>
+            <td>与 Unity 深度集成，但功能较基础</td>
+          </tr>
+          <tr>
+            <td><strong>Firebase Analytics</strong></td>
+            <td>移动端为主</td>
+            <td>免费</td>
+            <td>Google 生态，强大的事件分析和远程配置</td>
+          </tr>
+          <tr>
+            <td><strong>Amplitude</strong></td>
+            <td>深度用户行为分析</td>
+            <td>免费→$995/月</td>
+            <td>强大的漏斗和路径分析</td>
+          </tr>
+          <tr>
+            <td><strong>Mixpanel</strong></td>
+            <td>事件分析</td>
+            <td>免费→付费</td>
+            <td>实时数据，适合产品迭代</td>
+          </tr>
+          <tr>
+            <td><strong>Steam 内置统计</strong></td>
+            <td>Steam PC 游戏</td>
+            <td>免费</td>
+            <td>基本的销售和流量数据</td>
+          </tr>
+          <tr>
+            <td><strong>PlayFab</strong></td>
+            <td>后端 + 分析</td>
+            <td>免费→付费</td>
+            <td>微软出品，LiveOps 平台</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">崩溃报告与监控</h3>
+
+    <p>崩溃是玩家差评的头号原因。建立有效的崩溃报告系统是技术运维的基础。</p>
+
+    <div class="card">
+      <div class="card-title">崩溃报告工具</div>
+      <ul>
+        <li><strong>Sentry</strong> — 业界标准错误监控，支持多平台，免费版足够小团队使用</li>
+        <li><strong>Backtrace</strong> — 游戏专用崩溃报告，支持 Unreal/Unity 原生集成</li>
+        <li><strong>Firebase Crashlytics</strong> — 移动端崩溃报告，免费</li>
+        <li><strong>BugSplat</strong> — 专业级崩溃分析，支持 minidump 解析</li>
+      </ul>
+
+      <p><strong>崩溃报告应包含：</strong></p>
+      <ul>
+        <li>堆栈跟踪（Stack Trace）</li>
+        <li>设备信息（OS、GPU、CPU、RAM）</li>
+        <li>游戏版本号</li>
+        <li>崩溃时的游戏状态（关卡、场景）</li>
+        <li>复现步骤（如果可能自动收集）</li>
+        <li>崩溃频率和影响用户数</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">服务器运维（联机游戏）</h3>
+
+    <p>如果你的游戏有联机功能，服务器运维是一个持续的责任和成本。</p>
+
+    <div class="card">
+      <div class="card-title">服务器架构选择</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>方案</th><th>优势</th><th>劣势</th><th>适合</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>P2P（点对点）</strong></td>
+              <td>无需服务器成本</td>
+              <td>作弊难防、NAT 穿透问题、延迟不稳</td>
+              <td>小型合作游戏</td>
+            </tr>
+            <tr>
+              <td><strong>专用服务器（自建）</strong></td>
+              <td>完全控制</td>
+              <td>成本高、需要运维能力</td>
+              <td>大型 MMO、竞技游戏</td>
+            </tr>
+            <tr>
+              <td><strong>云服务（BaaS）</strong></td>
+              <td>弹性扩缩容、按用量付费</td>
+              <td>依赖第三方、成本可能失控</td>
+              <td>中小型联机游戏</td>
+            </tr>
+            <tr>
+              <td><strong>Relay Server</strong></td>
+              <td>折中方案，中继转发</td>
+              <td>有额外延迟</td>
+              <td>不太需要实时的游戏</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p><strong>常用联机后端服务：</strong></p>
+    <ul>
+      <li><strong>Photon</strong> — 实时联机框架，Unity 生态首选，按 CCU 付费</li>
+      <li><strong>Mirror</strong> — Unity 开源网络库</li>
+      <li><strong>Nakama</strong> — 开源联机后端，支持匹配、排行榜等</li>
+      <li><strong>PlayFab</strong> — 微软出品，包含联机 + 数据分析 + LiveOps</li>
+      <li><strong>Steam Networking</strong> — Steam 提供的 P2P/Relay 方案，免费</li>
+    </ul>
+
+    <div class="info-box warning">
+      <div class="info-title">服务器成本警告</div>
+      <p>联机游戏的服务器成本可以非常惊人。一个 CCU（同时在线）500 人的小型独立联机游戏，月服务器费用可能在 <strong>$200-$1,000</strong>。如果突然爆火到 CCU 10,000，月费用可能飙升到 <strong>$5,000-$20,000</strong>。确保你的商业模式能覆盖持续的运维成本，或者选择 P2P 方案避免这个问题。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 8: 更新与长期运营
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s8"></span>
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2 class="section-title">更新与长期运营</h2>
+  </div>
+
+  <p>发布只是马拉松的起点。对于很多成功的独立游戏来说，<strong>发布后的持续更新贡献了总收入的 50-70%</strong>。长线运营不是可选项，而是现代游戏成功的必要条件。</p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">补丁策略</h3>
+
+    <div class="card">
+      <div class="card-title">补丁类型与节奏</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>类型</th><th>内容</th><th>频率</th><th>备注</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>热修复（Hotfix）</strong></td>
+              <td>紧急 Bug 修复、崩溃修复</td>
+              <td>随时（发现即修）</td>
+              <td>发布后 48h 内最关键</td>
+            </tr>
+            <tr>
+              <td><strong>小版本更新</strong></td>
+              <td>Bug 修复 + 平衡调整 + QoL 改进</td>
+              <td>每 2-4 周</td>
+              <td>保持游戏活力的基础</td>
+            </tr>
+            <tr>
+              <td><strong>内容更新</strong></td>
+              <td>新关卡/角色/模式/功能</td>
+              <td>每 1-3 个月</td>
+              <td>带动销售高峰</td>
+            </tr>
+            <tr>
+              <td><strong>大版本更新</strong></td>
+              <td>重大内容扩展/系统重做</td>
+              <td>每 6-12 个月</td>
+              <td>配合大促或周年庆</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">案例：Terraria</div>
+      <p>Terraria 于 2011 年发布，定价 $9.99。在之后的 <strong>13 年间</strong>持续发布免费大型更新。最终更新「Journey's End」发布时（2020 年），Terraria 总销量突破 <strong>4,450 万份</strong>。开发者 Re-Logic 从未出售 DLC，所有更新完全免费。这证明了<strong>持续的免费更新可以驱动长期销售增长</strong>。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">DLC 开发规划</h3>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-time">发布后 1-2 个月</div>
+        <div class="timeline-title">稳定与反馈收集</div>
+        <div class="timeline-desc">专注修 Bug 和 QoL 改进。收集玩家反馈确定 DLC 方向。不急于公布 DLC 计划。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布后 3-4 个月</div>
+        <div class="timeline-title">公布 DLC 路线图</div>
+        <div class="timeline-desc">基于反馈确定 DLC 内容方向。公布大致时间线。开始预售（如果平台支持）。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布后 4-8 个月</div>
+        <div class="timeline-title">首个 DLC 发布</div>
+        <div class="timeline-desc">配合打折促销基础游戏，吸引新玩家。更新日志要详细突出 DLC 价值。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">发布后 12 个月</div>
+        <div class="timeline-title">周年庆 + 大型 DLC/完整版</div>
+        <div class="timeline-desc">推出完整版（基础游戏 + 所有 DLC 捆绑），大幅折扣基础游戏。举办社区活动庆祝周年。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">赛季系统</h3>
+
+    <p>赛季系统（Season）是 Live Service 游戏的核心运营模式，通过<strong>定期内容刷新</strong>保持玩家参与度。</p>
+
+    <div class="card">
+      <div class="card-title">赛季系统设计要素</div>
+      <ul>
+        <li><strong>赛季时长</strong> — 通常 8-12 周（太短内容压力大，太长玩家倦怠）</li>
+        <li><strong>Battle Pass / 通行证</strong> — 分免费轨道和付费轨道，通常 50-100 级</li>
+        <li><strong>赛季主题</strong> — 每个赛季有独特主题、故事线、视觉风格</li>
+        <li><strong>限时内容</strong> — FOMO（错过即失）感促进参与，但要注意不要太过激进</li>
+        <li><strong>平衡调整</strong> — 每赛季 Meta 变化保持新鲜感</li>
+        <li><strong>排名重置</strong> — 竞技游戏每赛季重置段位，激励重新冲分</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">Battle Pass 经济学</div>
+      <p>一个设计良好的 Battle Pass 价格通常在 <strong>$8-$15</strong>，包含 <strong>$30-$50 价值</strong>的奖励。付费通行证的购买率在活跃玩家中通常为 <strong>15-30%</strong>。关键设计：确保免费轨道也有足够吸引力的奖励，否则免费玩家会流失，付费玩家也就失去了对手。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">社区 Mod 支持</h3>
+
+    <p>Mod 支持可以极大延长游戏寿命。Skyrim 发布 10+ 年后仍有大量活跃玩家，很大程度上归功于 Mod 社区。</p>
+
+    <div class="card">
+      <div class="card-title">Mod 支持实现方式</div>
+      <ul>
+        <li><strong>Steam 创意工坊</strong> — 最主流的 PC 游戏 Mod 分发平台，Valve 提供基础设施</li>
+        <li><strong>官方 Mod 工具</strong> — 提供关卡编辑器、脚本编辑器等开发工具</li>
+        <li><strong>Lua/Python 脚本支持</strong> — 允许通过脚本语言扩展游戏功能</li>
+        <li><strong>开放数据格式</strong> — 使用 JSON/XML 等人类可读格式存储游戏数据</li>
+        <li><strong>API 文档</strong> — 提供 Modding API 文档和示例</li>
+      </ul>
+    </div>
+
+    <p><strong>Mod 支持的考量：</strong></p>
+    <ul>
+      <li>Mod 可能引入安全问题（恶意代码），需要沙盒机制</li>
+      <li>Mod 可能破坏联机平衡，需要区分模组服/官方服</li>
+      <li>明确 Mod 的知识产权归属（通常 Mod 内容版权归 Modder，但需要授权游戏本体使用相关 API）</li>
+      <li>一些优秀的 Mod 可以变成官方内容（与 Modder 合作）</li>
+    </ul>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">游戏生命周期管理</h3>
+
+    <div class="card">
+      <div class="card-title">典型游戏生命周期</div>
+      <div class="step-flow">
+        <div class="step-item">发布高峰</div>
+        <span class="step-arrow">→</span>
+        <div class="step-item">首月衰退</div>
+        <span class="step-arrow">→</span>
+        <div class="step-item">稳态运营</div>
+        <span class="step-arrow">→</span>
+        <div class="step-item">促销驱动</div>
+        <span class="step-arrow">→</span>
+        <div class="step-item">长尾收益</div>
+      </div>
+
+      <ul>
+        <li><strong>发布高峰（前 2 周）</strong> — 贡献年收入的 30-50%</li>
+        <li><strong>首月衰退</strong> — 日活快速下降到峰值的 10-20%</li>
+        <li><strong>稳态运营（1-6 个月）</strong> — 通过更新和促销维持稳定收入</li>
+        <li><strong>促销驱动（6 个月+）</strong> — 每次大促带来一个小高峰</li>
+        <li><strong>长尾收益（1 年+）</strong> — 每月仍有稳定但较少的销售</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">长尾效应</div>
+      <p>Steam 上成功的独立游戏，其<strong>发布后第一年的收入通常只占总收入的 40-60%</strong>。剩余收入在之后的 3-5 年通过折扣促销、新平台发布、DLC 等方式持续产生。一个 $15 的游戏如果首年卖了 10,000 份，在接下来 4 年可能再卖 8,000-15,000 份。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">何时停止更新</h3>
+
+    <p>这是一个经常被忽略但非常重要的决策。持续更新一个不再带来足够回报的游戏是沉没成本谬误。</p>
+
+    <div class="card">
+      <div class="card-title">停止更新的信号</div>
+      <ul>
+        <li><strong>更新带来的收入增量 &lt; 开发更新的成本</strong> — 最直接的经济信号</li>
+        <li><strong>活跃玩家持续下降，更新无法逆转趋势</strong></li>
+        <li><strong>你有更好的下一个项目要做</strong> — 机会成本</li>
+        <li><strong>技术债积累到难以维护</strong></li>
+        <li><strong>团队倦怠</strong> — 对项目失去热情</li>
+      </ul>
+
+      <p><strong>优雅退出的方式：</strong></p>
+      <ol>
+        <li>提前公布「最终更新」计划</li>
+        <li>最终更新做得有诚意（增加玩家期待已久的功能）</li>
+        <li>感谢社区，公布未来计划（如果有新游戏在做）</li>
+        <li>如果是联机游戏，考虑开放服务端让社区自行运营</li>
+        <li>保持游戏可购买和可运行，不要下架</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 9: 独立游戏发行商
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s9"></span>
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <h2 class="section-title">独立游戏发行商</h2>
+  </div>
+
+  <p>发行商是一个经常被误解的角色。不是每个游戏都需要发行商，但<strong>好的发行商可以让你的游戏收入提升 3-10 倍</strong>。关键是知道什么时候需要，以及如何选择。</p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">发行商做什么</h3>
+
+    <div class="card">
+      <div class="card-title">发行商的典型服务</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>服务类别</th><th>具体内容</th><th>价值</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>资金支持</strong></td>
+              <td>开发资金、营销预算、预付版税</td>
+              <td>让开发者专注做游戏</td>
+            </tr>
+            <tr>
+              <td><strong>市场推广</strong></td>
+              <td>PR、社交媒体运营、媒体关系、展会参展</td>
+              <td>专业营销团队和媒体资源</td>
+            </tr>
+            <tr>
+              <td><strong>平台关系</strong></td>
+              <td>与 Steam/Nintendo/Sony/Xbox 的合作关系</td>
+              <td>获得推荐位、参与官方活动</td>
+            </tr>
+            <tr>
+              <td><strong>本地化</strong></td>
+              <td>多语言翻译和文化适配</td>
+              <td>打开全球市场</td>
+            </tr>
+            <tr>
+              <td><strong>QA 测试</strong></td>
+              <td>专业 QA 团队测试</td>
+              <td>减少发布风险</td>
+            </tr>
+            <tr>
+              <td><strong>移植支持</strong></td>
+              <td>主机/移动端移植</td>
+              <td>扩展平台覆盖</td>
+            </tr>
+            <tr>
+              <td><strong>法务/运营</strong></td>
+              <td>合同、版权、年龄评级</td>
+              <td>规避法律风险</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">什么时候需要发行商</h3>
+
+    <div class="compare-grid">
+      <div class="compare-card pro">
+        <div class="compare-title">需要发行商</div>
+        <ul>
+          <li>你没有营销经验和渠道</li>
+          <li>你需要开发资金才能完成游戏</li>
+          <li>你想进入主机市场但不知如何操作</li>
+          <li>你的游戏有全球市场潜力但你无法本地化</li>
+          <li>你希望专注开发，不想分心做营销</li>
+          <li>你的游戏品质好但缺乏市场声量</li>
+        </ul>
+      </div>
+      <div class="compare-card con">
+        <div class="compare-title">不需要发行商</div>
+        <ul>
+          <li>你有自己的受众基础（5,000+ 粉丝）</li>
+          <li>你擅长或享受市场推广</li>
+          <li>你的游戏规模小，预期收入有限</li>
+          <li>你不想让渡收入分成和创作控制</li>
+          <li>你有足够的开发资金</li>
+          <li>你可以通过众筹获得资金和社区</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">如何选择/联系发行商</h3>
+
+    <div class="card">
+      <div class="card-title">评估发行商的清单</div>
+      <ol>
+        <li><strong>看他们的作品库</strong> — 他们发行过的游戏品质如何？和你的游戏类型匹配吗？</li>
+        <li><strong>联系他们发行过的开发者</strong> — 直接问开发者合作体验（最有价值的信息来源）</li>
+        <li><strong>看他们的社交媒体运营能力</strong> — 他们的 Twitter 粉丝数？帖子互动率？</li>
+        <li><strong>了解分成比例和条款</strong> — 通常 25-50%，但要看他们提供什么服务</li>
+        <li><strong>确认 IP 归属</strong> — 你的游戏 IP 必须归你所有</li>
+        <li><strong>合同期限</strong> — 永久 vs 有期限？合同到期后权利如何？</li>
+        <li><strong>退出条款</strong> — 如果合作不顺，怎么解约？</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <div class="card-title">联系发行商的方式</div>
+      <ul>
+        <li><strong>官方投稿</strong> — 大部分发行商官网有「Submit Your Game」表单</li>
+        <li><strong>游戏展会</strong> — GDC、PAX、gamescom 等现场交流</li>
+        <li><strong>引荐</strong> — 通过已签约的开发者介绍（最有效）</li>
+        <li><strong>社交媒体</strong> — 有些发行商在 Twitter 上公开征集游戏</li>
+      </ul>
+
+      <p><strong>投稿邮件应包含：</strong></p>
+      <ul>
+        <li>一句话游戏描述（Hook）</li>
+        <li>可玩的 Demo 或视频链接</li>
+        <li>开发进度（完成百分比）</li>
+        <li>团队介绍</li>
+        <li>你期望从发行商那里得到什么</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">合同注意事项</h3>
+
+    <div class="info-box danger">
+      <div class="info-title">红线条款</div>
+      <p>以下条款如果出现在合同中，<strong>务必三思</strong>：</p>
+    </div>
+
+    <ul>
+      <li><span class="tag red">危险</span> <strong>IP 归属转让</strong> — 你的游戏 IP 必须永远归你。绝不签署将 IP 转让给发行商的合同。</li>
+      <li><span class="tag red">危险</span> <strong>永久独占权</strong> — 合同应有明确的期限（通常 3-7 年），到期后权利回归开发者。</li>
+      <li><span class="tag red">危险</span> <strong>续作优先权</strong> — 有些发行商会要求对你未来作品有优先签约权，这会限制你的自由。</li>
+      <li><span class="tag orange">谨慎</span> <strong>不可回收的预付款</strong> — 预付版税通常需要从销售分成中回收。确认如果游戏失败，你不需要额外偿还。</li>
+      <li><span class="tag orange">谨慎</span> <strong>模糊的费用条款</strong> — 营销费用是发行商承担还是从你的分成中扣除？要明确。</li>
+    </ul>
+
+    <p><strong>必须有的条款：</strong></p>
+    <ul>
+      <li>明确的分成比例和计算方式</li>
+      <li>收入报告频率（至少季度报告）</li>
+      <li>合同终止条件和流程</li>
+      <li>发行商的最低义务（营销预算、发行渠道等）</li>
+      <li>知识产权归属声明</li>
+    </ul>
+
+    <div class="info-box">
+      <div class="info-title">行业标准分成</div>
+      <p>独立游戏发行商的分成比例通常在 <strong>20-40%（税后收入）</strong>。如果发行商提供开发资金，分成可能更高（40-50%）。如果只提供营销和发行服务，20-30% 是合理的。<strong>低于 20% 的发行商可能提供的服务有限，高于 50% 的合同需要非常谨慎评估。</strong></p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">知名独立游戏发行商</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>发行商</th><th>代表作品</th><th>特点</th><th>规模</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Devolver Digital</strong></td>
+            <td>Hotline Miami, Cult of the Lamb, Inscryption</td>
+            <td>创意优先，营销能力极强</td>
+            <td>大型</td>
+          </tr>
+          <tr>
+            <td><strong>Annapurna Interactive</strong></td>
+            <td>Stray, Outer Wilds, What Remains of Edith Finch</td>
+            <td>艺术性强的叙事游戏</td>
+            <td>大型</td>
+          </tr>
+          <tr>
+            <td><strong>Team17</strong></td>
+            <td>Overcooked, Moving Out, Blasphemous</td>
+            <td>全平台发行能力强</td>
+            <td>大型</td>
+          </tr>
+          <tr>
+            <td><strong>Raw Fury</strong></td>
+            <td>Kingdom, Sable, Norco</td>
+            <td>开发者友好，尊重创意自由</td>
+            <td>中型</td>
+          </tr>
+          <tr>
+            <td><strong>Fellow Traveller</strong></td>
+            <td>Citizen Sleeper, In Other Waters</td>
+            <td>叙事冒险类专精</td>
+            <td>中型</td>
+          </tr>
+          <tr>
+            <td><strong>Finji</strong></td>
+            <td>Tunic, Night in the Woods, Chicory</td>
+            <td>高品质独立游戏精选</td>
+            <td>小型</td>
+          </tr>
+          <tr>
+            <td><strong>Humble Games</strong></td>
+            <td>Signalis, Forager, Void Bastards</td>
+            <td>背靠 Humble Bundle 平台</td>
+            <td>大型</td>
+          </tr>
+          <tr>
+            <td><strong>tinyBuild</strong></td>
+            <td>Hello Neighbor, Graveyard Keeper</td>
+            <td>全球发行 + 营销</td>
+            <td>大型</td>
+          </tr>
+          <tr>
+            <td><strong>Playism</strong></td>
+            <td>Touhou Luna Nights, La-Mulana</td>
+            <td>专注日本独立游戏出海</td>
+            <td>中型</td>
+          </tr>
+          <tr>
+            <td><strong>椰岛游戏 (Coconut Island)</strong></td>
+            <td>江南百景图, 黑暗料理王</td>
+            <td>中国独立游戏发行</td>
+            <td>中型</td>
+          </tr>
+          <tr>
+            <td><strong>Gamera Games</strong></td>
+            <td>戴森球计划, 火山的女儿</td>
+            <td>中国独立游戏全球发行</td>
+            <td>中型</td>
+          </tr>
+          <tr>
+            <td><strong>indienova</strong></td>
+            <td>了不起的修仙模拟器, 太吾绘卷（协助）</td>
+            <td>中国独立游戏社区+发行</td>
+            <td>小型</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 10: 实践：制定你的发布计划
+     ============================================================ -->
+<div class="section fade-up">
+  <span class="section-anchor" id="s10"></span>
+  <div class="section-header">
+    <span class="section-num">10</span>
+    <h2 class="section-title">实践：制定你的发布计划</h2>
+  </div>
+
+  <p>知识不落地就没有价值。这一节提供实用的模板和框架，帮助你<strong>把前面 9 节的知识变成一份可执行的发布计划</strong>。</p>
+
+  <div class="subsection">
+    <h3 class="subsection-title">发布计划模板</h3>
+
+    <div class="card">
+      <div class="card-title">一、游戏基础信息</div>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><td style="width:30%"><strong>游戏名称</strong></td><td>[填写]</td></tr>
+            <tr><td><strong>一句话描述</strong></td><td>[Hook — 为什么玩家该关注？]</td></tr>
+            <tr><td><strong>游戏类型</strong></td><td>[主要类型 + 细分标签]</td></tr>
+            <tr><td><strong>目标受众</strong></td><td>[画像：年龄、平台偏好、喜欢的同类游戏]</td></tr>
+            <tr><td><strong>预计游玩时长</strong></td><td>[小时]</td></tr>
+            <tr><td><strong>目标平台</strong></td><td>[PC / Switch / Mobile 等]</td></tr>
+            <tr><td><strong>目标定价</strong></td><td>[美元]</td></tr>
+            <tr><td><strong>竞品参考</strong></td><td>[列出 3-5 个同类游戏]</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">二、里程碑时间表</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>里程碑</th><th>目标日期</th><th>交付物</th><th>状态</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Alpha 完成</td><td>[日期]</td><td>所有功能可运行</td><td>[ ]</td></tr>
+            <tr><td>商店页面上线</td><td>[日期]</td><td>Steam 页面 + 预告片</td><td>[ ]</td></tr>
+            <tr><td>Beta 完成</td><td>[日期]</td><td>内容完整 + 内测</td><td>[ ]</td></tr>
+            <tr><td>Steam 新品节</td><td>[日期]</td><td>Demo 版本</td><td>[ ]</td></tr>
+            <tr><td>Gold Master</td><td>[日期]</td><td>最终版本</td><td>[ ]</td></tr>
+            <tr><td>发布日</td><td>[日期]</td><td>正式发售</td><td>[ ]</td></tr>
+            <tr><td>首次大促</td><td>[日期]</td><td>折扣促销</td><td>[ ]</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">三、发布日行动清单</div>
+      <ul class="checklist">
+        <li>Steam 版本已发布并验证可下载</li>
+        <li>社交媒体发布帖已发送（Twitter、TikTok、B站）</li>
+        <li>Discord 公告已发送</li>
+        <li>邮件列表通知已发送</li>
+        <li>媒体/主播 Key 的后续跟进</li>
+        <li>监控 Steam 论坛和评价</li>
+        <li>检查数据埋点是否正常工作</li>
+        <li>监控崩溃报告系统</li>
+        <li>团队成员在线待命</li>
+        <li>准备好热修复流程</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">营销时间线模板</h3>
+
+    <div class="card">
+      <div class="card-title">12 个月营销计划</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>月份</th><th>社交媒体</th><th>核心行动</th><th>目标</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>M-12</strong></td>
+              <td>开始#gamedev 日常分享</td>
+              <td>创建社交媒体账号 + Discord</td>
+              <td>500 粉丝</td>
+            </tr>
+            <tr>
+              <td><strong>M-9</strong></td>
+              <td>每周 3 帖 + GIF</td>
+              <td>Steam 商店页面上线</td>
+              <td>1,000 愿望单</td>
+            </tr>
+            <tr>
+              <td><strong>M-6</strong></td>
+              <td>TikTok 运营启动</td>
+              <td>首支预告片发布</td>
+              <td>3,000 愿望单</td>
+            </tr>
+            <tr>
+              <td><strong>M-4</strong></td>
+              <td>加大发帖频率</td>
+              <td>参加 Steam 新品节</td>
+              <td>7,000 愿望单</td>
+            </tr>
+            <tr>
+              <td><strong>M-2</strong></td>
+              <td>每日更新</td>
+              <td>发送媒体 Key + 新预告片</td>
+              <td>12,000 愿望单</td>
+            </tr>
+            <tr>
+              <td><strong>M-1</strong></td>
+              <td>每日倒计时</td>
+              <td>Launch Trailer + 全面推广</td>
+              <td>15,000 愿望单</td>
+            </tr>
+            <tr>
+              <td><strong>发布月</strong></td>
+              <td>密集互动</td>
+              <td>发布 + 社区管理</td>
+              <td>首月 2,000 销量</td>
+            </tr>
+            <tr>
+              <td><strong>M+1</strong></td>
+              <td>分享玩家内容</td>
+              <td>首个补丁 + 收集反馈</td>
+              <td>好评率 85%+</td>
+            </tr>
+            <tr>
+              <td><strong>M+3</strong></td>
+              <td>保持活跃</td>
+              <td>首次打折 + 内容更新</td>
+              <td>累计 4,000 销量</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">预算规划</h3>
+
+    <div class="card">
+      <div class="card-title">独立游戏发布预算模板（最低可行 vs 推荐）</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>项目</th><th>最低预算</th><th>推荐预算</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Steam 上架费</strong></td><td>$100</td><td>$100</td><td>固定费用</td></tr>
+            <tr><td><strong>预告片制作</strong></td><td>$0（自制）</td><td>$2,000-5,000</td><td>专业制作差距巨大</td></tr>
+            <tr><td><strong>本地化</strong></td><td>$0（仅英文）</td><td>$2,000-8,000</td><td>英文+中日韩+EFIGS</td></tr>
+            <tr><td><strong>展会参展</strong></td><td>$0</td><td>$1,000-3,000</td><td>含差旅和展位</td></tr>
+            <tr><td><strong>社交媒体广告</strong></td><td>$0</td><td>$500-2,000</td><td>Twitter/TikTok 推广</td></tr>
+            <tr><td><strong>音乐授权/委托</strong></td><td>$0（自制/免费）</td><td>$1,000-5,000</td><td>原创配乐</td></tr>
+            <tr><td><strong>法务（商标注册等）</strong></td><td>$250</td><td>$500-1,000</td><td>至少注册商标</td></tr>
+            <tr><td><strong>QA 外包</strong></td><td>$0（自测）</td><td>$500-2,000</td><td>外部测试团队</td></tr>
+            <tr><td><strong>域名/网站</strong></td><td>$15/年</td><td>$50-200/年</td><td>域名+简单落地页</td></tr>
+            <tr><td style="border-top: 2px solid var(--accent)"><strong>合计</strong></td><td style="border-top: 2px solid var(--accent)"><strong>$365</strong></td><td style="border-top: 2px solid var(--accent)"><strong>$7,650-26,300</strong></td><td style="border-top: 2px solid var(--accent)">不含开发成本</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">关于营销预算的经验法则</div>
+      <p>行业经验法则：<strong>营销预算 = 开发成本的 30-50%</strong>。如果你花了 $50,000 开发游戏，应该准备 $15,000-25,000 的营销预算。当然，独立开发者可以通过「公开开发」策略大幅降低这个比例，但<strong>零预算不等于零投入</strong>——你投入的时间和精力也是成本。</p>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">成功指标定义</h3>
+
+    <p>在发布前就定义「成功」对你意味着什么。没有明确的目标，你永远不知道自己是否成功。</p>
+
+    <div class="card">
+      <div class="card-title">分层成功标准</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>层级</th><th>销量目标</th><th>收入目标</th><th>其他指标</th><th>含义</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag red">底线</span></td>
+              <td>500 份</td>
+              <td>覆盖直接成本</td>
+              <td>好评率 &gt; 70%</td>
+              <td>没亏钱，积累了经验</td>
+            </tr>
+            <tr>
+              <td><span class="tag orange">及格</span></td>
+              <td>2,000 份</td>
+              <td>覆盖全部成本</td>
+              <td>好评率 &gt; 80%</td>
+              <td>不亏不赚，但建立了品牌</td>
+            </tr>
+            <tr>
+              <td><span class="tag blue">良好</span></td>
+              <td>5,000 份</td>
+              <td>可支撑下一个项目</td>
+              <td>好评率 &gt; 85%，媒体报道</td>
+              <td>可以全职做独立游戏了</td>
+            </tr>
+            <tr>
+              <td><span class="tag">优秀</span></td>
+              <td>20,000 份</td>
+              <td>团队一年以上运营</td>
+              <td>好评率 &gt; 90%，主播自发推荐</td>
+              <td>站稳脚跟，品牌效应形成</td>
+            </tr>
+            <tr>
+              <td><span class="tag purple">爆款</span></td>
+              <td>100,000+ 份</td>
+              <td>改变生活</td>
+              <td>好评率 &gt; 95%，行业关注</td>
+              <td>可遇不可求，但做好准备</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <blockquote>
+      "The best time to start marketing your game was the day you started making it. The second best time is today."
+      <cite>— 游戏营销界的共识</cite>
+    </blockquote>
+
+    <div class="info-box">
+      <div class="info-title">最后的话</div>
+      <p>发布游戏是一段旅程，不是终点。即使你的第一款游戏没有达到预期，也不代表失败——<strong>你积累的经验、建立的社区、锻炼的技能，都是下一款游戏最宝贵的资产</strong>。游戏行业的成功往往是一个累积过程：第一款游戏建立声誉，第二款游戏证明实力，第三款游戏获得回报。</p>
+      <p style="margin-top:12px">保持学习，保持创作，保持与你的玩家对话。</p>
+      <p style="margin-top:12px"><strong>祝你的游戏大卖。</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- Pagination -->
+<div class="pagination">
+  <a href="07-engineering.html" class="page-link">
+    <div class="page-dir">← 上一章</div>
+    <div class="page-name">工程实践</div>
+  </a>
+  <div class="page-link disabled" style="cursor:default">
+    <div class="page-dir" style="text-align:right">已是最后一章</div>
+    <div class="page-name" style="text-align:right; color:var(--text-muted)">完结</div>
+  </div>
+</div>
+
+</div><!-- end content-wrap -->
+
+<!-- Footer -->
+<footer>
+  <p>游戏开发完全指南 · AI 生成 · 2026</p>
+</footer>
+
+<!-- Scroll Animation Script -->
+<script>
+(function() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -60px 0px'
+  });
+
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+  // Smooth scroll for TOC links
+  document.querySelectorAll('.toc-item').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const id = link.getAttribute('href').substring(1);
+      const target = document.getElementById(id);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Nav background on scroll
+  const nav = document.querySelector('nav');
+  window.addEventListener('scroll', () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (window.scrollY > 100) {
+      nav.style.background = isLight ? 'rgba(245,246,250,0.95)' : 'rgba(8,8,15,0.95)';
+      nav.style.borderBottomColor = isLight ? '#c5c5d5' : '#2a2a4a';
+    } else {
+      nav.style.background = isLight ? 'rgba(245,246,250,0.85)' : 'rgba(8,8,15,0.85)';
+      nav.style.borderBottomColor = isLight ? '#d5d5e2' : '#1e1e3a';
+    }
+  });
+})();
+</script>
+
+<script>
+(function() {
+  var saved = localStorage.getItem('gd-theme');
+  var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', theme);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+  btn && btn.addEventListener('click', function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gd-theme', next);
+    btn.textContent = next === 'light' ? '🌙' : '☀️';
+  });
+})();
+</script>
+
+</body>
+</html>

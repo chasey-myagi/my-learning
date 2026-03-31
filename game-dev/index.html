@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>游戏开发完全指南</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-page: #08080f;
+  --bg-surface: #0d0d17;
+  --bg-card: #141425;
+  --border: #1e1e3a;
+  --text-body: #c8c8d8;
+  --text-primary: #ffffff;
+  --text-muted: #7878a0;
+  --c1: #ff6b6b; --c2: #4ecdc4; --c3: #ff9ff3; --c4: #feca57;
+  --c5: #48dbfb; --c6: #ff9f43; --c7: #0abde3; --c8: #10ac84;
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --bg-code: #1a1a2e;
+  --border-bright: #2e2e4a;
+}
+
+[data-theme="light"] {
+  --bg-page: #f5f6fa;
+  --bg-surface: #ffffff;
+  --bg-card: #eeeef6;
+  --bg-code: #e6e6f0;
+  --border: #d5d5e2;
+  --border-bright: #c5c5d5;
+  --text-body: #3a3a50;
+  --text-primary: #1a1a2e;
+  --text-muted: #6a6a85;
+}
+
+[data-theme="light"] .hero::before,
+[data-theme="light"] .hero::after {
+  opacity: 0.15;
+}
+
+[data-theme="light"] .hero-grid {
+  background-image:
+    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+}
+
+[data-theme="light"] .mod-card {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+}
+
+/* ── 日间模式组件修复 ── */
+[data-theme="light"] .hero-badge {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.08);
+}
+[data-theme="light"] .hero h1 {
+  background: linear-gradient(135deg, #1a1a2e 0%, var(--c1) 25%, var(--c3) 50%, var(--c5) 75%, var(--c2) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: gradShift 8s ease-in-out infinite;
+}
+[data-theme="light"] .cta-secondary {
+  background: rgba(0,0,0,0.04);
+  border-color: var(--border);
+  color: var(--text-body);
+}
+[data-theme="light"] .cta-secondary:hover {
+  background: rgba(0,0,0,0.06);
+  border-color: var(--c2);
+  color: var(--c2);
+}
+[data-theme="light"] .pipe-icon {
+  border-color: var(--border);
+}
+[data-theme="light"] .pipe-card:hover .pipe-label {
+  color: var(--text-primary);
+}
+[data-theme="light"] .pipe-arrow svg {
+  stroke: rgba(0,0,0,0.2);
+  filter: none;
+}
+[data-theme="light"] .mod-card:hover {
+  border-color: var(--border-bright);
+}
+[data-theme="light"] .mod-tag {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.08);
+}
+[data-theme="light"] .tip-card:hover {
+  border-color: var(--border-bright);
+}
+[data-theme="light"] .res-list li {
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+[data-theme="light"] .particle {
+  background: rgba(0,0,0,0.06);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font: 16px/1.85 var(--font-body);
+  background: var(--bg-page);
+  color: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ===== HERO ===== */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px 80px;
+  overflow: hidden;
+}
+
+/* animated gradient orbs */
+.hero::before, .hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: .35;
+  animation: orbFloat 12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.hero::before {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, var(--c1), var(--c3), transparent 70%);
+  top: -150px; left: -100px;
+}
+.hero::after {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, var(--c2), var(--c5), transparent 70%);
+  bottom: -100px; right: -80px;
+  animation-delay: -6s;
+}
+
+@keyframes orbFloat {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(40px, -30px) scale(1.15); }
+  100% { transform: translate(-20px, 20px) scale(.95); }
+}
+
+/* grid pattern overlay */
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 80%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: .5px;
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+}
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--c2);
+  box-shadow: 0 0 8px var(--c2);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+.hero h1 {
+  font-size: clamp(2.8rem, 7vw, 4.5rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #fff 0%, var(--c1) 25%, var(--c3) 50%, var(--c5) 75%, var(--c2) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradShift 8s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 20px;
+}
+@keyframes gradShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hero-sub {
+  font-size: clamp(1rem, 2.5vw, 1.35rem);
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 2px;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+}
+.hero-sub span {
+  color: var(--text-body);
+}
+
+.hero-desc {
+  max-width: 600px;
+  font-size: 1.05rem;
+  color: var(--text-body);
+  line-height: 1.9;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 40px;
+}
+
+.hero-cta {
+  display: inline-flex;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.hero-cta a {
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all .3s ease;
+}
+.cta-primary {
+  background: linear-gradient(135deg, var(--c1), var(--c3));
+  color: #fff;
+  box-shadow: 0 4px 24px rgba(255,107,107,.25);
+}
+.cta-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(255,107,107,.4);
+}
+.cta-secondary {
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  color: var(--text-body);
+}
+.cta-secondary:hover {
+  background: rgba(255,255,255,.08);
+  border-color: var(--c2);
+  color: var(--c2);
+}
+
+/* scroll hint */
+.scroll-hint {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 1px;
+  animation: scrollBounce 2s ease-in-out infinite;
+  z-index: 1;
+}
+.scroll-hint svg {
+  width: 20px; height: 20px;
+  stroke: var(--text-muted);
+  fill: none;
+  stroke-width: 2;
+}
+@keyframes scrollBounce {
+  0%,100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}
+
+/* ===== SECTION COMMON ===== */
+.container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+
+section {
+  padding: 100px 0;
+  position: relative;
+}
+
+.section-label {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--c5);
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  letter-spacing: -1px;
+}
+
+.section-desc {
+  color: var(--text-muted);
+  max-width: 600px;
+  margin-bottom: 48px;
+  font-size: 1.05rem;
+}
+
+/* ===== PIPELINE / FLOWCHART ===== */
+.pipeline-section { padding-bottom: 60px; }
+
+.pipeline-wrap {
+  position: relative;
+  padding: 40px 0;
+}
+
+.pipeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  overflow-x: auto;
+  padding: 20px 0 40px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.pipeline::-webkit-scrollbar { height: 4px; }
+.pipeline::-webkit-scrollbar-track { background: transparent; }
+.pipeline::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.pipe-node {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pipe-card {
+  position: relative;
+  width: 110px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text-body);
+  transition: all .4s cubic-bezier(.4,0,.2,1);
+  cursor: pointer;
+}
+
+.pipe-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 24px;
+  position: relative;
+  transition: all .4s cubic-bezier(.4,0,.2,1);
+  border: 1px solid rgba(255,255,255,.06);
+}
+
+.pipe-card:hover .pipe-icon {
+  transform: translateY(-4px) scale(1.08);
+}
+
+.pipe-card:hover .pipe-label {
+  color: #fff;
+}
+
+.pipe-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: .3px;
+  transition: color .3s;
+  line-height: 1.4;
+}
+
+.pipe-arrow {
+  flex-shrink: 0;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -20px;
+}
+.pipe-arrow svg {
+  width: 28px;
+  height: 12px;
+  fill: none;
+  stroke: rgba(200,200,216,.25);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 3px rgba(200,200,216,.1));
+}
+
+/* node accent colors */
+.pipe-n1 .pipe-icon { background: rgba(255,107,107,.1); box-shadow: 0 0 20px rgba(255,107,107,.08); }
+.pipe-n1:hover .pipe-icon { box-shadow: 0 0 30px rgba(255,107,107,.25); border-color: var(--c1); }
+.pipe-n2 .pipe-icon { background: rgba(255,107,107,.1); box-shadow: 0 0 20px rgba(255,107,107,.08); }
+.pipe-n2:hover .pipe-icon { box-shadow: 0 0 30px rgba(255,107,107,.25); border-color: var(--c1); }
+.pipe-n3 .pipe-icon { background: rgba(78,205,196,.1); box-shadow: 0 0 20px rgba(78,205,196,.08); }
+.pipe-n3:hover .pipe-icon { box-shadow: 0 0 30px rgba(78,205,196,.25); border-color: var(--c2); }
+.pipe-n4 .pipe-icon { background: rgba(78,205,196,.1); box-shadow: 0 0 20px rgba(78,205,196,.08); }
+.pipe-n4:hover .pipe-icon { box-shadow: 0 0 30px rgba(78,205,196,.25); border-color: var(--c2); }
+.pipe-n5 .pipe-icon { background: rgba(255,159,243,.1); box-shadow: 0 0 20px rgba(255,159,243,.08); }
+.pipe-n5:hover .pipe-icon { box-shadow: 0 0 30px rgba(255,159,243,.25); border-color: var(--c3); }
+.pipe-n6 .pipe-icon { background: rgba(10,189,227,.1); box-shadow: 0 0 20px rgba(10,189,227,.08); }
+.pipe-n6:hover .pipe-icon { box-shadow: 0 0 30px rgba(10,189,227,.25); border-color: var(--c7); }
+.pipe-n7 .pipe-icon { background: rgba(254,202,87,.1); box-shadow: 0 0 20px rgba(254,202,87,.08); }
+.pipe-n7:hover .pipe-icon { box-shadow: 0 0 30px rgba(254,202,87,.25); border-color: var(--c4); }
+.pipe-n8 .pipe-icon { background: rgba(16,172,132,.1); box-shadow: 0 0 20px rgba(16,172,132,.08); }
+.pipe-n8:hover .pipe-icon { box-shadow: 0 0 30px rgba(16,172,132,.25); border-color: var(--c8); }
+.pipe-n9 .pipe-icon { background: rgba(16,172,132,.1); box-shadow: 0 0 20px rgba(16,172,132,.08); }
+.pipe-n9:hover .pipe-icon { box-shadow: 0 0 30px rgba(16,172,132,.25); border-color: var(--c8); }
+
+/* pipeline phase labels */
+.pipeline-phases {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 0 10px;
+}
+.phase-tag {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: .6;
+}
+
+/* ===== MODULE CARDS ===== */
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.mod-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  text-decoration: none;
+  color: var(--text-body);
+  transition: all .4s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mod-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 16px 16px 0 0;
+  opacity: .6;
+  transition: opacity .4s;
+}
+.mod-card:hover::before { opacity: 1; }
+
+.mod-card:hover {
+  border-color: rgba(255,255,255,.1);
+  transform: translateY(-4px);
+}
+
+/* glow on hover */
+.mod-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 16px;
+  opacity: 0;
+  transition: opacity .4s;
+  pointer-events: none;
+}
+.mod-card:hover::after { opacity: 1; }
+
+/* card accent colors via data attribute */
+.mod-card[data-c="1"]::before { background: var(--c1); }
+.mod-card[data-c="1"]::after { box-shadow: 0 0 40px rgba(255,107,107,.1), inset 0 0 40px rgba(255,107,107,.03); }
+.mod-card[data-c="1"]:hover { border-color: rgba(255,107,107,.3); }
+.mod-card[data-c="1"] .mod-num { color: var(--c1); }
+
+.mod-card[data-c="2"]::before { background: var(--c2); }
+.mod-card[data-c="2"]::after { box-shadow: 0 0 40px rgba(78,205,196,.1), inset 0 0 40px rgba(78,205,196,.03); }
+.mod-card[data-c="2"]:hover { border-color: rgba(78,205,196,.3); }
+.mod-card[data-c="2"] .mod-num { color: var(--c2); }
+
+.mod-card[data-c="3"]::before { background: var(--c3); }
+.mod-card[data-c="3"]::after { box-shadow: 0 0 40px rgba(255,159,243,.1), inset 0 0 40px rgba(255,159,243,.03); }
+.mod-card[data-c="3"]:hover { border-color: rgba(255,159,243,.3); }
+.mod-card[data-c="3"] .mod-num { color: var(--c3); }
+
+.mod-card[data-c="4"]::before { background: var(--c4); }
+.mod-card[data-c="4"]::after { box-shadow: 0 0 40px rgba(254,202,87,.1), inset 0 0 40px rgba(254,202,87,.03); }
+.mod-card[data-c="4"]:hover { border-color: rgba(254,202,87,.3); }
+.mod-card[data-c="4"] .mod-num { color: var(--c4); }
+
+.mod-card[data-c="5"]::before { background: var(--c5); }
+.mod-card[data-c="5"]::after { box-shadow: 0 0 40px rgba(72,219,251,.1), inset 0 0 40px rgba(72,219,251,.03); }
+.mod-card[data-c="5"]:hover { border-color: rgba(72,219,251,.3); }
+.mod-card[data-c="5"] .mod-num { color: var(--c5); }
+
+.mod-card[data-c="6"]::before { background: var(--c6); }
+.mod-card[data-c="6"]::after { box-shadow: 0 0 40px rgba(255,159,67,.1), inset 0 0 40px rgba(255,159,67,.03); }
+.mod-card[data-c="6"]:hover { border-color: rgba(255,159,67,.3); }
+.mod-card[data-c="6"] .mod-num { color: var(--c6); }
+
+.mod-card[data-c="7"]::before { background: var(--c7); }
+.mod-card[data-c="7"]::after { box-shadow: 0 0 40px rgba(10,189,227,.1), inset 0 0 40px rgba(10,189,227,.03); }
+.mod-card[data-c="7"]:hover { border-color: rgba(10,189,227,.3); }
+.mod-card[data-c="7"] .mod-num { color: var(--c7); }
+
+.mod-card[data-c="8"]::before { background: var(--c8); }
+.mod-card[data-c="8"]::after { box-shadow: 0 0 40px rgba(16,172,132,.1), inset 0 0 40px rgba(16,172,132,.03); }
+.mod-card[data-c="8"]:hover { border-color: rgba(16,172,132,.3); }
+.mod-card[data-c="8"] .mod-num { color: var(--c8); }
+
+.mod-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mod-num {
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -1px;
+  font-family: system-ui, sans-serif;
+  opacity: .8;
+}
+
+.mod-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mod-desc {
+  font-size: .88rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 16px;
+  flex: 1;
+}
+
+.mod-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mod-tag {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.06);
+  color: var(--text-muted);
+  letter-spacing: .3px;
+}
+
+/* ===== LEARNING PATHS ===== */
+.paths-section { background: var(--bg-surface); }
+
+.paths-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.path-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.path-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+.path-beginner .path-badge { background: rgba(78,205,196,.12); color: var(--c2); }
+.path-intermediate .path-badge { background: rgba(255,159,67,.12); color: var(--c6); }
+.path-advanced .path-badge { background: rgba(255,107,107,.12); color: var(--c1); }
+
+.path-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.path-duration {
+  font-size: .85rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.path-timeline {
+  position: relative;
+  padding-left: 20px;
+}
+.path-timeline::before {
+  content: '';
+  position: absolute;
+  left: 4px; top: 8px; bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+}
+.path-beginner .path-timeline::before { background: linear-gradient(to bottom, var(--c2), rgba(78,205,196,.2)); }
+.path-intermediate .path-timeline::before { background: linear-gradient(to bottom, var(--c6), rgba(255,159,67,.2)); }
+.path-advanced .path-timeline::before { background: linear-gradient(to bottom, var(--c1), rgba(255,107,107,.2)); }
+
+.path-step {
+  position: relative;
+  padding: 8px 0;
+  font-size: .88rem;
+  color: var(--text-body);
+  line-height: 1.6;
+}
+.path-step::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 14px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: var(--bg-card);
+}
+.path-beginner .path-step::before { border-color: var(--c2); }
+.path-intermediate .path-step::before { border-color: var(--c6); }
+.path-advanced .path-step::before { border-color: var(--c1); }
+
+.path-step:last-child::before {
+  background: none;
+}
+.path-beginner .path-step:last-child::before { background: var(--c2); }
+.path-intermediate .path-step:last-child::before { background: var(--c6); }
+.path-advanced .path-step:last-child::before { background: var(--c1); }
+
+.path-step strong { color: var(--text-primary); }
+
+/* ===== TIPS ===== */
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.tip-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  transition: all .3s;
+}
+.tip-card:hover {
+  border-color: rgba(255,255,255,.1);
+  transform: translateY(-2px);
+}
+
+.tip-icon {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.tip-card:nth-child(1) .tip-icon { background: rgba(255,107,107,.1); }
+.tip-card:nth-child(2) .tip-icon { background: rgba(78,205,196,.1); }
+.tip-card:nth-child(3) .tip-icon { background: rgba(254,202,87,.1); }
+.tip-card:nth-child(4) .tip-icon { background: rgba(255,159,243,.1); }
+.tip-card:nth-child(5) .tip-icon { background: rgba(10,189,227,.1); }
+
+.tip-text {
+  font-size: .95rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.5;
+}
+.tip-sub {
+  font-size: .82rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.6;
+}
+
+/* ===== RESOURCES ===== */
+.resources-section { background: var(--bg-surface); }
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.res-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.res-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+.res-card:nth-child(1) .res-icon { background: rgba(255,107,107,.1); }
+.res-card:nth-child(2) .res-icon { background: rgba(78,205,196,.1); }
+.res-card:nth-child(3) .res-icon { background: rgba(254,202,87,.1); }
+.res-card:nth-child(4) .res-icon { background: rgba(255,159,243,.1); }
+.res-card:nth-child(5) .res-icon { background: rgba(10,189,227,.1); }
+
+.res-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.res-list {
+  list-style: none;
+}
+.res-list li {
+  font-size: .85rem;
+  color: var(--text-muted);
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  line-height: 1.6;
+}
+.res-list li:last-child { border-bottom: none; }
+.res-list a {
+  color: var(--text-body);
+  text-decoration: none;
+  transition: color .2s;
+}
+.res-list a:hover { color: var(--c5); }
+
+/* ===== FOOTER ===== */
+.footer {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-muted);
+  font-size: .85rem;
+  border-top: 1px solid var(--border);
+}
+.footer-line {
+  max-width: 400px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+/* ===== DIVIDER ===== */
+.section-divider {
+  width: 60px; height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--c1), var(--c5));
+  margin-bottom: 32px;
+}
+
+/* ===== FLOATING PARTICLES ===== */
+.particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.particle {
+  position: absolute;
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.15);
+  animation: particleDrift linear infinite;
+}
+@keyframes particleDrift {
+  0%   { transform: translateY(100vh) translateX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-10vh) translateX(40px); opacity: 0; }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .modules-grid { grid-template-columns: 1fr; }
+  .paths-grid { grid-template-columns: 1fr; }
+  .mod-num { font-size: 1.8rem; }
+  section { padding: 60px 0; }
+  .pipeline { padding-bottom: 20px; }
+}
+
+@media (max-width: 480px) {
+  .hero { min-height: 90vh; padding: 40px 16px 60px; }
+  .container { padding: 0 16px; }
+  .pipe-card { width: 90px; }
+  .pipe-icon { width: 52px; height: 52px; font-size: 20px; }
+  .pipe-arrow { width: 24px; }
+  .pipe-label { font-size: 11px; }
+}
+
+/* ===== ENTRANCE ANIMATIONS ===== */
+.fade-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all .7s cubic-bezier(.4,0,.2,1);
+}
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Global Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: Focus Styles ── */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--c5);
+  outline-offset: 2px;
+}
+
+#theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  z-index: 1100;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s, border-color 0.3s;
+  line-height: 1;
+}
+#theme-toggle:hover {
+  border-color: var(--border-bright);
+  background: var(--bg-surface);
+}
+</style>
+</head>
+<body>
+
+<button id="theme-toggle" aria-label="切换主题" title="切换日间/夜间模式">☀️</button>
+
+<!-- Floating particles -->
+<div class="particles" id="particles"></div>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-badge">8 个核心模块 &middot; 全流程覆盖</div>
+  <h1>游戏开发完全指南</h1>
+  <p class="hero-sub">从零到发布 <span>&middot;</span> 理论与实践全覆盖</p>
+  <p class="hero-desc">
+    一套系统化的游戏开发知识体系，涵盖设计、编程、美术、音频、叙事、工程到发布运营。
+    不论你是刚入门的独立开发者，还是想系统补全知识的从业者，这里是你的全景地图。
+  </p>
+  <div class="hero-cta">
+    <a href="#modules" class="cta-primary">浏览模块</a>
+    <a href="#paths" class="cta-secondary">学习路线</a>
+  </div>
+  <div class="scroll-hint">
+    <svg viewBox="0 0 20 20"><polyline points="6 8 10 12 14 8"/></svg>
+  </div>
+</section>
+
+<!-- ===== PIPELINE ===== -->
+<section class="pipeline-section" id="pipeline">
+  <div class="container">
+    <span class="section-label">全流程地图</span>
+    <h2 class="section-title">从概念到发布的完整旅程</h2>
+    <p class="section-desc">每一款优秀的游戏都经历了这条流水线。点击节点跳转到对应模块深入学习。</p>
+
+    <div class="pipeline-wrap">
+      <div class="pipeline">
+        <!-- 1. 概念构思 -->
+        <div class="pipe-node">
+          <a href="01-game-design.html" class="pipe-card pipe-n1">
+            <div class="pipe-icon">💡</div>
+            <div class="pipe-label">概念构思</div>
+          </a>
+        </div>
+        <div class="pipe-arrow"><svg viewBox="0 0 28 12"><line x1="2" y1="6" x2="22" y2="6"/><polyline points="18 2 24 6 18 10"/></svg></div>
+
+        <!-- 2. 游戏设计 -->
+        <div class="pipe-node">
+          <a href="01-game-design.html" class="pipe-card pipe-n2">
+            <div class="pipe-icon">🎯</div>
+            <div class="pipe-label">游戏设计</div>
+          </a>
+        </div>
+        <div class="pipe-arrow"><svg viewBox="0 0 28 12"><line x1="2" y1="6" x2="22" y2="6"/><polyline points="18 2 24 6 18 10"/></svg></div>
+
+        <!-- 3. 原型开发 -->
+        <div class="pipe-node">
+          <a href="02-programming.html" class="pipe-card pipe-n3">
+            <div class="pipe-icon">🔧</div>
+            <div class="pipe-label">原型开发</div>
+          </a>
+        </div>
+        <div class="pipe-arrow"><svg viewBox="0 0 28 12"><line x1="2" y1="6" x2="22" y2="6"/><polyline points="18 2 24 6 18 10"/></svg></div>
+
+        <!-- 4. 玩法验证 -->
+        <div class="pipe-node">
+          <a href="05-systems.html" class="pipe-card pipe-n4">
+            <div class="pipe-icon">🎮</div>
+            <div class="pipe-label">玩法验证</div>
+          </a>
+        </div>
+        <div class="pipe-arrow"><svg viewBox="0 0 28 12"><line x1="2" y1="6" x2="22" y2="6"/><polyline points="18 2 24 6 18 10"/></svg></div>
+
+        <!-- 5. 内容制作 -->
+        <div class="pipe-node">
+          <a href="03-art.html" class="pipe-card pipe-n5">
+            <div class="pipe-icon">🎨</div>
+            <div class="pipe-label">内容制作</div>
+          </a>
+        </div>
+        <div class="pipe-arrow"><svg viewBox="0 0 28 12"><line x1="2" y1="6" x2="22" y2="6"/><polyline points="18 2 24 6 18 10"/></svg></div>
+
+        <!-- 6. 系统集成 -->
+        <div class="pipe-node">
+          <a href="07-engineering.html" class="pipe-card pipe-n6">
+            <div class="pipe-icon">⚙️</div>
+            <div class="pipe-label">系统集成</div>
+          </a>
+        </div>
+        <div class="pipe-arrow"><svg viewBox="0 0 28 12"><line x1="2" y1="6" x2="22" y2="6"/><polyline points="18 2 24 6 18 10"/></svg></div>
+
+        <!-- 7. 测试打磨 -->
+        <div class="pipe-node">
+          <a href="07-engineering.html" class="pipe-card pipe-n7">
+            <div class="pipe-icon">🔍</div>
+            <div class="pipe-label">测试打磨</div>
+          </a>
+        </div>
+        <div class="pipe-arrow"><svg viewBox="0 0 28 12"><line x1="2" y1="6" x2="22" y2="6"/><polyline points="18 2 24 6 18 10"/></svg></div>
+
+        <!-- 8. 发布 -->
+        <div class="pipe-node">
+          <a href="08-publishing.html" class="pipe-card pipe-n8">
+            <div class="pipe-icon">🚀</div>
+            <div class="pipe-label">发布</div>
+          </a>
+        </div>
+        <div class="pipe-arrow"><svg viewBox="0 0 28 12"><line x1="2" y1="6" x2="22" y2="6"/><polyline points="18 2 24 6 18 10"/></svg></div>
+
+        <!-- 9. 运营 -->
+        <div class="pipe-node">
+          <a href="08-publishing.html" class="pipe-card pipe-n9">
+            <div class="pipe-icon">📊</div>
+            <div class="pipe-label">运营</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== MODULES ===== -->
+<section id="modules">
+  <div class="container">
+    <span class="section-label">核心知识</span>
+    <h2 class="section-title">八大模块</h2>
+    <p class="section-desc">每个模块聚焦游戏开发的一个关键领域，既可独立阅读，也可按路线系统学习。</p>
+
+    <div class="modules-grid">
+      <!-- Module 1 -->
+      <a href="01-game-design.html" class="mod-card fade-up" data-c="1">
+        <div class="mod-header">
+          <span class="mod-num">01</span>
+          <span class="mod-title">游戏设计基础</span>
+        </div>
+        <p class="mod-desc">理解什么是「好玩」的本质。从 MDA 框架到玩家心理学，掌握设计游戏的核心方法论，学会撰写 GDD 并快速验证原型。</p>
+        <div class="mod-tags">
+          <span class="mod-tag">MDA框架</span>
+          <span class="mod-tag">游戏循环</span>
+          <span class="mod-tag">玩家心理学</span>
+          <span class="mod-tag">原型设计</span>
+          <span class="mod-tag">GDD</span>
+        </div>
+      </a>
+
+      <!-- Module 2 -->
+      <a href="02-programming.html" class="mod-card fade-up" data-c="2">
+        <div class="mod-header">
+          <span class="mod-num">02</span>
+          <span class="mod-title">编程与引擎</span>
+        </div>
+        <p class="mod-desc">选择合适的引擎，搭建技术架构。深入 ECS 模式、物理引擎原理和游戏 AI 编程，让创意有坚实的技术支撑。</p>
+        <div class="mod-tags">
+          <span class="mod-tag">Godot</span>
+          <span class="mod-tag">Unity</span>
+          <span class="mod-tag">Unreal</span>
+          <span class="mod-tag">架构模式</span>
+          <span class="mod-tag">ECS</span>
+          <span class="mod-tag">物理引擎</span>
+          <span class="mod-tag">AI编程</span>
+        </div>
+      </a>
+
+      <!-- Module 3 -->
+      <a href="03-art.html" class="mod-card fade-up" data-c="3">
+        <div class="mod-header">
+          <span class="mod-num">03</span>
+          <span class="mod-title">美术与视觉设计</span>
+        </div>
+        <p class="mod-desc">游戏的第一印象在于视觉。学习像素风、3D 建模、动画原则和 Shader 编写，探索 AI 辅助美术的前沿工作流。</p>
+        <div class="mod-tags">
+          <span class="mod-tag">像素风</span>
+          <span class="mod-tag">3D建模</span>
+          <span class="mod-tag">动画原则</span>
+          <span class="mod-tag">UI/UX</span>
+          <span class="mod-tag">Shader</span>
+          <span class="mod-tag">AI美术</span>
+        </div>
+      </a>
+
+      <!-- Module 4 -->
+      <a href="04-audio.html" class="mod-card fade-up" data-c="4">
+        <div class="mod-header">
+          <span class="mod-num">04</span>
+          <span class="mod-title">音频设计</span>
+        </div>
+        <p class="mod-desc">声音是被严重低估的游戏体验维度。掌握音效设计、自适应音乐系统和空间音频技术，让你的游戏世界更具沉浸感。</p>
+        <div class="mod-tags">
+          <span class="mod-tag">音效设计</span>
+          <span class="mod-tag">自适应音乐</span>
+          <span class="mod-tag">FMOD</span>
+          <span class="mod-tag">Wwise</span>
+          <span class="mod-tag">空间音频</span>
+        </div>
+      </a>
+
+      <!-- Module 5 -->
+      <a href="05-systems.html" class="mod-card fade-up" data-c="5">
+        <div class="mod-header">
+          <span class="mod-num">05</span>
+          <span class="mod-title">系统与关卡设计</span>
+        </div>
+        <p class="mod-desc">游戏的深度来自系统交互。学习经济系统平衡、战斗数值策划、难度曲线调优和程序化内容生成。</p>
+        <div class="mod-tags">
+          <span class="mod-tag">经济系统</span>
+          <span class="mod-tag">战斗设计</span>
+          <span class="mod-tag">难度曲线</span>
+          <span class="mod-tag">程序化生成</span>
+          <span class="mod-tag">数值策划</span>
+        </div>
+      </a>
+
+      <!-- Module 6 -->
+      <a href="06-narrative.html" class="mod-card fade-up" data-c="6">
+        <div class="mod-header">
+          <span class="mod-num">06</span>
+          <span class="mod-title">叙事设计</span>
+        </div>
+        <p class="mod-desc">好的叙事让玩家不只是在玩游戏，而是在经历一段旅程。探索故事结构、环境叙事、分支对话和世界观构建的艺术。</p>
+        <div class="mod-tags">
+          <span class="mod-tag">故事结构</span>
+          <span class="mod-tag">环境叙事</span>
+          <span class="mod-tag">分支对话</span>
+          <span class="mod-tag">世界观构建</span>
+          <span class="mod-tag">Twine/Ink</span>
+        </div>
+      </a>
+
+      <!-- Module 7 -->
+      <a href="07-engineering.html" class="mod-card fade-up" data-c="7">
+        <div class="mod-header">
+          <span class="mod-num">07</span>
+          <span class="mod-title">工程实践</span>
+        </div>
+        <p class="mod-desc">从个人项目到可发布产品的鸿沟靠工程能力跨越。版本控制、CI/CD、自动化测试和性能优化，让开发过程可持续。</p>
+        <div class="mod-tags">
+          <span class="mod-tag">版本控制</span>
+          <span class="mod-tag">CI/CD</span>
+          <span class="mod-tag">测试策略</span>
+          <span class="mod-tag">性能优化</span>
+          <span class="mod-tag">项目管理</span>
+        </div>
+      </a>
+
+      <!-- Module 8 -->
+      <a href="08-publishing.html" class="mod-card fade-up" data-c="8">
+        <div class="mod-header">
+          <span class="mod-num">08</span>
+          <span class="mod-title">发布与运营</span>
+        </div>
+        <p class="mod-desc">做完游戏只是开始。学习 Steam 上架流程、市场推广策略、商业模式选择和社区运营，让你的作品被更多人看到。</p>
+        <div class="mod-tags">
+          <span class="mod-tag">Steam上架</span>
+          <span class="mod-tag">市场推广</span>
+          <span class="mod-tag">商业模式</span>
+          <span class="mod-tag">社区运营</span>
+          <span class="mod-tag">数据分析</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LEARNING PATHS ===== -->
+<section class="paths-section" id="paths">
+  <div class="container">
+    <span class="section-label">学习路线</span>
+    <h2 class="section-title">选择你的道路</h2>
+    <p class="section-desc">三条路线适合不同阶段，选一条开始，随时可以切换。关键是：马上开始做。</p>
+
+    <div class="paths-grid">
+      <!-- Beginner -->
+      <div class="path-card path-beginner fade-up">
+        <span class="path-badge">入门</span>
+        <h3 class="path-title">快速起步</h3>
+        <p class="path-duration">2 - 4 周</p>
+        <div class="path-timeline">
+          <div class="path-step"><strong>游戏设计基础</strong> — 理解什么是好玩</div>
+          <div class="path-step"><strong>编程与引擎</strong> — 选引擎、跑起来</div>
+          <div class="path-step"><strong>做第一个小游戏</strong> — 48小时内完成</div>
+        </div>
+      </div>
+
+      <!-- Intermediate -->
+      <div class="path-card path-intermediate fade-up">
+        <span class="path-badge">进阶</span>
+        <h3 class="path-title">能力拓展</h3>
+        <p class="path-duration">1 - 3 个月</p>
+        <div class="path-timeline">
+          <div class="path-step"><strong>系统与关卡设计</strong> — 构建深度</div>
+          <div class="path-step"><strong>美术基础</strong> — 视觉表达</div>
+          <div class="path-step"><strong>音频设计</strong> — 沉浸体验</div>
+          <div class="path-step"><strong>叙事设计</strong> — 讲好故事</div>
+          <div class="path-step"><strong>做一个完整项目</strong> — 有始有终</div>
+        </div>
+      </div>
+
+      <!-- Advanced -->
+      <div class="path-card path-advanced fade-up">
+        <span class="path-badge">完整</span>
+        <h3 class="path-title">独立发布</h3>
+        <p class="path-duration">3 - 6 个月</p>
+        <div class="path-timeline">
+          <div class="path-step"><strong>学完全部模块</strong> — 建立全栈认知</div>
+          <div class="path-step"><strong>工程实践</strong> — 专业工作流</div>
+          <div class="path-step"><strong>发布与运营</strong> — 从作品到产品</div>
+          <div class="path-step"><strong>独立发布一款游戏</strong> — 完整闭环</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TIPS ===== -->
+<section id="tips">
+  <div class="container">
+    <span class="section-label">核心建议</span>
+    <h2 class="section-title">前人踩过的坑</h2>
+    <p class="section-desc">这五条建议价值千金，尤其是当你在凌晨三点怀疑人生的时候。</p>
+
+    <div class="tips-grid">
+      <div class="tip-card fade-up">
+        <div class="tip-icon">🔥</div>
+        <div>
+          <div class="tip-text">做中学，不要学完再做</div>
+          <div class="tip-sub">边做项目边查资料，学习效率提升 10 倍。完美主义是行动力的天敌。</div>
+        </div>
+      </div>
+      <div class="tip-card fade-up">
+        <div class="tip-icon">🎯</div>
+        <div>
+          <div class="tip-text">先做小游戏，再做大游戏</div>
+          <div class="tip-sub">用 48 小时做一个 Game Jam 作品，比花三年做一个「理想中的大作」学到更多。</div>
+        </div>
+      </div>
+      <div class="tip-card fade-up">
+        <div class="tip-icon">⚠️</div>
+        <div>
+          <div class="tip-text">Scope 是最大的敌人</div>
+          <div class="tip-sub">砍掉你计划中 80% 的功能，剩下的 20% 做到极致。然后你会发现那 20% 也太多了。</div>
+        </div>
+      </div>
+      <div class="tip-card fade-up">
+        <div class="tip-icon">✅</div>
+        <div>
+          <div class="tip-text">完成一个烂游戏 > 半成品好游戏</div>
+          <div class="tip-sub">完成的体验无可替代。发布、收集反馈、迭代。每次完成都会让你变得更强。</div>
+        </div>
+      </div>
+      <div class="tip-card fade-up">
+        <div class="tip-icon">❤️</div>
+        <div>
+          <div class="tip-text">从你喜欢的游戏类型开始</div>
+          <div class="tip-sub">热爱是最好的燃料。做你自己想玩的游戏，你就是你的第一个用户。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RESOURCES ===== -->
+<section class="resources-section" id="resources">
+  <div class="container">
+    <span class="section-label">学习资源</span>
+    <h2 class="section-title">推荐资源汇总</h2>
+    <p class="section-desc">精选经过验证的高质量资源，不求全，但求精。</p>
+
+    <div class="resources-grid">
+      <div class="res-card fade-up">
+        <div class="res-icon">📚</div>
+        <h3 class="res-title">书籍</h3>
+        <ul class="res-list">
+          <li>《游戏设计艺术》— Jesse Schell</li>
+          <li>《体验引擎》— Tynan Sylvester</li>
+          <li>《游戏编程模式》— Robert Nystrom</li>
+          <li>《关卡设计之道》— Phil Co</li>
+          <li>《像素逻辑》— Michael Azzi</li>
+        </ul>
+      </div>
+
+      <div class="res-card fade-up">
+        <div class="res-icon">🎓</div>
+        <h3 class="res-title">在线课程 / 教程</h3>
+        <ul class="res-list">
+          <li>CS50's Introduction to Game Development</li>
+          <li>GDQuest (Godot 教程)</li>
+          <li>Brackeys (Unity 经典教程)</li>
+          <li>Ben Cloward (Shader 教程)</li>
+          <li>Udemy / Coursera 游戏开发专项</li>
+        </ul>
+      </div>
+
+      <div class="res-card fade-up">
+        <div class="res-icon">📺</div>
+        <h3 class="res-title">YouTube / B站频道</h3>
+        <ul class="res-list">
+          <li>Game Maker's Toolkit (GMTK)</li>
+          <li>Sebastian Lague</li>
+          <li>Masahiro Sakurai on Creating Games</li>
+          <li>独立游戏分享频道 (B站)</li>
+          <li>GDC Talks (官方频道)</li>
+        </ul>
+      </div>
+
+      <div class="res-card fade-up">
+        <div class="res-icon">💬</div>
+        <h3 class="res-title">社区与论坛</h3>
+        <ul class="res-list">
+          <li>r/gamedev &amp; r/indiegaming</li>
+          <li>IndieDB / itch.io 社区</li>
+          <li>TIGSource Forums</li>
+          <li>游戏开发者社区 (知乎/即刻)</li>
+          <li>Discord 独立游戏开发服务器</li>
+        </ul>
+      </div>
+
+      <div class="res-card fade-up">
+        <div class="res-icon">🛠️</div>
+        <h3 class="res-title">工具集合</h3>
+        <ul class="res-list">
+          <li>Godot / Unity / Unreal Engine</li>
+          <li>Aseprite / Blender / Krita</li>
+          <li>FMOD / Audacity / LMMS</li>
+          <li>Twine / Ink (叙事工具)</li>
+          <li>Trello / Notion (项目管理)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <p class="footer-line">
+    游戏开发完全指南 &middot; 持续更新中<br>
+    做你想玩的游戏，成为你想成为的开发者。
+  </p>
+</footer>
+
+<script>
+// Intersection Observer for fade-up animations
+let animQueue = 0;
+const observer = new IntersectionObserver((entries) => {
+  const visible = entries.filter(e => e.isIntersecting);
+  visible.forEach((entry, i) => {
+    setTimeout(() => {
+      entry.target.classList.add('visible');
+    }, i * 100);
+    observer.unobserve(entry.target);
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+// Generate floating particles
+const particlesContainer = document.getElementById('particles');
+for (let i = 0; i < 30; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + '%';
+  p.style.animationDuration = (15 + Math.random() * 25) + 's';
+  p.style.animationDelay = -(Math.random() * 30) + 's';
+  p.style.width = p.style.height = (1 + Math.random() * 2) + 'px';
+  p.style.opacity = .05 + Math.random() * .15;
+  particlesContainer.appendChild(p);
+}
+</script>
+<script>
+(function() {
+  var saved = localStorage.getItem('gd-theme');
+  var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', theme);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+  btn && btn.addEventListener('click', function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gd-theme', next);
+    btn.textContent = next === 'light' ? '🌙' : '☀️';
+  });
+})();
+</script>
+</body>
+</html>

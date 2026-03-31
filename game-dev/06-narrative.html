@@ -1,0 +1,2651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 — 叙事设计 | 游戏开发完全指南</title>
+<style>
+:root {
+  --bg-page: #08080f;
+  --bg-surface: #0d0d17;
+  --bg-card: #141425;
+  --bg-code: #0a0a18;
+  --border: #1e1e3a;
+  --border-bright: #2a2a4a;
+  --text-primary: #ffffff;
+  --text-body: #c8c8d8;
+  --text-muted: #7878a0;
+  --accent: #ff9f43;
+  --accent-dim: rgba(255,159,67,0.1);
+  --accent-mid: rgba(255,159,67,0.25);
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --max-width: 880px;
+  --nav-height: 60px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --accent-light: #ffb86c;
+  --accent-glow: rgba(255,159,67,0.15);
+  --warm: #ff6b6b;
+  --warm-dim: rgba(255,107,107,0.12);
+  --teal: #4ecdc4;
+  --teal-dim: rgba(78,205,196,0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96,165,250,0.12);
+  --green: #34d399;
+  --green-dim: rgba(52,211,153,0.12);
+  --pink: #f472b6;
+  --pink-dim: rgba(244,114,182,0.12);
+  --gold: #fbbf24;
+  --gold-dim: rgba(251,191,36,0.12);
+  --gradient-warm: linear-gradient(135deg, #ff9f43, #ff6b6b);
+  --gradient-literary: linear-gradient(135deg, #ff9f43, #a78bfa);
+  --gradient-hero: linear-gradient(135deg, rgba(255,159,67,0.3), rgba(167,139,250,0.2), rgba(255,107,107,0.15));
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 40px rgba(255,159,67,0.1), 0 0 80px rgba(255,159,67,0.05);
+}
+
+[data-theme="light"] {
+  --bg-page: #f5f6fa;
+  --bg-surface: #ffffff;
+  --bg-card: #eeeef6;
+  --bg-code: #e6e6f0;
+  --border: #d5d5e2;
+  --border-bright: #c5c5d5;
+  --text-body: #3a3a50;
+  --text-primary: #1a1a2e;
+  --text-muted: #6a6a85;
+}
+
+[data-theme="light"] nav,
+[data-theme="light"] .navbar {
+  background: rgba(245,246,250,0.88);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .hero-number {
+  color: rgba(0,0,0,0.03);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+/* ── 日间模式组件修复 ── */
+[data-theme="light"] .hero::before {
+  background: linear-gradient(135deg, rgba(201,120,16,0.08), rgba(120,100,200,0.05), rgba(200,80,80,0.04));
+}
+[data-theme="light"] .hero::after {
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 60%, rgba(255,159,67,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 500px at 80% 30%, rgba(167,139,250,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 300px at 50% 90%, rgba(255,107,107,0.03) 0%, transparent 70%);
+}
+[data-theme="light"] .hero-number {
+  opacity: 0.08;
+}
+[data-theme="light"] .card-warm {
+  background: linear-gradient(135deg, var(--bg-card), rgba(255,107,107,0.04));
+}
+[data-theme="light"] .card-teal {
+  background: linear-gradient(135deg, var(--bg-card), rgba(78,205,196,0.04));
+}
+[data-theme="light"] .card-purple {
+  background: linear-gradient(135deg, var(--bg-card), rgba(167,139,250,0.04));
+}
+[data-theme="light"] .card:hover {
+  border-color: var(--accent-mid);
+  background: var(--bg-card);
+}
+[data-theme="light"] .info-box {
+  background: rgba(255,159,67,0.06);
+  border-color: rgba(255,159,67,0.2);
+}
+[data-theme="light"] .info-box.tip {
+  background: rgba(78,205,196,0.06);
+  border-color: rgba(78,205,196,0.2);
+}
+[data-theme="light"] .info-box.warning {
+  background: rgba(255,107,107,0.06);
+  border-color: rgba(255,107,107,0.2);
+}
+[data-theme="light"] .info-box.note {
+  background: rgba(167,139,250,0.06);
+  border-color: rgba(167,139,250,0.2);
+}
+[data-theme="light"] .flow-box.alt {
+  border-color: rgba(167,139,250,0.25);
+}
+[data-theme="light"] .flow-box.teal {
+  border-color: rgba(78,205,196,0.25);
+}
+[data-theme="light"] .flow-box.warm {
+  border-color: rgba(255,107,107,0.25);
+}
+[data-theme="light"] .flow-box.blue {
+  border-color: rgba(96,165,250,0.25);
+}
+[data-theme="light"] .case-study {
+  background: linear-gradient(135deg, var(--bg-card), rgba(255,159,67,0.04));
+}
+[data-theme="light"] .ice-above {
+  background: rgba(255,159,67,0.06);
+  border-color: rgba(255,159,67,0.2);
+}
+[data-theme="light"] .ice-below {
+  background: rgba(96,165,250,0.06);
+  border-color: rgba(96,165,250,0.15);
+}
+[data-theme="light"] .tool-table tr:hover td {
+  background: rgba(255,159,67,0.04);
+}
+[data-theme="light"] .dialogue-choice {
+  background: rgba(255,159,67,0.06);
+  border-color: rgba(255,159,67,0.2);
+}
+[data-theme="light"] .dialogue-choice:hover {
+  background: rgba(255,159,67,0.12);
+  border-color: var(--accent);
+}
+[data-theme="light"] .code-block {
+  color: var(--text-body);
+}
+[data-theme="light"] .tag.purple { background: rgba(167,139,250,0.08); }
+[data-theme="light"] .tag.teal { background: rgba(78,205,196,0.08); }
+[data-theme="light"] .tag.blue { background: rgba(96,165,250,0.08); }
+[data-theme="light"] .tag.warm { background: rgba(255,107,107,0.08); }
+[data-theme="light"] .tag.green { background: rgba(52,211,153,0.08); }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-page);
+  color: var(--text-body);
+  line-height: 1.85;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ==================== NAV ==================== */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(8,8,15,0.88);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: var(--nav-height);
+  display: flex; align-items: center; justify-content: space-between;
+}
+nav a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.3s;
+  font-family: var(--font-body);
+}
+nav a:hover { color: var(--accent); }
+nav .nav-center {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  font-family: var(--font-body);
+}
+#theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+#theme-toggle:hover {
+  border-color: var(--accent);
+}
+
+/* ==================== HERO ==================== */
+.hero {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: var(--nav-height) 2rem 2rem;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: var(--gradient-hero);
+  opacity: 0.6;
+}
+.hero::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 60%, rgba(255,159,67,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 500px at 80% 30%, rgba(167,139,250,0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 300px at 50% 90%, rgba(255,107,107,0.06) 0%, transparent 70%);
+}
+.hero-content {
+  position: relative; z-index: 1;
+  text-align: center;
+  max-width: 800px;
+}
+.hero-number {
+  font-size: clamp(6rem, 18vw, 14rem);
+  font-weight: 900;
+  background: var(--gradient-warm);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  opacity: 0.15;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -60%);
+  font-family: var(--font-body);
+  pointer-events: none;
+  user-select: none;
+}
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.2rem);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  font-family: var(--font-body);
+}
+.hero .subtitle {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto 2.5rem;
+  line-height: 1.7;
+}
+.hero .quote {
+  font-style: italic;
+  color: var(--accent);
+  font-size: 1.1rem;
+  opacity: 0.8;
+  border-left: 3px solid var(--accent);
+  padding-left: 1.2rem;
+  text-align: left;
+  display: inline-block;
+  max-width: 500px;
+}
+.hero .quote-author {
+  display: block;
+  font-style: normal;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* ==================== TOC ==================== */
+.toc-section {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 4rem 2rem;
+}
+.toc-title {
+  font-size: 1rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 2rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+.toc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.toc-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  text-decoration: none;
+  color: var(--text-body);
+  transition: all 0.3s;
+  display: flex; align-items: center; gap: 0.8rem;
+}
+.toc-item:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  transform: translateY(-2px);
+}
+.toc-num {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 1.8rem;
+  font-family: var(--font-body);
+}
+.toc-label { font-size: 0.95rem; }
+
+/* ==================== MAIN CONTENT ==================== */
+.content-wrapper {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 2rem 6rem;
+}
+
+/* Section */
+.section {
+  margin-bottom: 5rem;
+}
+.section-header {
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.section-num {
+  display: inline-block;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-body);
+  letter-spacing: 0.05em;
+}
+.section h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+}
+.section h3 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 2.5rem 0 1rem;
+  font-family: var(--font-body);
+}
+.section h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent-light);
+  margin: 2rem 0 0.75rem;
+}
+.section p {
+  margin-bottom: 1.2rem;
+  color: var(--text-body);
+}
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: border-color 0.3s;
+}
+.card:hover { border-color: var(--accent-mid); }
+.card-accent {
+  border-left: 3px solid var(--accent);
+}
+.card-warm {
+  border-left: 3px solid var(--warm);
+  background: linear-gradient(135deg, var(--bg-card), rgba(255,107,107,0.03));
+}
+.card-teal {
+  border-left: 3px solid var(--teal);
+  background: linear-gradient(135deg, var(--bg-card), rgba(78,205,196,0.03));
+}
+.card-purple {
+  border-left: 3px solid var(--purple);
+  background: linear-gradient(135deg, var(--bg-card), rgba(167,139,250,0.03));
+}
+.card h5 {
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-body);
+}
+
+/* Info boxes */
+.info-box {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-mid);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+}
+.info-box.tip {
+  background: var(--teal-dim);
+  border-color: rgba(78,205,196,0.25);
+}
+.info-box.warning {
+  background: var(--warm-dim);
+  border-color: rgba(255,107,107,0.25);
+}
+.info-box.note {
+  background: var(--purple-dim);
+  border-color: rgba(167,139,250,0.25);
+}
+.info-box-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-body);
+}
+.info-box.tip .info-box-title { color: var(--teal); }
+.info-box.warning .info-box-title { color: var(--warm); }
+.info-box.note .info-box-title { color: var(--purple); }
+.info-box p { margin-bottom: 0.5rem; }
+.info-box p:last-child { margin-bottom: 0; }
+
+/* Quote blocks */
+.quote-block {
+  border-left: 3px solid var(--accent);
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  background: var(--accent-dim);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+  color: var(--text-body);
+}
+.quote-block .author {
+  display: block;
+  font-style: normal;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+/* Comparison tables */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.compare-col {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+.compare-col h5 {
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Lists */
+.section ul, .section ol {
+  margin: 0.75rem 0 1.2rem 1.5rem;
+  color: var(--text-body);
+}
+.section li { margin-bottom: 0.4rem; }
+.section li strong { color: var(--accent-light); }
+
+/* Diagram / visual elements */
+.diagram {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  margin: 1.5rem 0;
+  text-align: center;
+  overflow-x: auto;
+}
+.diagram-title {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-body);
+}
+.flow-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.flow-box {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-mid);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  color: var(--accent-light);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.flow-box.alt {
+  background: var(--purple-dim);
+  border-color: rgba(167,139,250,0.3);
+  color: var(--purple);
+}
+.flow-box.teal {
+  background: var(--teal-dim);
+  border-color: rgba(78,205,196,0.3);
+  color: var(--teal);
+}
+.flow-box.warm {
+  background: var(--warm-dim);
+  border-color: rgba(255,107,107,0.3);
+  color: var(--warm);
+}
+.flow-box.blue {
+  background: var(--blue-dim);
+  border-color: rgba(96,165,250,0.3);
+  color: var(--blue);
+}
+.flow-arrow {
+  color: var(--text-muted);
+  font-size: 1.2rem;
+}
+
+/* Circle diagram for story circle */
+.story-circle {
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  position: relative;
+  margin: 2rem auto;
+}
+.circle-point {
+  position: absolute;
+  width: 90px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-body);
+  line-height: 1.3;
+}
+.circle-point .num {
+  display: block;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+}
+
+/* Case study */
+.case-study {
+  background: linear-gradient(135deg, var(--bg-card), rgba(255,159,67,0.03));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin: 2rem 0;
+}
+.case-study-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.case-badge {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--font-body);
+}
+.case-study h5 {
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+/* Code / markup blocks */
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem 1.5rem;
+  margin: 1rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-body);
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.65;
+}
+.code-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-body);
+}
+.code-block .kw { color: var(--accent); }
+.code-block .str { color: var(--green); }
+.code-block .cmt { color: var(--text-muted); font-style: italic; }
+.code-block .fn { color: var(--blue); }
+.code-block .var { color: var(--purple); }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  margin: 0.15rem;
+  font-family: var(--font-body);
+}
+.tag.purple { background: var(--purple-dim); color: var(--purple); }
+.tag.teal { background: var(--teal-dim); color: var(--teal); }
+.tag.blue { background: var(--blue-dim); color: var(--blue); }
+.tag.warm { background: var(--warm-dim); color: var(--warm); }
+.tag.green { background: var(--green-dim); color: var(--green); }
+
+/* Tool comparison table */
+.tool-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+.tool-table th {
+  background: var(--bg-card);
+  color: var(--accent);
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  font-family: var(--font-body);
+}
+.tool-table td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-body);
+  vertical-align: top;
+}
+.tool-table tr:hover td {
+  background: var(--accent-dim);
+}
+
+/* Iceberg visual */
+.iceberg {
+  position: relative;
+  margin: 2rem auto;
+  max-width: 500px;
+}
+.iceberg-layer {
+  padding: 0.8rem 1.2rem;
+  margin: 0.3rem 0;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  text-align: center;
+  position: relative;
+}
+.iceberg-water {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+  margin: 0.8rem 0;
+  position: relative;
+}
+.iceberg-water::after {
+  content: '~~ 水面线 ~~';
+  position: absolute;
+  top: -10px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.ice-above {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-mid);
+  color: var(--accent-light);
+}
+.ice-below {
+  background: var(--blue-dim);
+  border: 1px solid rgba(96,165,250,0.2);
+  color: var(--blue);
+}
+
+/* Branch tree visualization */
+.branch-tree {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--text-body);
+  padding: 1.5rem;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 4rem;
+}
+.pagination a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: all 0.3s;
+  font-family: var(--font-body);
+}
+.pagination a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-body);
+}
+
+/* Fade animation */
+.fade-up {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1),
+              transform 0.7s cubic-bezier(0.22,1,0.36,1);
+}
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  nav { padding: 0 1rem; }
+  .hero { padding: var(--nav-height) 1.5rem 2rem; }
+  .content-wrapper { padding: 0 1.5rem 4rem; }
+  .toc-section { padding: 3rem 1.5rem; }
+  .compare-grid { grid-template-columns: 1fr; }
+  .toc-grid { grid-template-columns: 1fr; }
+  .section h2 { font-size: 1.6rem; }
+  .hero h1 { font-size: 2rem; }
+  .story-circle { width: 260px; height: 260px; }
+  .tool-table { font-size: 0.8rem; }
+  .tool-table th, .tool-table td { padding: 0.5rem 0.6rem; }
+  .flow-row { gap: 0.3rem; }
+  .flow-box { font-size: 0.75rem; padding: 0.4rem 0.7rem; }
+  .pagination { flex-direction: column; gap: 1rem; }
+  .pagination a { width: 100%; text-align: center; }
+}
+
+/* Emphasis / highlight spans */
+.hl { color: var(--accent); font-weight: 600; }
+.hl-teal { color: var(--teal); font-weight: 600; }
+.hl-purple { color: var(--purple); font-weight: 600; }
+.hl-warm { color: var(--warm); font-weight: 600; }
+.hl-blue { color: var(--blue); font-weight: 600; }
+
+/* Separator */
+.sep {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 3rem 0;
+}
+
+/* Dialogue UI demo */
+.dialogue-demo {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+.dialogue-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+.dialogue-speaker {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
+.dialogue-text {
+  color: var(--text-body);
+  font-size: 0.9rem;
+}
+.dialogue-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.dialogue-choice {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-mid);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.8rem;
+  font-size: 0.85rem;
+  color: var(--accent-light);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dialogue-choice:hover {
+  background: var(--accent-mid);
+  border-color: var(--accent);
+}
+
+/* Three-column structure for story acts */
+.acts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.act-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  text-align: center;
+}
+.act-card .act-num {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent);
+  opacity: 0.3;
+  font-family: var(--font-body);
+}
+.act-card h5 {
+  color: var(--text-primary);
+  margin: 0.5rem 0;
+}
+.act-card p { font-size: 0.85rem; color: var(--text-muted); }
+
+@media (max-width: 640px) {
+  .acts-grid { grid-template-columns: 1fr; }
+}
+
+/* Template block */
+.template {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: var(--text-body);
+}
+.template .heading {
+  color: var(--accent);
+  font-weight: 700;
+}
+.template .field {
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: Focus Styles ── */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== NAV ==================== -->
+<nav>
+  <a href="index.html">&larr; 索引</a>
+  <span class="nav-center">叙事设计</span>
+  <a href="07-engineering.html">工程实践 &rarr;</a>
+  <button id="theme-toggle" aria-label="切换主题">☀️</button>
+</nav>
+
+<!-- ==================== HERO ==================== -->
+<section class="hero">
+  <div class="hero-number">06</div>
+  <div class="hero-content fade-up">
+    <h1>叙事设计</h1>
+    <p class="subtitle">故事不是游戏的外衣，而是玩家体验的骨架。<br>学会用交互的力量，让每一个选择都成为叙事。</p>
+    <div class="quote">
+      "故事是赋予受苦以意义的方式之一。"
+      <span class="quote-author">—— Isak Dinesen</span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== TOC ==================== -->
+<div class="toc-section">
+  <div class="toc-title">目录</div>
+  <div class="toc-grid">
+    <a href="#s1" class="toc-item"><span class="toc-num">01</span><span class="toc-label">游戏叙事概论</span></a>
+    <a href="#s2" class="toc-item"><span class="toc-num">02</span><span class="toc-label">故事结构理论</span></a>
+    <a href="#s3" class="toc-item"><span class="toc-num">03</span><span class="toc-label">环境叙事</span></a>
+    <a href="#s4" class="toc-item"><span class="toc-num">04</span><span class="toc-label">对话系统设计</span></a>
+    <a href="#s5" class="toc-item"><span class="toc-num">05</span><span class="toc-label">分支叙事与玩家选择</span></a>
+    <a href="#s6" class="toc-item"><span class="toc-num">06</span><span class="toc-label">世界观构建</span></a>
+    <a href="#s7" class="toc-item"><span class="toc-num">07</span><span class="toc-label">角色塑造</span></a>
+    <a href="#s8" class="toc-item"><span class="toc-num">08</span><span class="toc-label">叙事工具</span></a>
+    <a href="#s9" class="toc-item"><span class="toc-num">09</span><span class="toc-label">文案写作技巧</span></a>
+    <a href="#s10" class="toc-item"><span class="toc-num">10</span><span class="toc-label">实践：构建互动叙事原型</span></a>
+  </div>
+</div>
+
+<!-- ==================== CONTENT ==================== -->
+<div class="content-wrapper">
+
+<!-- ==================== SECTION 1 ==================== -->
+<section class="section fade-up" id="s1">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 01</span>
+    <h2>游戏叙事概论</h2>
+  </div>
+
+  <p>游戏叙事（Game Narrative）是通过游戏这一互动媒介来讲述故事、传达主题、构建情感体验的学科。它与电影、小说中的叙事有根本性差异——<span class="hl">玩家不仅是观众，更是参与者、决策者，甚至是故事的共同创造者</span>。</p>
+
+  <h3>游戏叙事 vs 电影/小说叙事</h3>
+
+  <p>理解游戏叙事，首先要理解它和传统线性媒介的本质区别。</p>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <h5 style="color: var(--text-dim);">传统叙事（电影/小说）</h5>
+      <ul>
+        <li>线性时间流，作者完全控制节奏</li>
+        <li>观众/读者是<strong>被动接收者</strong></li>
+        <li>情感通过"观察他人经历"产生</li>
+        <li>叙事密度高，每一帧/每一行都可精心打磨</li>
+        <li>一次创作，所有受众获得相同体验</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <h5 style="color: var(--accent);">游戏叙事</h5>
+      <ul>
+        <li>非线性/可中断，玩家控制节奏</li>
+        <li>玩家是<strong>主动参与者</strong></li>
+        <li>情感通过"亲身经历和选择"产生</li>
+        <li>叙事必须与交互共存，争夺注意力</li>
+        <li>可能存在多条路径和结局</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="quote-block">
+    "电影让你看到英雄的选择，游戏让你成为做出选择的人。这种差异不是程度上的，而是本质上的。"
+    <span class="author">—— 改编自 Chris Crawford</span>
+  </div>
+
+  <p>一个经典的例子是《最后生还者》（The Last of Us）。如果把它拍成电影，Joel 在结尾的选择是编剧的安排，观众可能会评判这个角色；但在游戏中，<span class="hl">玩家操控 Joel 走过那段路</span>，按下扳机的是自己的手指——这种「共谋感」是任何其他媒介都无法复制的。</p>
+
+  <h3>互动叙事的独特性</h3>
+
+  <p>互动叙事（Interactive Narrative）的核心在于一个词：<span class="hl">agency</span>——玩家的行为能力感。玩家感觉到自己的行为对世界产生了影响，这是游戏叙事最强大的武器。</p>
+
+  <div class="card card-accent">
+    <h5>互动叙事的四个维度</h5>
+    <ul>
+      <li><strong>嵌入式叙事（Embedded Narrative）</strong>：预先设计好的故事内容——过场动画、对话、文本日志。这些是作者"嵌入"到游戏中的。</li>
+      <li><strong>涌现式叙事（Emergent Narrative）</strong>：通过游戏系统交互自然产生的故事。《矮人要塞》里没有编剧，但每局都有史诗般的故事。</li>
+      <li><strong>环境叙事（Environmental Narrative）</strong>：通过场景、道具、空间布局讲述过去发生的故事。玩家是"考古学家"。</li>
+      <li><strong>玩家叙事（Player Narrative）</strong>：玩家自己构建的叙事。Speed run、角色扮演、社交互动中的故事。</li>
+    </ul>
+  </div>
+
+  <p>最好的游戏叙事，往往是多个维度的交织。《荒野大镖客2》有精心编排的嵌入式故事线，有开放世界中的随机事件涌现，有让人驻足的环境叙事细节，也有玩家在社区分享的独特体验。</p>
+
+  <h3>叙事设计师的角色</h3>
+
+  <p>叙事设计师（Narrative Designer）不是"给游戏写故事的人"。更准确地说，<span class="hl">叙事设计师是确保故事和交互体验融为一体的人</span>。</p>
+
+  <div class="card card-teal">
+    <h5>叙事设计师的核心职责</h5>
+    <ul>
+      <li><strong>故事架构</strong>：设计整体故事结构、角色弧光、主题表达</li>
+      <li><strong>系统化叙事</strong>：设计对话系统、日志系统、任务叙事如何与游戏机制结合</li>
+      <li><strong>世界观构建</strong>：创造一致、可信、引人入胜的虚构世界</li>
+      <li><strong>文案写作</strong>：对话台词、道具描述、UI 文本、教程引导</li>
+      <li><strong>跨部门协作</strong>：与关卡设计师、美术、程序密切配合，确保叙事意图被正确实现</li>
+      <li><strong>玩家体验把控</strong>：站在玩家视角，确保节奏、情感曲线、信息揭露时机的合理性</li>
+    </ul>
+  </div>
+
+  <p>一个好的叙事设计师需要同时理解故事和系统。你可能写得出漂亮的文学对白，但如果不理解游戏循环（Game Loop）和玩家心理模型，这些对白可能会在错误的时机出现，或者与玩法产生割裂。</p>
+
+  <h3>叙事驱动 vs 玩法驱动</h3>
+
+  <p>游戏设计中有一个永恒的张力：<span class="hl-warm">叙事</span>和<span class="hl-teal">玩法</span>谁先谁后？</p>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <h5 style="color: var(--warm);">叙事驱动（Narrative-First）</h5>
+      <p style="font-size:0.9rem;">故事是核心，玩法服务于叙事体验。</p>
+      <ul style="font-size:0.9rem;">
+        <li>《极乐迪斯科》：几乎全是对话和检定</li>
+        <li>《What Remains of Edith Finch》</li>
+        <li>《Her Story》</li>
+        <li>适合独立游戏、叙事探索类</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <h5 style="color: var(--teal);">玩法驱动（Gameplay-First）</h5>
+      <p style="font-size:0.9rem;">核心循环先行，叙事包裹玩法。</p>
+      <ul style="font-size:0.9rem;">
+        <li>《马里奥》：拯救公主只是个借口</li>
+        <li>《杀戮尖塔》：叙事极简但不缺</li>
+        <li>《Among Us》：涌现叙事</li>
+        <li>适合动作、竞技、Roguelike 等</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-title">实践建议</div>
+    <p>不要陷入二元对立。最好的做法是<strong>叙事与玩法互相强化</strong>。《黑帝斯》（Hades）是一个完美范例——Roguelike 的"反复死亡"机制被叙事化为从冥界逃离的循环，死亡不是惩罚而是推进故事和人际关系的方式。玩法和叙事完美共生。</p>
+  </div>
+
+  <p>无论你的游戏是哪种倾向，都需要回答一个核心问题：<span class="hl">玩家在这个故事中扮演什么角色？</span>是沉默的旁观者、是角色的扮演者、还是故事的书写者？这个答案将决定你的叙事设计方向。</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 2 ==================== -->
+<section class="section fade-up" id="s2">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 02</span>
+    <h2>故事结构理论</h2>
+  </div>
+
+  <p>故事结构是叙事的骨架。即使在非线性的互动叙事中，经典的故事结构理论依然是最强大的工具——不是用来束缚创作，而是用来理解"为什么有些故事打动人心"。</p>
+
+  <h3>三幕式结构</h3>
+
+  <p>最古老也最基础的叙事模型，从亚里士多德一直沿用至今。</p>
+
+  <div class="acts-grid">
+    <div class="act-card">
+      <div class="act-num">I</div>
+      <h5>建置（Setup）</h5>
+      <p>介绍世界、角色、冲突的种子。约占全长 25%。以"激励事件"结束——打破日常的事件。</p>
+    </div>
+    <div class="act-card">
+      <div class="act-num">II</div>
+      <h5>对抗（Confrontation）</h5>
+      <p>主角追求目标、面对困难、经历成长。约占 50%。中间点（Midpoint）转折改变方向。</p>
+    </div>
+    <div class="act-card">
+      <div class="act-num">III</div>
+      <h5>解决（Resolution）</h5>
+      <p>高潮与结局。约占 25%。主角做出最终选择，冲突得到解决，主题得到回应。</p>
+    </div>
+  </div>
+
+  <div class="card card-accent">
+    <h5>游戏中的三幕式</h5>
+    <p>三幕式在游戏中通常体现为：</p>
+    <ul>
+      <li><strong>第一幕 = 教程 + 世界建立</strong>：教会玩家基础操作的同时建立故事。《塞尔达：旷野之息》的大高原就是完美的第一幕。</li>
+      <li><strong>第二幕 = 主体游戏内容</strong>：任务、探索、成长。往往是最长的部分，也最容易陷入"第二幕低谷"——节奏拖沓、方向模糊。</li>
+      <li><strong>第三幕 = 最终挑战 + 结局</strong>：所有线索汇聚，终极 Boss 战，叙事高潮。</li>
+    </ul>
+    <p style="margin-top:1rem;"><span class="hl">关键问题：</span>游戏的第二幕往往远超 50%，如何在大量重复循环中保持叙事张力？答案通常是<strong>多线交织</strong>——主线推进的同时，支线提供变奏和调剂。</p>
+  </div>
+
+  <h3>英雄之旅（Campbell's Monomyth）</h3>
+
+  <p>约瑟夫·坎贝尔在《千面英雄》中总结的神话学结构，后经 Christopher Vogler 在《作家之旅》中简化为 12 阶段，成为好莱坞的黄金公式。</p>
+
+  <div class="diagram">
+    <div class="diagram-title">英雄之旅 · 12 阶段</div>
+    <div class="flow-row">
+      <span class="flow-box">1. 平凡世界</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box">2. 冒险召唤</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box warm">3. 拒绝召唤</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box">4. 遇见导师</span>
+    </div>
+    <div class="flow-row">
+      <span class="flow-box alt">5. 跨越阈限</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box alt">6. 考验/盟友/敌人</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box alt">7. 逼近核心</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box warm">8. 严峻考验</span>
+    </div>
+    <div class="flow-row">
+      <span class="flow-box teal">9. 奖赏</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box teal">10. 归途</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box warm">11. 复活/最终考验</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-box teal">12. 满载而归</span>
+    </div>
+  </div>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例分析</span>
+      <h5>《塞尔达传说》中的英雄之旅</h5>
+    </div>
+    <p>几乎所有《塞尔达》作品都遵循英雄之旅的模型：</p>
+    <ul>
+      <li><strong>平凡世界</strong>：林克在和平的村庄醒来（科洛克森林、初始之岛）</li>
+      <li><strong>冒险召唤</strong>：灾厄来临、公主失踪、世界需要英雄</li>
+      <li><strong>导师</strong>：老人（国王灵魂）、希卡族长者</li>
+      <li><strong>跨越阈限</strong>：离开新手区域，进入广阔危险的海拉鲁</li>
+      <li><strong>考验与盟友</strong>：各种神庙、神兽、四英杰的故事</li>
+      <li><strong>严峻考验</strong>：面对灾厄加农</li>
+      <li><strong>满载而归</strong>：世界恢复和平</li>
+    </ul>
+    <p style="margin-top:0.75rem;">这个模型在游戏中格外自然，因为<span class="hl">玩家自己就是英雄</span>，不需要"代入"——你就在经历这段旅程。</p>
+  </div>
+
+  <h3>起承转合（Kishotenketsu）</h3>
+
+  <p>东亚叙事传统中的四段式结构，源自中国古典诗学，在日本得到广泛应用。与西方三幕式的最大差异：<span class="hl">它不依赖冲突作为驱动力</span>。</p>
+
+  <div class="card card-purple">
+    <h5>起承转合的四个阶段</h5>
+    <ul>
+      <li><strong>起（Ki / 起）</strong>：引入主题和角色。建立世界。</li>
+      <li><strong>承（Sho / 承）</strong>：发展和深化。在"起"的基础上展开，但不引入冲突。</li>
+      <li><strong>转（Ten / 转）</strong>：意外的转折或并置。引入看似无关的元素，创造"啊哈"时刻。</li>
+      <li><strong>合（Ketsu / 合）</strong>：将所有元素统合，揭示"起承"和"转"之间的深层联系。</li>
+    </ul>
+  </div>
+
+  <p>宫本茂曾明确表示《超级马里奥》的关卡设计受起承转合影响。典型的马里奥关卡结构：</p>
+  <ul>
+    <li><strong>起</strong>：在安全环境中引入新机制（例如弹簧蘑菇）</li>
+    <li><strong>承</strong>：在稍微复杂的环境中应用该机制</li>
+    <li><strong>转</strong>：出现意想不到的组合或挑战（弹簧蘑菇 + 旋转平台 + 敌人）</li>
+    <li><strong>合</strong>：对该机制的终极考验，然后到达旗杆</li>
+  </ul>
+
+  <div class="info-box note">
+    <div class="info-box-title">注意</div>
+    <p>起承转合不是"没有冲突"，而是"冲突不是必须的驱动力"。它更适合那些以<strong>发现</strong>、<strong>探索</strong>、<strong>领悟</strong>为核心体验的游戏——比如《风之旅人》、《花》、以及许多任天堂作品。</p>
+  </div>
+
+  <h3>Dan Harmon 故事圈</h3>
+
+  <p>Dan Harmon（《社区》《瑞克和莫蒂》的创作者）将英雄之旅简化为 8 个节拍的圆形结构。这个模型的精华在于：<span class="hl">故事是一个循环，角色回到原点但已经改变</span>。</p>
+
+  <div class="diagram">
+    <div class="diagram-title">Dan Harmon 故事圈 · 8 个节拍</div>
+    <div class="story-circle">
+      <div class="circle-point" style="top:-12px;left:50%;transform:translateX(-50%);"><span class="num">1</span>你（舒适区）</div>
+      <div class="circle-point" style="top:20%;right:-30px;"><span class="num">2</span>需要（欲望）</div>
+      <div class="circle-point" style="top:50%;right:-45px;transform:translateY(-50%);"><span class="num">3</span>出发（进入）</div>
+      <div class="circle-point" style="bottom:20%;right:-30px;"><span class="num">4</span>探索（适应）</div>
+      <div class="circle-point" style="bottom:-12px;left:50%;transform:translateX(-50%);"><span class="num">5</span>找到（得到）</div>
+      <div class="circle-point" style="bottom:20%;left:-40px;"><span class="num">6</span>代价（付出）</div>
+      <div class="circle-point" style="top:50%;left:-40px;transform:translateY(-50%);"><span class="num">7</span>回归（返回）</div>
+      <div class="circle-point" style="top:20%;left:-30px;"><span class="num">8</span>改变（蜕变）</div>
+    </div>
+    <p style="font-size:0.85rem;color:var(--text-dim);margin-top:1rem;">上半圈 = 熟悉的世界 / 下半圈 = 未知的世界<br>左半圈 = 变化与回归 / 右半圈 = 欲望与追寻</p>
+  </div>
+
+  <p>故事圈对游戏叙事特别有用，因为它是<strong>可重复的</strong>。每个任务、每个章节、甚至每个对话场景都可以是一个小故事圈，嵌套在更大的故事圈之中。Roguelike 游戏天然就是故事圈——每次 run 都是一个"出发-探索-获得-付出代价-回归-改变"的循环。</p>
+
+  <h3>游戏中如何适配这些结构</h3>
+
+  <div class="card card-accent">
+    <h5>结构理论在游戏中的实用指南</h5>
+    <ul>
+      <li><strong>不要照搬，要变形</strong>：线性结构理论是工具，不是模板。游戏的非线性本质要求你灵活运用。</li>
+      <li><strong>嵌套使用</strong>：大结构（全局故事弧）包含中结构（章节/任务线）包含小结构（单个任务/对话）。</li>
+      <li><strong>用节奏而非剧情</strong>：即使玩家不按顺序做任务，整体的情感节奏（张弛有度）也要有设计。</li>
+      <li><strong>重复循环</strong>：Roguelike、服务型游戏的叙事天然是循环结构，故事圈比三幕式更适合。</li>
+      <li><strong>玩家自主 vs 作者意图</strong>：开放世界中，用"引力"而非"围墙"引导玩家走向叙事节点。</li>
+    </ul>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-title">实践建议</div>
+    <p>学习结构理论的最好方式是<strong>反向拆解</strong>你喜欢的游戏。拿出一张纸，画出《黑帝斯》或《巫师3》的故事节拍，标注哪些是三幕式的元素、哪些是英雄之旅的阶段。你会发现，好的游戏叙事往往混用多种结构。</p>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 3 ==================== -->
+<section class="section fade-up" id="s3">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 03</span>
+    <h2>环境叙事</h2>
+  </div>
+
+  <p>环境叙事（Environmental Storytelling）是游戏最独特的叙事方式之一——<span class="hl">不通过对话或过场，而是通过玩家在空间中的探索来讲述故事</span>。玩家成为侦探，每一个场景细节都是线索。</p>
+
+  <h3>什么是环境叙事</h3>
+
+  <p>环境叙事是利用游戏空间中的视觉元素——场景布局、物品摆放、光线氛围、建筑风格、残留痕迹——来传达故事信息的手法。它的力量在于<strong>发现的乐趣</strong>：故事不是"告诉"给玩家的，而是被玩家"发现"的。</p>
+
+  <div class="card card-accent">
+    <h5>环境叙事的三个层次</h5>
+    <ul>
+      <li><strong>氛围层</strong>：不讲具体故事，但传达情绪和世界状态。废墟中的苔藓、战场上的弹痕、被遗弃的游乐场。</li>
+      <li><strong>事件层</strong>：展示"这里曾经发生过什么"。翻倒的椅子、半杯咖啡、地上的血迹、桌上展开的地图。</li>
+      <li><strong>角色层</strong>：揭示"谁曾在这里生活"。私人物品、日记、照片、个人化的空间装饰。</li>
+    </ul>
+  </div>
+
+  <h3>视觉叙事技巧</h3>
+
+  <h4>引导视线</h4>
+  <p>环境叙事的首要任务是<span class="hl">让玩家看到你想让他们看到的东西</span>。常用技巧包括：</p>
+  <ul>
+    <li><strong>光线引导</strong>：一束光打在关键道具上——门缝透出的光、台灯的光圈、窗户投射的光柱</li>
+    <li><strong>颜色对比</strong>：灰暗场景中的红色血迹、蓝绿色调中的暖色物品</li>
+    <li><strong>空间构图</strong>：走廊的尽头放置关键道具，门框充当画框</li>
+    <li><strong>运动与声音</strong>：风吹动的窗帘、嘎吱响的门、滴水声——引导注意力</li>
+  </ul>
+
+  <h4>对比与并置</h4>
+  <p>最有力的环境叙事往往来自<strong>对比</strong>：</p>
+  <ul>
+    <li>儿童房间旁边的弹药库（暗示战争入侵日常）</li>
+    <li>华丽大厅中的骷髅（暗示文明的堕落）</li>
+    <li>整洁厨房中唯一被打碎的杯子（暗示突发事件）</li>
+  </ul>
+
+  <h4>时间层次</h4>
+  <p>优秀的环境叙事能在同一个空间中展现<strong>多个时间层次</strong>：</p>
+  <ul>
+    <li>原始建筑的设计意图（这是什么地方？）</li>
+    <li>使用痕迹（谁在这里生活/工作？）</li>
+    <li>灾难/事件的痕迹（发生了什么？）</li>
+    <li>时间流逝的标记（这一切过去了多久？）</li>
+  </ul>
+
+  <h3>道具与场景布置讲故事</h3>
+
+  <p>道具布置（Prop Placement）是环境叙事的核心技巧。每一个物品的选择和放置都应该有意义——或者至少感觉有意义。</p>
+
+  <div class="card card-warm">
+    <h5>"小场景"技巧（Vignette）</h5>
+    <p>一组精心摆放的道具构成一个微型叙事场景——这是环境叙事最常用也最有效的技巧。</p>
+    <ul>
+      <li><strong>餐桌场景</strong>：两个餐位，一侧的食物吃了一半，另一侧原封未动。椅子倒在地上。→ 有人在晚餐时被带走了。</li>
+      <li><strong>工作台场景</strong>：摊开的笔记本，圈出某个地名，旁边是一把钥匙和一张过期机票。→ 有人计划过出逃但没有成功。</li>
+      <li><strong>儿童房场景</strong>：玩具整齐排列，床铺了但没有睡过的痕迹，窗户从外面被钉死。→ 某种保护或囚禁。</li>
+    </ul>
+    <p style="margin-top:0.75rem;color:var(--text-dim);font-size:0.9rem;">关键原则：<strong>让玩家自己推断</strong>。不要在道具旁边放一封说明信。暗示的力量远大于明示。</p>
+  </div>
+
+  <h3>经典案例分析</h3>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例</span>
+      <h5>黑暗之魂系列 —— 碎片化环境叙事</h5>
+    </div>
+    <p>From Software 的《黑暗之魂》系列将环境叙事推向了极致。游戏几乎不使用过场动画或NPC对话来讲述主线故事，而是将故事碎片散布在：</p>
+    <ul>
+      <li><strong>物品描述</strong>：每件武器、防具、戒指都有一段 lore 文本，拼接起来就是完整的历史</li>
+      <li><strong>NPC 的位置</strong>：为什么这个 NPC 在这里？他们的位置本身就是故事（洋葱骑士出现在各种危险之处）</li>
+      <li><strong>Boss 的环境</strong>：Boss 房间的布局、装饰、氛围都在讲述这个 Boss 的前史</li>
+      <li><strong>建筑连接</strong>：区域之间的物理连接暗示历史和因果关系</li>
+      <li><strong>尸体摆放</strong>：到达某处发现的尸体，暗示在你之前有人尝试过相同的旅程</li>
+    </ul>
+    <p style="margin-top:0.75rem;">魂系列证明了一件事：<span class="hl">玩家愿意为理解故事付出额外努力，前提是碎片足够有趣且暗示了值得拼凑的深层叙事</span>。整个"魂学"社区就是这种设计哲学的最佳证明。</p>
+  </div>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例</span>
+      <h5>Gone Home —— 纯环境叙事的杰作</h5>
+    </div>
+    <p>《Gone Home》（2013）是环境叙事的教科书级作品。玩家扮演一个回到家中发现家人不在的年轻女性，通过探索房间中的每一个角落来拼凑发生了什么。</p>
+    <ul>
+      <li><strong>无敌人、无谜题、无死亡</strong>：纯粹的探索和发现</li>
+      <li><strong>多层叙事</strong>：主线（妹妹的故事）和暗线（父母的婚姻危机、父亲的创伤）在同一空间中交织</li>
+      <li><strong>时间线索</strong>：日期标记的信件、学期报告、电话留言，让玩家拼凑事件的时间顺序</li>
+      <li><strong>空间即剧本</strong>：每个房间有自己的叙事功能——妹妹的卧室揭示她的性格，父亲的书房揭示他的秘密</li>
+    </ul>
+    <p style="margin-top:0.75rem;">《Gone Home》的设计启示：<span class="hl">限制空间反而增强了叙事密度</span>。一栋房子的尺度足以讲述一个家庭的完整故事。</p>
+  </div>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例</span>
+      <h5>生化奇兵 —— 环境叙事与玩法的完美结合</h5>
+    </div>
+    <p>《BioShock》（2007）的 Rapture 是游戏环境叙事的里程碑：</p>
+    <ul>
+      <li><strong>音频日志</strong>：散布在各处的录音机，让玩家在战斗探索的同时听到过去的声音</li>
+      <li><strong>空间叙事</strong>：曾经辉煌的海底乌托邦的崩坏痕迹——漏水的穹顶、破碎的霓虹灯、疯狂的涂鸦</li>
+      <li><strong>理念的空间化</strong>：Rapture 的建筑风格（Art Deco）不仅是美学选择，更是对 Ayn Rand 客观主义的视觉隐喻</li>
+      <li><strong>玩法即叙事</strong>：使用 Plasmid 改造身体的机制，让玩家亲身体验 Rapture 居民曾经的选择</li>
+    </ul>
+    <p style="margin-top:0.75rem;">Ken Levine 在设计 Rapture 时的核心理念：<span class="hl">"每一个房间都应该讲述一个属于自己的故事，即使玩家永远不会读到任何一条音频日志。"</span></p>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-title">设计实践</div>
+    <p>创作环境叙事时，先写"环境圣经"（Environment Bible）：这个空间是什么时候建造的？谁住在这里？发生了什么事？事件发生后过了多久？然后决定哪些信息通过环境传达、哪些通过文本/对话补充、哪些永远不直接告诉玩家（留给社区讨论）。</p>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 4 ==================== -->
+<section class="section fade-up" id="s4">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 04</span>
+    <h2>对话系统设计</h2>
+  </div>
+
+  <p>对话是游戏中最直接的叙事载体。设计一个好的对话系统，不仅需要优秀的文案功底，还需要理解系统设计、UI 交互和技术实现。</p>
+
+  <h3>线性对话 vs 分支对话</h3>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <h5 style="color:var(--text-dim);">线性对话</h5>
+      <p style="font-size:0.9rem;">NPC 说完 A 说 B，玩家没有选择权。</p>
+      <ul style="font-size:0.9rem;">
+        <li>实现简单，易于把控叙事节奏</li>
+        <li>适合剧情驱动的关键时刻</li>
+        <li>JRPG 的传统选择</li>
+        <li>风险：玩家感到被动、无聊</li>
+      </ul>
+      <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem;">代表：《最终幻想》系列、《塞尔达》系列</p>
+    </div>
+    <div class="compare-col">
+      <h5 style="color:var(--accent);">分支对话</h5>
+      <p style="font-size:0.9rem;">玩家在对话中做出选择，影响走向。</p>
+      <ul style="font-size:0.9rem;">
+        <li>增强玩家参与感和代入感</li>
+        <li>支持角色扮演和个人化体验</li>
+        <li>WRPG 和叙事游戏的标配</li>
+        <li>风险：内容膨胀、质量不均</li>
+      </ul>
+      <p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.5rem;">代表：《巫师》系列、《质量效应》、《极乐迪斯科》</p>
+    </div>
+  </div>
+
+  <p>现代游戏中，纯线性和纯分支的情况都不多见。更常见的是<strong>混合模式</strong>：关键剧情点有分支，日常对话偏线性，重要 NPC 有深度分支树，路人 NPC 用简单的循环台词。</p>
+
+  <h3>对话树结构</h3>
+
+  <p>对话树（Dialogue Tree）是分支对话的底层数据结构。理解它的变体对设计至关重要。</p>
+
+  <div class="card card-accent">
+    <h5>基础对话树</h5>
+    <div class="branch-tree"><span style="color:var(--accent);">NPC:</span> "你来这里做什么？"
+  <span style="color:var(--teal);">[A]</span> "我在寻找失踪的商人。"
+    <span style="color:var(--accent);">NPC:</span> "商人？最后一次看到他是在矿坑附近。"
+      <span style="color:var(--teal);">[A1]</span> "矿坑在哪里？" → <span style="color:var(--text-dim);">获取位置信息</span>
+      <span style="color:var(--teal);">[A2]</span> "他为什么去矿坑？" → <span style="color:var(--text-dim);">获取背景信息</span>
+  <span style="color:var(--teal);">[B]</span> "这不关你的事。"
+    <span style="color:var(--accent);">NPC:</span> "那就别浪费我的时间。" → <span style="color:var(--warm);">对话结束，好感度 -1</span>
+  <span style="color:var(--teal);">[C]</span> "你看起来很紧张，怎么了？"
+    <span style="color:var(--accent);">NPC:</span> "最近矿坑出了怪事..." → <span style="color:var(--purple);">开启支线</span></div>
+  </div>
+
+  <h4>对话树的变体模式</h4>
+
+  <div class="card">
+    <h5>Hub-and-Spoke（轮辐式）</h5>
+    <p>经典的 BioWare 模式。NPC 有一段核心问候语（Hub），玩家可以选择多个话题方向（Spoke）深入询问，每个方向结束后回到 Hub。</p>
+    <p>优点：玩家可以自由探索所有话题而不遗漏。缺点：缺乏自然对话的流动感。</p>
+    <p style="font-size:0.85rem;color:var(--text-dim);">代表：《质量效应》系列、《星球大战：旧共和国》</p>
+  </div>
+
+  <div class="card">
+    <h5>Waterfall（瀑布式）</h5>
+    <p>对话只向前流动，不能回到之前的选择。每一步的选择都是不可逆的。</p>
+    <p>优点：创造紧张感和选择的重量。缺点：玩家可能错过信息。</p>
+    <p style="font-size:0.85rem;color:var(--text-dim);">代表：《极乐迪斯科》中的某些关键对话</p>
+  </div>
+
+  <div class="card">
+    <h5>Funnel（漏斗式）</h5>
+    <p>无论玩家怎么选，最终都会汇聚到同一个结果——但到达结果的<strong>过程</strong>和<strong>语气</strong>不同。</p>
+    <p>优点：降低分支管理复杂度。缺点：如果做得不好，玩家会感到"选了也白选"。</p>
+    <p style="font-size:0.85rem;color:var(--text-dim);">代表：《神秘海域》系列的对话选择</p>
+  </div>
+
+  <h3>条件与状态追踪</h3>
+
+  <p>复杂的对话系统需要条件系统来追踪玩家的状态，决定哪些对话选项可用、NPC 如何反应。</p>
+
+  <div class="code-block"><span class="cmt">// 对话条件系统伪代码示例</span>
+
+<span class="kw">dialogue_node</span> "merchant_intro" {
+  <span class="cmt">// 根据条件显示不同内容</span>
+  <span class="kw">if</span> (<span class="var">player.reputation</span> >= <span class="str">50</span>) {
+    <span class="fn">npc_say</span>(<span class="str">"啊，大名鼎鼎的冒险者！有什么需要的？"</span>)
+  } <span class="kw">else if</span> (<span class="var">player.has_item</span>(<span class="str">"recommendation_letter"</span>)) {
+    <span class="fn">npc_say</span>(<span class="str">"有推荐信？让我看看...好的，你是朋友的朋友。"</span>)
+  } <span class="kw">else</span> {
+    <span class="fn">npc_say</span>(<span class="str">"不认识的面孔。你想买什么？"</span>)
+  }
+
+  <span class="cmt">// 对话选项也可以有条件</span>
+  <span class="kw">choice</span> <span class="str">"询问黑市商品"</span> {
+    <span class="kw">requires</span>: <span class="var">player.skill.streetwise</span> >= <span class="str">3</span>
+    <span class="kw">goto</span>: <span class="str">"black_market_dialogue"</span>
+  }
+
+  <span class="kw">choice</span> <span class="str">"威胁商人降价"</span> {
+    <span class="kw">requires</span>: <span class="var">player.skill.intimidation</span> >= <span class="str">5</span>
+    <span class="kw">on_success</span>: <span class="fn">set_flag</span>(<span class="str">"merchant_intimidated"</span>, <span class="kw">true</span>)
+    <span class="kw">on_success</span>: <span class="var">merchant.disposition</span> -= <span class="str">20</span>
+  }
+}</div>
+
+  <div class="card card-teal">
+    <h5>常见的状态追踪要素</h5>
+    <ul>
+      <li><strong>全局标记（Flags）</strong>：布尔值标记，记录关键事件是否发生过。"player_saved_village = true"</li>
+      <li><strong>好感度系统</strong>：NPC 对玩家的态度值，影响可用对话选项和态度</li>
+      <li><strong>角色属性</strong>：技能等级、阵营、种族等，决定特殊对话选项的可用性</li>
+      <li><strong>世界状态</strong>：当前时间、天气、完成的任务、世界事件等</li>
+      <li><strong>对话历史</strong>：之前和这个 NPC 说过什么、选过什么</li>
+    </ul>
+  </div>
+
+  <h3>语气与角色一致性</h3>
+
+  <p>对话写作中最常见的问题是<span class="hl">所有 NPC 听起来都像同一个人在说话</span>。每个角色都应该有独特的"声音"（Voice）。</p>
+
+  <div class="card card-purple">
+    <h5>角色声音构建清单</h5>
+    <ul>
+      <li><strong>词汇层次</strong>：学者用长句和术语，士兵用短句和俚语，孩子用简单词汇</li>
+      <li><strong>句式习惯</strong>：有人爱用反问句，有人说话总带"你知道吗"</li>
+      <li><strong>口头禅与怪癖</strong>：重复的用词、特定的语气词、独特的表达方式</li>
+      <li><strong>信息量</strong>：话唠型 NPC vs 惜字如金的沉默者</li>
+      <li><strong>情感基调</strong>：乐观/悲观、直率/婉转、热情/冷漠</li>
+      <li><strong>文化标记</strong>：方言、外来语混用、特定文化背景的表达</li>
+    </ul>
+  </div>
+
+  <div class="dialogue-demo">
+    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.1em;">对话演示 · 不同角色声音对比</p>
+    <div class="dialogue-box">
+      <div class="dialogue-speaker">老兵 · 哈根</div>
+      <div class="dialogue-text">"前方那条路？别走。三天前去了一队人，回来的只有马。马也疯了。"</div>
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-speaker" style="color:var(--purple);">学者 · 莉莎</div>
+      <div class="dialogue-text">"根据我对古代文献的研读，这条通道曾是旧帝国的粮道。有趣的是，所有关于它的记录都在某个时间点突然中断了——而中断的原因，没有任何记载。这本身就是最令人不安的信息。"</div>
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-speaker" style="color:var(--teal);">商人 · 阿巴斯</div>
+      <div class="dialogue-text">"嘿嘿，那条路啊...我有个朋友的朋友的表弟走过，据说没什么大事。不过嘛，你要是买几瓶我这儿的护身药水，保你平安，打折哦！"</div>
+    </div>
+    <div class="dialogue-choices">
+      <div class="dialogue-choice">"告诉我更多关于那条路的消息。"</div>
+      <div class="dialogue-choice">"你的'护身药水'是什么东西？"</div>
+      <div class="dialogue-choice">"你在骗人吧。"</div>
+    </div>
+  </div>
+
+  <h3>对话 UI 模式</h3>
+
+  <p>对话系统的 UI 设计直接影响玩家的沉浸感和阅读体验。</p>
+
+  <div class="card">
+    <h5>经典对话框模式</h5>
+    <p>屏幕底部的矩形框，显示角色头像和文字。最传统也最通用。</p>
+    <ul>
+      <li><strong>优点</strong>：信息清晰、不遮挡太多画面、实现简单</li>
+      <li><strong>缺点</strong>：节奏较慢、容易显得老旧</li>
+      <li><strong>代表</strong>：《女神异闻录》、《火焰纹章》、大多数 JRPG</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h5>滚轮/径向菜单（Dialogue Wheel）</h5>
+    <p>BioWare 发明的圆形选择轮，每个方向代表一种态度倾向。</p>
+    <ul>
+      <li><strong>优点</strong>：快速选择、支持语气分类（上=善良、下=恶意、左=调查、右=任务）</li>
+      <li><strong>缺点</strong>：选项摘要可能与实际台词差异大（著名的"Mass Effect 问题"）</li>
+      <li><strong>代表</strong>：《质量效应》、《龙腾世纪》</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h5>全屏对话界面</h5>
+    <p>对话时画面切换到专用界面，展示角色立绘/3D 模型和完整对话文本。</p>
+    <ul>
+      <li><strong>优点</strong>：最大化叙事沉浸、支持大量文本</li>
+      <li><strong>缺点</strong>：打断游戏流、频繁切换可能令人烦躁</li>
+      <li><strong>代表</strong>：《极乐迪斯科》、《博德之门3》</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h5>浮动气泡/头顶对话</h5>
+    <p>对话直接显示在角色头顶，不打断玩家的移动和操作。</p>
+    <ul>
+      <li><strong>优点</strong>：轻量、不打断游戏流</li>
+      <li><strong>缺点</strong>：文本量受限、不适合深度对话</li>
+      <li><strong>代表</strong>：《暗黑破坏神》系列、MMO 游戏中的 NPC</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h5>漫画式/图形小说风格</h5>
+    <p>用漫画分格、气泡、动态排版呈现对话。高度风格化。</p>
+    <ul>
+      <li><strong>优点</strong>：极强的视觉个性、适合特定美学风格</li>
+      <li><strong>缺点</strong>：实现复杂、可能降低可访问性</li>
+      <li><strong>代表</strong>：《漫威蜘蛛侠》（部分场景）、独立叙事游戏</li>
+    </ul>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-title">UI 设计原则</div>
+    <p>选择对话 UI 时，核心问题是：<strong>这个游戏中对话应该"重"还是"轻"？</strong>叙事驱动的 RPG 需要重量级对话界面来承载大量文本；动作游戏需要轻量级方案以不打断节奏。没有最好的方案，只有最匹配的方案。</p>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 5 ==================== -->
+<section class="section fade-up" id="s5">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 05</span>
+    <h2>分支叙事与玩家选择</h2>
+  </div>
+
+  <p>分支叙事（Branching Narrative）是游戏叙事最具挑战性的领域。它承诺给玩家"你的选择很重要"，但同时面临着内容量指数级增长的恶魔。<span class="hl">如何用有限的资源创造"无限可能"的感觉</span>，是每个叙事设计师必须面对的难题。</p>
+
+  <h3>分支结构类型</h3>
+
+  <h4>1. 二叉树分支（Binary Tree）</h4>
+  <div class="diagram">
+    <div class="diagram-title">二叉树结构</div>
+    <div class="branch-tree" style="text-align:center;">              <span style="color:var(--accent);">开始</span>
+            /          \
+        <span style="color:var(--teal);">选择 A</span>        <span style="color:var(--warm);">选择 B</span>
+        /    \        /    \
+     <span style="color:var(--teal);">A1</span>    <span style="color:var(--teal);">A2</span>    <span style="color:var(--warm);">B1</span>    <span style="color:var(--warm);">B2</span>
+    / \   / \   / \   / \
+  ... ... ... ... ... ... ... ...
+
+<span style="color:var(--text-dim);">问题：每层选择使内容量翻倍。5层选择 = 32个结局。不可行。</span></div>
+  </div>
+
+  <p>纯二叉树分支在理论上最令人兴奋，在实践中最不可行。内容量呈 2^n 增长，即使是最大的 3A 工作室也无法承受。</p>
+
+  <h4>2. 折叠分支（Foldback / Bottleneck）</h4>
+  <div class="diagram">
+    <div class="diagram-title">折叠分支结构</div>
+    <div class="branch-tree" style="text-align:center;">    <span style="color:var(--accent);">关键节点 1</span>
+      /        \
+  <span style="color:var(--teal);">路径 A</span>    <span style="color:var(--warm);">路径 B</span>     ← 不同的过程体验
+      \        /
+    <span style="color:var(--accent);">关键节点 2</span>       ← 汇聚点（但记忆之前的选择）
+      /        \
+  <span style="color:var(--purple);">路径 C</span>    <span style="color:var(--blue);">路径 D</span>     ← 新的分歧，受前次选择影响
+      \        /
+    <span style="color:var(--accent);">关键节点 3</span>
+      /    |    \
+  <span style="color:var(--teal);">结局1</span>  <span style="color:var(--warm);">结局2</span>  <span style="color:var(--purple);">结局3</span>
+
+<span style="color:var(--text-dim);">最常用的工业方案。过程有变化，终点有限但有意义。</span></div>
+  </div>
+
+  <p>折叠分支是游戏行业最常用的分支结构。分支展开后在关键节点汇聚，然后再次展开。<span class="hl">关键在于：即使路径汇聚，游戏要记住玩家之前的选择</span>，并在后续对话、角色态度、细节变化中体现出来。</p>
+
+  <h4>3. 平行路径（Parallel Paths）</h4>
+  <div class="diagram">
+    <div class="diagram-title">平行路径结构</div>
+    <div class="branch-tree" style="text-align:center;"><span style="color:var(--accent);">开始</span>
+  |
+<span style="color:var(--accent);">关键选择</span>
+  |————————|————————|
+<span style="color:var(--teal);">路线 A</span>      <span style="color:var(--warm);">路线 B</span>      <span style="color:var(--purple);">路线 C</span>
+  |           |           |
+<span style="color:var(--teal);">A 章节2</span>    <span style="color:var(--warm);">B 章节2</span>    <span style="color:var(--purple);">C 章节2</span>
+  |           |           |
+<span style="color:var(--teal);">A 结局</span>     <span style="color:var(--warm);">B 结局</span>     <span style="color:var(--purple);">C 结局</span>
+
+<span style="color:var(--text-dim);">完全不同的体验。内容量 = 路线数 × 长度。</span></div>
+  </div>
+
+  <p>一些游戏大胆地提供完全平行的故事路线——比如《尼尔：机械纪元》的三条路线，或者《暴雨》中四个角色的平行线。这种结构的成本极高，但每条路线都是完整体验。</p>
+
+  <h3>选择的重量与后果</h3>
+
+  <p>让玩家感到选择有意义，关键不在于改变了多少剧情，而在于<span class="hl">情感层面的重量</span>。</p>
+
+  <div class="card card-accent">
+    <h5>创造有重量的选择的技巧</h5>
+    <ul>
+      <li><strong>延迟后果</strong>：选择的后果不立即显现，而是在几小时后才揭晓。这创造了持续的紧张感。（《巫师3》的"血色男爵"线）</li>
+      <li><strong>不可预见的后果</strong>：玩家以为做了好事，后来发现产生了坏的连锁反应。避免简单的"好/坏"二元。</li>
+      <li><strong>社交反馈</strong>：同伴角色对你的选择做出反应——赞同、失望、离开。人际关系是最强的情感锚点。</li>
+      <li><strong>资源代价</strong>：选择伴随着失去——不只是叙事上的，还有游戏机制上的。救这个人意味着错过那个奖励。</li>
+      <li><strong>时间压力</strong>：限时选择让玩家无法"最优化"，被迫凭直觉行动。</li>
+      <li><strong>道德灰区</strong>：最好的选择不是"好 vs 坏"，而是"两难"——两个选项各有牺牲，没有完美答案。</li>
+    </ul>
+  </div>
+
+  <h3>虚假选择 vs 有意义的选择</h3>
+
+  <p>一个残酷的事实：<span class="hl-warm">大多数游戏中的"选择"是虚假的</span>。但"虚假"不等于"糟糕"——关键在于玩家是否能感知到。</p>
+
+  <div class="card card-warm">
+    <h5>虚假选择的类型</h5>
+    <ul>
+      <li><strong>收敛型虚假选择</strong>：无论选什么，结果相同。如果做得巧妙（过程体验不同），玩家不会察觉。</li>
+      <li><strong>延迟无效型</strong>：当时感觉选择很重要，但后续剧情完全忽略了这个选择。这是最糟糕的——欺骗信任。</li>
+      <li><strong>风味选择</strong>：不影响剧情但影响角色表达。"友善地回答"和"讽刺地回答"到达同一个结果，但玩家对角色性格的塑造感不同。</li>
+    </ul>
+  </div>
+
+  <div class="card card-teal">
+    <h5>有意义的选择的标准</h5>
+    <ul>
+      <li><strong>信息充分</strong>：玩家有足够信息做出"知情决策"，而非随机猜测</li>
+      <li><strong>两难困境</strong>：每个选项都有合理的吸引力和代价</li>
+      <li><strong>可感知后果</strong>：玩家能看到/感受到选择的结果，即使只是对话态度的变化</li>
+      <li><strong>不可逆</strong>：或者至少，逆转需要付出显著代价</li>
+      <li><strong>角色一致</strong>：选择与角色性格和动机相关，不是随意的"按按钮"</li>
+    </ul>
+  </div>
+
+  <div class="info-box note">
+    <div class="info-box-title">设计智慧</div>
+    <p>Telltale Games 的前叙事设计师曾说过："<strong>玩家记住的不是他们选择了什么，而是他们在做选择时的感受。</strong>" 一个精心设计的"虚假选择"，如果能让玩家在那一刻感到煎熬和重量，比一个改变了大量剧情但感觉无足轻重的"真实选择"更有价值。</p>
+  </div>
+
+  <h3>管理叙事复杂度</h3>
+
+  <p>分支叙事最大的敌人是<strong>复杂度爆炸</strong>。以下是控制它的实战策略：</p>
+
+  <div class="card card-accent">
+    <h5>复杂度管理工具箱</h5>
+    <ol>
+      <li><strong>变量而非分支</strong>：用标记和数值替代完全不同的分支路径。同一场景根据变量值微调对话和细节。</li>
+      <li><strong>模块化场景</strong>：将场景拆分为可复用的模块，不同路径共享部分内容但组合方式不同。</li>
+      <li><strong>层级选择</strong>：只有少数"核心选择"真正改变剧情走向，大量"风味选择"只改变细节和语气。</li>
+      <li><strong>QA 矩阵</strong>：建立选择-后果矩阵表，确保每个选择的后果都被追踪和测试。</li>
+      <li><strong>叙事图表</strong>：使用可视化工具（如 Articy:Draft）绘制完整的叙事流程图。</li>
+    </ol>
+  </div>
+
+  <h3>案例深度分析</h3>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例</span>
+      <h5>《巫师3：狂猎》—— 延迟后果的大师</h5>
+    </div>
+    <p>CD Projekt Red 在《巫师3》中展示了分支叙事的工业级实践：</p>
+    <ul>
+      <li><strong>"血色男爵"任务线</strong>是游戏史上最常被引用的分支叙事案例。玩家在一系列看似无关的小决定中不知不觉地决定了多个角色的命运——而结果在数小时后才揭晓。</li>
+      <li><strong>36 种结局状态</strong>：不是 36 个完全不同的结局动画，而是由多个独立的结果变量组合而成——谁活着、谁死了、谁统治了哪个国家。</li>
+      <li><strong>"灰色选择"原则</strong>：几乎没有明显的"好选择/坏选择"。帮助一方就会伤害另一方。玩家被迫在不完美的选项中做出自己的判断。</li>
+      <li><strong>一致性检测</strong>：游戏追踪了数百个变量，确保在不同的对话和场景中，NPC 的反应与玩家之前的行为一致。</li>
+    </ul>
+  </div>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例</span>
+      <h5>《底特律：变人》—— 极端分支的工业奇迹</h5>
+    </div>
+    <p>Quantic Dream 的《底特律：变人》可能是游戏史上分支最多的叙事游戏：</p>
+    <ul>
+      <li><strong>每章结束展示流程图</strong>：玩家可以看到自己的选择路径，以及所有未探索的分支。这个透明度设计极大增强了重玩动力。</li>
+      <li><strong>主角可以永久死亡</strong>：三个可操控角色都可以在任何章节死亡，死亡后故事继续——但没有那个角色了。</li>
+      <li><strong>内容利用率极低</strong>：开发者估计，单次通关玩家只能体验约 30-40% 的内容。这对商业项目是巨大的资源挑战。</li>
+      <li><strong>超过 1000 页剧本</strong>：传统电影剧本约 120 页。这种规模需要极其严格的版本管理和一致性检查。</li>
+    </ul>
+  </div>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例</span>
+      <h5>《极乐迪斯科》—— 技能即叙事</h5>
+    </div>
+    <p>ZA/UM 的杰作将分支叙事推向了一个完全不同的方向：</p>
+    <ul>
+      <li><strong>24 个技能 = 24 个"内心声音"</strong>：每个技能都像一个独立的角色，在对话中插话、提供信息、甚至互相争论。这意味着不同的角色构建会获得完全不同的内心独白。</li>
+      <li><strong>思维柜（Thought Cabinet）</strong>：一种独特的"装备系统"，让你装备"想法"来改变角色的世界观和可用对话选项。</li>
+      <li><strong>检定系统</strong>：对话中的关键时刻通过骰子检定决定成败。失败不是死亡——而是一条不同的（往往同样精彩的）叙事路径。</li>
+      <li><strong>政治光谱</strong>：游戏追踪玩家的政治倾向（共产主义、法西斯、自由主义、中间派），并让世界对你的立场做出反应。这是一种基于"身份认同"的分支。</li>
+    </ul>
+    <p style="margin-top:0.75rem;">《极乐迪斯科》的启示：<span class="hl">分支不一定是"选择不同的剧情路径"，也可以是"用不同的视角体验同一个世界"</span>。</p>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 6 ==================== -->
+<section class="section fade-up" id="s6">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 06</span>
+    <h2>世界观构建</h2>
+  </div>
+
+  <p>世界观（Worldbuilding）是叙事设计的地基。一个坚实的世界观让每一个故事、角色、对话都有根基可依；<span class="hl">一个脆弱的世界观会让最精彩的剧情也显得空洞</span>。</p>
+
+  <h3>世界观层次</h3>
+
+  <p>构建世界观时，可以从三个层次入手，由抽象到具体：</p>
+
+  <div class="card card-accent">
+    <h5>层次一：宇宙规则（Cosmology & Rules）</h5>
+    <p>这个世界运作的根本法则是什么？</p>
+    <ul>
+      <li><strong>物理法则</strong>：是否有魔法？科技水平？重力、时间的运作方式？</li>
+      <li><strong>超自然规则</strong>：魔法的来源和代价是什么？神灵是否存在？灵魂是什么？</li>
+      <li><strong>生态系统</strong>：有哪些种族/物种？食物链？资源分布？</li>
+      <li><strong>边界条件</strong>：这个世界有多大？有什么是不可能的？</li>
+    </ul>
+    <p style="color:var(--text-dim);font-size:0.9rem;margin-top:0.5rem;">宇宙规则决定了"什么是可能的"。《黑暗之魂》的不死诅咒、《原神》的元素反应体系、《艾尔登法环》的碎片化圣树——这些都是宇宙级别的设定。</p>
+  </div>
+
+  <div class="card card-teal">
+    <h5>层次二：历史与事件（History & Events）</h5>
+    <p>在这些规则下，发生过什么？</p>
+    <ul>
+      <li><strong>纪元划分</strong>：重大历史事件将时间线分为不同时代</li>
+      <li><strong>关键冲突</strong>：战争、瘟疫、自然灾害、文明的兴衰</li>
+      <li><strong>权力更迭</strong>：王朝、帝国、组织的兴亡</li>
+      <li><strong>科技/魔法演进</strong>：知识和力量如何随时间变化</li>
+    </ul>
+    <p style="color:var(--text-dim);font-size:0.9rem;margin-top:0.5rem;">历史为当前的冲突提供根源。"这场战争不是今天才开始的"——这种历史厚度是吸引玩家深挖 Lore 的关键。</p>
+  </div>
+
+  <div class="card card-purple">
+    <h5>层次三：文化与生活（Culture & Daily Life）</h5>
+    <p>生活在这个世界里的人如何思考、行动、相处？</p>
+    <ul>
+      <li><strong>社会结构</strong>：阶级制度、家庭结构、政治体制</li>
+      <li><strong>信仰与价值观</strong>：宗教、道德标准、禁忌</li>
+      <li><strong>经济系统</strong>：贸易方式、货币、资源分配</li>
+      <li><strong>日常生活</strong>：人们吃什么、穿什么、怎么娱乐</li>
+      <li><strong>语言与艺术</strong>：不同文化如何表达自己</li>
+    </ul>
+    <p style="color:var(--text-dim);font-size:0.9rem;margin-top:0.5rem;">这是玩家最直接感受到的层次。当你走进一个游戏中的城镇，看到的建筑、听到的音乐、NPC 的穿着和行为——这些都是文化层的体现。</p>
+  </div>
+
+  <h3>冰山理论</h3>
+
+  <p>海明威的"冰山理论"在世界观构建中同样适用，甚至更加重要：<span class="hl">你构建的世界观中，只有 10-20% 会直接呈现给玩家，但那 80% 的隐藏部分支撑着浮出水面的一切</span>。</p>
+
+  <div class="iceberg">
+    <div class="iceberg-layer ice-above">游戏中直接展示的内容</div>
+    <div class="iceberg-layer ice-above" style="margin:0 1.5rem;">对话和过场中提及的历史</div>
+    <div class="iceberg-water"></div>
+    <div class="iceberg-layer ice-below" style="margin:0 0.5rem;">完整的历史年表</div>
+    <div class="iceberg-layer ice-below">种族/文化的详细设定文档</div>
+    <div class="iceberg-layer ice-below" style="margin:0 0.5rem;">经济/政治/宗教体系</div>
+    <div class="iceberg-layer ice-below" style="margin:0 1rem;">语言、日历、度量衡</div>
+    <div class="iceberg-layer ice-below" style="margin:0 1.5rem;">被删减的故事线和角色</div>
+    <div class="iceberg-layer ice-below" style="margin:0 2rem;">创世神话与宇宙规则</div>
+  </div>
+
+  <p>为什么要构建玩家永远看不到的内容？因为：</p>
+  <ul>
+    <li><strong>一致性</strong>：当你知道"这个文化崇拜太阳"，它的建筑、服饰、习俗都会自然地朝向一个方向。不需要刻意设计，它们会"长出来"。</li>
+    <li><strong>深度感</strong>：玩家能感受到一个世界"有更多东西在表面之下"，即使他们说不清是什么。</li>
+    <li><strong>创作自由</strong>：当你的世界足够深邃时，新的故事和角色可以自然地从中涌现。</li>
+    <li><strong>社区参与</strong>：Lore 爱好者会深挖线索、构建理论。这种社区行为反过来增加了游戏的生命力。</li>
+  </ul>
+
+  <div class="quote-block">
+    "我构建了一整套精灵语的语法体系，但《魔戒》的读者可能永远不会学习它。然而，因为它存在，精灵的每一个名字、每一首歌谣都是'真实'的。"
+    <span class="author">—— J.R.R. Tolkien（大意）</span>
+  </div>
+
+  <h3>Lore 的呈现方式</h3>
+
+  <p>世界观再丰富，如果呈现方式糟糕，也等于不存在。以下是游戏中常见的 Lore 呈现手法：</p>
+
+  <div class="card">
+    <h5>主动呈现 vs 被动呈现</h5>
+    <div class="compare-grid" style="margin-top:0.75rem;">
+      <div class="compare-col">
+        <h5 style="color:var(--accent);font-size:0.9rem;">主动呈现（玩家必须接收）</h5>
+        <ul style="font-size:0.85rem;">
+          <li>主线对话与过场</li>
+          <li>教程和引导文本</li>
+          <li>UI 中的世界信息</li>
+          <li>强制的叙事事件</li>
+        </ul>
+      </div>
+      <div class="compare-col">
+        <h5 style="color:var(--teal);font-size:0.9rem;">被动呈现（玩家可选择探索）</h5>
+        <ul style="font-size:0.85rem;">
+          <li>可收集的日志/信件/录音</li>
+          <li>物品描述和 Flavor Text</li>
+          <li>环境叙事细节</li>
+          <li>可选的 NPC 对话</li>
+          <li>图鉴/Codex 系统</li>
+        </ul>
+      </div>
+    </div>
+    <p style="margin-top:0.75rem;font-size:0.9rem;">黄金法则：<strong>主动呈现讲述"正在发生的故事"，被动呈现讲述"世界的历史和深度"。</strong>玩家不需要读 Codex 就能理解主线剧情，但读了 Codex 的玩家会获得更丰富的体验。</p>
+  </div>
+
+  <h3>世界观一致性维护</h3>
+
+  <p>随着项目规模增长（特别是多人合作写作），世界观一致性是最容易崩坏的部分。</p>
+
+  <div class="card card-accent">
+    <h5>一致性维护策略</h5>
+    <ul>
+      <li><strong>世界观圣经（Lore Bible）</strong>：一份集中管理的文档，记录所有已确认的设定。任何新内容都必须与之对照。</li>
+      <li><strong>术语表（Glossary）</strong>：统一的命名规范。这把剑叫"碎星"还是"碎星刃"？选一个，全部统一。</li>
+      <li><strong>年表（Timeline）</strong>：精确的事件时间线。角色说"一百年前的大战"时，确保那场战争确实发生在一百年前。</li>
+      <li><strong>Lore 审核者</strong>：在大型团队中，至少一个人专职负责审核所有涉及 Lore 的内容。</li>
+      <li><strong>版本控制</strong>：Lore 文档需要版本管理，避免不同开发者引用不同版本的设定。</li>
+    </ul>
+  </div>
+
+  <h3>Codex/图鉴系统设计</h3>
+
+  <p>图鉴系统是玩家深入探索世界观的窗口，但设计不当会变成"没人读的文字墙"。</p>
+
+  <div class="card card-teal">
+    <h5>图鉴系统设计原则</h5>
+    <ul>
+      <li><strong>渐进解锁</strong>：不要一开始就丢给玩家 200 条词条。随着游戏进展逐步解锁，与玩家当前的体验相关。</li>
+      <li><strong>简短优先</strong>：每条词条 100-200 字为宜。如果需要更长，分成多个子词条。</li>
+      <li><strong>有声音</strong>：词条不应该是中性的百科全书条目，而应该有写作者的视角和声音。"由帝国学者撰写"和"由叛军间谍撰写"的同一事件条目完全不同。</li>
+      <li><strong>关联性</strong>：词条之间有交叉引用，形成可以深入探索的网络。</li>
+      <li><strong>奖励探索</strong>：收集词条应该有某种反馈——成就、解锁新对话选项、甚至影响游戏玩法。</li>
+      <li><strong>多媒体</strong>：图片、图表、地图比纯文本有效得多。《质量效应》的星系图鉴就是优秀范例。</li>
+    </ul>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-title">实践建议</div>
+    <p>开始世界观构建时，先回答这三个问题：<strong>1) 这个世界的核心冲突是什么？</strong>（为故事提供方向）<strong>2) 日常生活是什么样的？</strong>（让世界可信）<strong>3) 什么是独特的？</strong>（让世界有辨识度）。从这三个锚点向外扩展，而不是试图一次性构建整个世界。</p>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 7 ==================== -->
+<section class="section fade-up" id="s7">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 07</span>
+    <h2>角色塑造</h2>
+  </div>
+
+  <p>角色是叙事的心脏。<span class="hl">玩家可能记不住你的世界观设定和故事情节，但他们会永远记住让他们有感触的角色</span>。在游戏中，角色设计还多了一个维度：角色与玩法的结合。</p>
+
+  <h3>角色弧光（Character Arc）</h3>
+
+  <p>角色弧光是指一个角色在故事过程中经历的内在变化。优秀的角色弧光让玩家感受到角色的成长，并与之产生共鸣。</p>
+
+  <div class="card card-accent">
+    <h5>三种基本弧光类型</h5>
+    <ul>
+      <li><strong>正向弧光（Positive Arc）</strong>：角色从缺陷/错误信念出发，经历挑战后成长为更好的人。<br><span class="tag">Joel - 最后生还者</span> <span class="tag purple">Arthur - 荒野大镖客2</span></li>
+      <li><strong>负向弧光（Negative Arc）</strong>：角色逐渐堕落、妥协或被摧毁。悲剧性叙事的核心。<br><span class="tag warm">Arthas - 魔兽世界</span> <span class="tag warm">Big Boss - 合金装备</span></li>
+      <li><strong>平坦弧光（Flat Arc）</strong>：角色本身不改变，但他的坚持和信念改变了周围的世界。<br><span class="tag teal">林克 - 塞尔达传说</span> <span class="tag teal">马里奥</span></li>
+    </ul>
+  </div>
+
+  <p>在游戏中，弧光的一个独特挑战是：<span class="hl">如何在玩家拥有 agency 的情况下让角色经历有意义的变化？</span>如果角色的变化是预设的（《荒野大镖客2》的 Arthur），那是传统叙事的做法；如果变化由玩家选择驱动（《巫师3》的 Geralt），那需要更复杂的系统设计。</p>
+
+  <h3>动机-冲突-成长</h3>
+
+  <p>每一个有深度的角色都可以用这三个维度来定义：</p>
+
+  <div class="diagram">
+    <div class="diagram-title">角色构建三角</div>
+    <div class="flow-row">
+      <span class="flow-box" style="padding:1rem 1.5rem;"><strong>动机</strong><br><span style="font-size:0.8rem;">他想要什么？<br>为什么想要？</span></span>
+      <span class="flow-arrow" style="font-size:2rem;">&harr;</span>
+      <span class="flow-box warm" style="padding:1rem 1.5rem;"><strong>冲突</strong><br><span style="font-size:0.8rem;">什么阻碍了他？<br>内心矛盾是什么？</span></span>
+      <span class="flow-arrow" style="font-size:2rem;">&harr;</span>
+      <span class="flow-box teal" style="padding:1rem 1.5rem;"><strong>成长</strong><br><span style="font-size:0.8rem;">他如何改变？<br>代价是什么？</span></span>
+    </div>
+  </div>
+
+  <div class="card card-purple">
+    <h5>动机的层次</h5>
+    <p>好的角色有多层动机，表面动机和深层动机往往不同：</p>
+    <ul>
+      <li><strong>表面动机（Want）</strong>：角色自己认为他想要的。"我要找到那个人并复仇。"</li>
+      <li><strong>深层动机（Need）</strong>：角色真正需要的，但他可能意识不到。"我需要与过去和解。"</li>
+      <li><strong>弧光</strong>就是 Want 和 Need 之间的张力及其最终解决。角色可能得到了他想要的（复仇成功），但没有得到他需要的（内心平静）——这就是悲剧。</li>
+    </ul>
+  </div>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例</span>
+      <h5>Arthur Morgan —— 游戏史上最伟大的角色弧光之一</h5>
+    </div>
+    <p>《荒野大镖客2》的 Arthur Morgan 是动机-冲突-成长模型的教科书案例：</p>
+    <ul>
+      <li><strong>表面动机（Want）</strong>：为 Dutch 的帮派做事，赚最后一票大的，退隐</li>
+      <li><strong>深层动机（Need）</strong>：找到自己作为一个人的价值，而非只是帮派的工具</li>
+      <li><strong>外部冲突</strong>：法律的追捕、帮派的衰落、Dutch 的疯狂</li>
+      <li><strong>内心冲突</strong>：忠诚（对 Dutch）vs 良知（对无辜者的同情）</li>
+      <li><strong>成长</strong>：从一个"只做被告知的事"的枪手，成长为一个做出自己道德选择的人</li>
+      <li><strong>代价</strong>：觉醒来得太晚。疾病。牺牲。</li>
+    </ul>
+    <p style="margin-top:0.75rem;">更精妙的是，游戏通过<span class="hl">荣誉度系统</span>将 Arthur 的弧光部分交给了玩家。高荣誉和低荣誉的 Arthur 走向不同的结局，但都是有意义的弧光——一个是救赎，一个是堕落。</p>
+  </div>
+
+  <h3>配角与 NPC 设计</h3>
+
+  <p>不是每个角色都需要完整的弧光。配角和 NPC 的设计有自己的一套原则：</p>
+
+  <div class="card card-accent">
+    <h5>NPC 设计层次</h5>
+    <ul>
+      <li><strong>功能性 NPC</strong>：商人、任务发布者、指路人。只需要一个清晰的"角色定义"和几句有个性的台词。</li>
+      <li><strong>氛围 NPC</strong>：路人、村民、士兵。他们的存在是为了让世界感觉活着。对话简短但应该反映世界状态。</li>
+      <li><strong>支线角色</strong>：有自己的小故事和小弧光。玩家选择是否与他们深入交流。</li>
+      <li><strong>同伴/核心配角</strong>：与主角有持续关系的角色。需要完整的背景、动机、和至少部分弧光。</li>
+    </ul>
+  </div>
+
+  <div class="info-box note">
+    <div class="info-box-title">配角设计诀窍</div>
+    <p>"<strong>一个细节胜过千言万语。</strong>" 给你的配角一个<strong>具体的、令人难忘的特征</strong>——不是"她很善良"，而是"她会把自己的午餐分一半给流浪猫，即使她自己也吃不饱"。一个生动的细节比一页人物背景设定更有效。</p>
+  </div>
+
+  <h3>可操控角色 vs 固定角色</h3>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <h5 style="color:var(--accent);">可自定义角色（Avatar）</h5>
+      <p style="font-size:0.9rem;">玩家创建自己的角色，做出自己的选择。</p>
+      <ul style="font-size:0.9rem;">
+        <li>最大化代入感："这是我"</li>
+        <li>支持角色扮演的自由度</li>
+        <li>角色弧光由玩家塑造</li>
+        <li>挑战：角色可能缺乏个性</li>
+      </ul>
+      <p style="font-size:0.85rem;color:var(--text-dim);">代表：《博德之门3》、《上古卷轴》系列</p>
+    </div>
+    <div class="compare-col">
+      <h5 style="color:var(--teal);">固定角色（Defined Character）</h5>
+      <p style="font-size:0.9rem;">角色有预设的外貌、背景、性格。</p>
+      <ul style="font-size:0.9rem;">
+        <li>角色个性鲜明，叙事更紧凑</li>
+        <li>更容易创造深刻的弧光</li>
+        <li>共情通过"理解"而非"成为"</li>
+        <li>挑战：玩家可能不认同角色的行为</li>
+      </ul>
+      <p style="font-size:0.85rem;color:var(--text-dim);">代表：《巫师3》、《最后生还者》、《战神》</p>
+    </div>
+  </div>
+
+  <p>还有一种中间地带：<strong>半定义角色</strong>——角色有预设的背景和部分性格，但关键选择交给玩家。Geralt 是个已有历史和关系的定义角色，但玩家决定他的行为和价值观。这种混合模式在现代 RPG 中越来越流行。</p>
+
+  <h3>角色与玩法的结合</h3>
+
+  <p>游戏角色设计的独特挑战：<span class="hl">角色的性格和故事应该与他们的玩法功能一致</span>。</p>
+
+  <div class="card card-accent">
+    <h5>叙事-玩法一致性原则</h5>
+    <ul>
+      <li><strong>能力即性格</strong>：角色的技能应该反映他们的性格。暴躁战士用重击，冷静弓手用精准射击。</li>
+      <li><strong>成长即弧光</strong>：角色解锁新能力的节奏应该与叙事成长同步。在故事中"觉醒"的角色应该在那个节点获得新技能。</li>
+      <li><strong>限制即冲突</strong>：角色的玩法限制（不能使用某种武器、特定的弱点）应该有叙事上的解释。</li>
+      <li><strong>互动即关系</strong>：如果有多角色系统，角色之间的协同技能应该反映他们的关系（情侣有联合技、仇敌会互相削弱）。</li>
+    </ul>
+  </div>
+
+  <div class="case-study">
+    <div class="case-study-header">
+      <span class="case-badge">案例</span>
+      <h5>《黑帝斯》—— 角色与玩法完美融合</h5>
+    </div>
+    <p>Supergiant Games 的《黑帝斯》中，每个奥林匹斯神的祝福（Boon）都完美反映了他们的性格：</p>
+    <ul>
+      <li><strong>阿瑞斯</strong>（战神）的祝福都与伤害和延迟伤害有关——暴力而残忍</li>
+      <li><strong>阿芙洛狄忒</strong>（爱神）的祝福让敌人"虚弱"，降低攻击力——爱让人失去力量</li>
+      <li><strong>雅典娜</strong>（智慧女神）的祝福提供偏转和保护——防御性的智慧</li>
+      <li><strong>狄俄尼索斯</strong>（酒神）的祝福造成"宿醉"状态——持续伤害如同酒精中毒</li>
+    </ul>
+    <p style="margin-top:0.5rem;">每次使用技能都在加深玩家对角色性格的理解——<span class="hl">这就是"叙事与玩法融合"的最高境界</span>。</p>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 8 ==================== -->
+<section class="section fade-up" id="s8">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 08</span>
+    <h2>叙事工具</h2>
+  </div>
+
+  <p>好的叙事需要好的工具支撑。从独立开发者到 3A 工作室，有不同层次的叙事设计工具可以选择。</p>
+
+  <h3>Twine（交互式小说）</h3>
+
+  <div class="card card-accent">
+    <h5>Twine</h5>
+    <p><span class="tag">免费</span> <span class="tag green">开源</span> <span class="tag blue">网页端</span> <span class="tag purple">零代码</span></p>
+    <p style="margin-top:0.75rem;">Twine 是最容易上手的交互式叙事工具。它使用<strong>可视化节点编辑器</strong>来创建超文本故事——每个节点是一段文字，节点之间通过链接连接。</p>
+    <ul>
+      <li><strong>核心优势</strong>：几分钟就能开始创作。无需编程知识。直接输出 HTML 文件。</li>
+      <li><strong>支持的故事格式</strong>：Harlowe（默认，简单易学）、SugarCube（更强大，支持变量和条件）、Chapbook（简洁叙事风格）</li>
+      <li><strong>适合</strong>：原型验证、交互式小说、叙事设计测试</li>
+      <li><strong>局限</strong>：不适合复杂的游戏引擎集成。可视化在大型项目中会变得混乱。</li>
+    </ul>
+  </div>
+
+  <div class="code-block"><span class="cmt">:: Twine 示例（Harlowe 格式）</span>
+
+<span class="kw">::</span> <span class="fn">Start</span>
+你站在一条分岔路口。雨下得很大。
+左边是一条泥泞的小路，通向山谷。
+右边是石板铺就的大道，通向城镇。
+
+<span class="str">[[走小路|MuddyPath]]</span>
+<span class="str">[[走大道|TownRoad]]</span>
+
+<span class="kw">::</span> <span class="fn">MuddyPath</span>
+泥土在你脚下打滑。你挣扎着走了一百米，
+看到路边有一间废弃的小屋，门半开着。
+<span class="var">(set: $found_shelter to true)</span>
+
+<span class="str">[[进入小屋|Shelter]]</span>
+<span class="str">[[继续前行|ValleyDeep]]</span>
+
+<span class="kw">::</span> <span class="fn">TownRoad</span>
+大道宽敞平坦，但异常安静。
+<span class="var">(if: $has_weapon)</span>[你握紧了武器。]
+<span class="var">(else:)</span>[你不自觉地加快了脚步。]</div>
+
+  <h3>Ink / Inkle</h3>
+
+  <div class="card card-teal">
+    <h5>Ink（由 Inkle Studios 开发）</h5>
+    <p><span class="tag">免费</span> <span class="tag green">开源</span> <span class="tag teal">脚本语言</span> <span class="tag blue">Unity 集成</span></p>
+    <p style="margin-top:0.75rem;">Ink 是一种专为交互式叙事设计的标记语言，被《天堂之穹》（Heaven's Vault）和《80 Days》等商业游戏使用。它的核心理念是<strong>让编写分支叙事像写普通文本一样自然</strong>。</p>
+    <ul>
+      <li><strong>核心优势</strong>：语法优雅、学习曲线平缓、强大的条件和变量系统、与 Unity 的完美集成</li>
+      <li><strong>配套编辑器</strong>：Inky——桌面端的 Ink 编辑器，支持实时预览</li>
+      <li><strong>适合</strong>：正式游戏开发中的对话和叙事系统</li>
+      <li><strong>局限</strong>：纯文本脚本，缺乏 Twine 的可视化</li>
+    </ul>
+  </div>
+
+  <div class="code-block"><span class="cmt">// Ink 示例</span>
+
+<span class="kw">===</span> <span class="fn">tavern_entrance</span> <span class="kw">===</span>
+酒馆里烟雾缭绕，角落的吟游诗人正弹着走调的琴。
+
+<span class="kw">*</span> <span class="str">[走向吧台]</span>
+  你在吧台前坐下。酒保看了你一眼。
+  <span class="kw">**</span> <span class="str">"来一杯最便宜的。"</span>
+    酒保哼了一声，推过来一杯浑浊的液体。
+    <span class="var">~ gold -= 2</span>
+  <span class="kw">**</span> <span class="str">"我在找一个人。"</span>
+    酒保的表情变了。<span class="str">"什么人？"</span>
+    <span class="kw">-></span> <span class="fn">asking_about_stranger</span>
+
+<span class="kw">*</span> <span class="str">[走向吟游诗人]</span>
+  <span class="var">{bard_friendship > 3:</span>
+    "哦！老朋友，又见面了！" 诗人热情地招呼你。
+  <span class="var">- else:</span>
+    诗人警惕地看着你靠近。
+  <span class="var">}</span>
+
+<span class="kw">*</span> <span class="str">{has_quest_letter} [出示信件]</span>
+  你从怀中掏出那封密封的信件...
+  <span class="kw">-></span> <span class="fn">reveal_quest</span></div>
+
+  <h3>Yarn Spinner</h3>
+
+  <div class="card card-purple">
+    <h5>Yarn Spinner</h5>
+    <p><span class="tag">免费</span> <span class="tag green">开源</span> <span class="tag purple">Unity 插件</span> <span class="tag blue">可视化 + 脚本</span></p>
+    <p style="margin-top:0.75rem;">Yarn Spinner 是一个轻量级的对话系统工具，最初由《Night in the Woods》的开发者创建。它结合了可视化节点编辑和简洁的脚本语法。</p>
+    <ul>
+      <li><strong>核心优势</strong>：易于学习、Unity 原生支持、支持本地化、社区活跃</li>
+      <li><strong>编辑器</strong>：VS Code 插件（YarnSpinner for VS Code）提供语法高亮和预览</li>
+      <li><strong>适合</strong>：中小型项目的对话系统</li>
+      <li><strong>局限</strong>：功能比 Ink 简单一些，生态不如 Ink 丰富</li>
+    </ul>
+  </div>
+
+  <h3>Articy:Draft</h3>
+
+  <div class="card card-warm">
+    <h5>Articy:Draft</h5>
+    <p><span class="tag warm">商业软件</span> <span class="tag">专业级</span> <span class="tag blue">全平台导出</span></p>
+    <p style="margin-top:0.75rem;">Articy:Draft 是游戏行业最专业的叙事设计工具，被许多 3A 和中型工作室使用（包括 CD Projekt Red 开发《巫师3》时）。</p>
+    <ul>
+      <li><strong>核心优势</strong>：完整的叙事数据库管理、可视化流程图、角色管理、地点管理、物品管理——一站式解决方案</li>
+      <li><strong>功能</strong>：对话编辑器、条件/指令系统、全局搜索、版本控制、团队协作、多引擎导出</li>
+      <li><strong>适合</strong>：大型叙事项目、团队协作</li>
+      <li><strong>局限</strong>：价格高（399 欧元起）、学习曲线陡峭、只支持 Windows</li>
+    </ul>
+  </div>
+
+  <h3>工具选择指南</h3>
+
+  <table class="tool-table">
+    <thead>
+      <tr>
+        <th>工具</th>
+        <th>价格</th>
+        <th>学习难度</th>
+        <th>适合阶段</th>
+        <th>引擎集成</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Twine</strong></td>
+        <td>免费</td>
+        <td style="color:var(--green);">极低</td>
+        <td>原型/独立小说</td>
+        <td>HTML 导出</td>
+      </tr>
+      <tr>
+        <td><strong>Ink</strong></td>
+        <td>免费</td>
+        <td style="color:var(--green);">低</td>
+        <td>原型到正式开发</td>
+        <td>Unity, Unreal（插件）</td>
+      </tr>
+      <tr>
+        <td><strong>Yarn Spinner</strong></td>
+        <td>免费</td>
+        <td style="color:var(--green);">低</td>
+        <td>中小型项目</td>
+        <td>Unity</td>
+      </tr>
+      <tr>
+        <td><strong>Articy:Draft</strong></td>
+        <td>&euro;399+</td>
+        <td style="color:var(--warm);">中高</td>
+        <td>大型项目/团队</td>
+        <td>Unity, Unreal, 自定义</td>
+      </tr>
+      <tr>
+        <td><strong>Chat Mapper</strong></td>
+        <td>$95+</td>
+        <td style="color:var(--accent);">中</td>
+        <td>中型项目</td>
+        <td>Unity（via Dialogue System）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="info-box tip">
+    <div class="info-box-title">推荐路径</div>
+    <p><strong>个人开发者/独立游戏</strong>：从 Twine 开始验证叙事原型，然后用 Ink 开发正式版本。<br><strong>中小团队</strong>：Ink 或 Yarn Spinner + Unity，视团队偏好选择。<br><strong>大型团队</strong>：Articy:Draft 作为叙事数据库 + 引擎内的对话系统。<br>无论用什么工具，<strong>先用纸笔或白板画出故事结构图</strong>——工具只是辅助，清晰的思维才是核心。</p>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 9 ==================== -->
+<section class="section fade-up" id="s9">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 09</span>
+    <h2>文案写作技巧</h2>
+  </div>
+
+  <p>游戏文案写作是一种独特的技艺。它不是小说写作，也不是剧本写作，更不是广告文案。<span class="hl">它是在互动的约束下用文字创造体验</span>。</p>
+
+  <h3>游戏文案的特殊性</h3>
+
+  <div class="card card-accent">
+    <h5>游戏文案与其他文案的根本差异</h5>
+    <ul>
+      <li><strong>碎片化阅读</strong>：玩家不会像读小说一样从头到尾连贯阅读。文案必须在碎片状态下依然有效。</li>
+      <li><strong>注意力竞争</strong>：文字必须与视觉、声音、交互争夺玩家的注意力。每一个字都必须"挣得"它存在的权利。</li>
+      <li><strong>非线性顺序</strong>：玩家可能以任何顺序阅读你的文案。每段文字必须在缺少上下文的情况下也能独立成立。</li>
+      <li><strong>重复暴露</strong>：某些文案（如商店 NPC 的台词）会被玩家看到上百次。它必须经得起重复。</li>
+      <li><strong>功能性要求</strong>：很多文案同时承载叙事和功能（教程文本、道具说明、任务提示）。清晰比文采更重要。</li>
+    </ul>
+  </div>
+
+  <h3>简洁 vs 文学性</h3>
+
+  <p>游戏文案的风格光谱：</p>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <h5 style="color:var(--teal);">极简派</h5>
+      <p style="font-size:0.9rem;font-style:italic;">"你死了。"</p>
+      <p style="font-size:0.85rem;margin-top:0.5rem;">《黑暗之魂》式。每个字都有重量。留白让玩家自己填充。信任玩家的想象力。</p>
+      <p style="font-size:0.85rem;color:var(--text-dim);">适合：动作游戏、恐怖游戏、氛围型叙事</p>
+    </div>
+    <div class="compare-col">
+      <h5 style="color:var(--purple);">文学派</h5>
+      <p style="font-size:0.9rem;font-style:italic;">"在这座城市的每一面墙壁上，你都能读到一个帝国的遗言——如果你知道如何阅读沉默的话。"</p>
+      <p style="font-size:0.85rem;margin-top:0.5rem;">《极乐迪斯科》式。用文学性的语言创造独特的叙事声音。文字本身就是体验。</p>
+      <p style="font-size:0.85rem;color:var(--text-dim);">适合：叙事驱动RPG、文字冒险</p>
+    </div>
+  </div>
+
+  <p>大多数游戏在两者之间找到自己的位置。关键原则：<span class="hl">风格必须服务于体验，而非反过来</span>。</p>
+
+  <div class="card card-accent">
+    <h5>游戏文案的写作守则</h5>
+    <ol>
+      <li><strong>删掉一半，再删掉一半</strong>：初稿写完后，尝试把字数减少到 1/4，看看是否丢失了必要信息。通常不会。</li>
+      <li><strong>动词优先</strong>：用动词替代形容词。"他高大、强壮、令人畏惧" → "他把门框撞出了裂缝"。</li>
+      <li><strong>具体胜过抽象</strong>："一柄强大的魔法剑" → "剑刃上流动着蓝色的霜纹，靠近时你的呼吸凝成白雾"。</li>
+      <li><strong>大声朗读</strong>：特别是对话台词，必须念出来试试。书面语和口语有天壤之别。</li>
+      <li><strong>第二人称的力量</strong>："你推开那扇沉重的门"比"门被推开了"更有代入感。</li>
+    </ol>
+  </div>
+
+  <h3>语音台词 vs 文本台词</h3>
+
+  <p>如果你的游戏有语音配音，文案写作的规则会发生显著变化。</p>
+
+  <div class="card card-teal">
+    <h5>语音台词的写作规则</h5>
+    <ul>
+      <li><strong>口语化</strong>：人们不会用完整的语法说话。缩写、省略、打断、犹豫——这些让对话真实。"我不知道...也许你该...算了，你自己看着办吧。"</li>
+      <li><strong>长度控制</strong>：一条语音台词不要超过 2-3 句。过长的独白会让配音疲惫、让玩家分心。</li>
+      <li><strong>方向备注</strong>：为配音演员提供表演指示。[轻声、疲惫] "我们还要走多远？" 这种标注能帮助演员准确把握语气。</li>
+      <li><strong>可跳过性</strong>：玩家可能跳过语音。确保关键信息也出现在字幕或 UI 提示中。</li>
+      <li><strong>预算意识</strong>：每多一行语音台词就意味着录音、剪辑、翻译配音的成本。在预算有限时，选择性地使用语音。</li>
+    </ul>
+  </div>
+
+  <h3>本地化考虑</h3>
+
+  <p>如果你的游戏计划支持多语言，文案写作从第一天就需要考虑本地化。</p>
+
+  <div class="card card-warm">
+    <h5>本地化友好的文案实践</h5>
+    <ul>
+      <li><strong>避免文化特定的幽默</strong>：双关语、俚语、流行文化引用在翻译中往往失效。如果必须用，为翻译团队留出"创意改编"的空间。</li>
+      <li><strong>预留 UI 空间</strong>：德语比英语长 30-40%。中文通常比英语短。设计 UI 时预留足够的文本空间。</li>
+      <li><strong>字符串外部化</strong>：所有文本内容都不应硬编码在代码中，而是存放在外部文件（CSV、JSON、XML）中。</li>
+      <li><strong>上下文标注</strong>：为每条翻译字符串添加上下文说明。"Open" 是动词"打开"还是形容词"开放的"？翻译者需要知道。</li>
+      <li><strong>避免拼接字符串</strong>：不要用代码拼接 "你获得了" + item_name + "！" 因为不同语言的语序和语法完全不同。使用模板字符串并让翻译者调整顺序。</li>
+      <li><strong>性别与数量</strong>：很多语言对名词的性别和单复数有不同表达。设计系统时就要支持这种变化。</li>
+    </ul>
+  </div>
+
+  <h3>提示文本（Flavor Text）</h3>
+
+  <p>Flavor Text 是指那些不影响玩法但增加世界观深度的装饰性文本——物品描述、加载画面提示、成就说明等。</p>
+
+  <div class="card card-accent">
+    <h5>好的 Flavor Text 的特征</h5>
+    <ul>
+      <li><strong>一句话一个微故事</strong>：好的 Flavor Text 在有限字数内暗示一个完整的故事。</li>
+      <li><strong>有视角</strong>：不是中性描述，而是某个角色/文化视角的描述。</li>
+      <li><strong>引发好奇</strong>：提出比回答更多的问题。</li>
+    </ul>
+  </div>
+
+  <div class="dialogue-demo">
+    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.1em;">Flavor Text 示例</p>
+    <div class="dialogue-box" style="border-left:3px solid var(--accent);">
+      <div class="dialogue-speaker">生锈的怀表</div>
+      <div class="dialogue-text" style="font-style:italic;">"指针永远指向三点十七分。表盖内侧刻着一个名字，但已经被刻意磨去了——磨去它的人显然花了很大力气。"</div>
+    </div>
+    <div class="dialogue-box" style="border-left:3px solid var(--purple);">
+      <div class="dialogue-speaker" style="color:var(--purple);">破旧的皮靴</div>
+      <div class="dialogue-text" style="font-style:italic;">"鞋底的磨损纹路表明它的主人走过了异常遥远的路程。但奇怪的是，磨损集中在脚跟外侧——这是一个一直在回头看的人的走路方式。"</div>
+    </div>
+    <div class="dialogue-box" style="border-left:3px solid var(--teal);">
+      <div class="dialogue-speaker" style="color:var(--teal);">铁匠的锤子</div>
+      <div class="dialogue-text" style="font-style:italic;">"握柄上有两种不同深度的磨痕。前任主人的手更小，但挥锤的力度更大。"</div>
+    </div>
+  </div>
+
+  <div class="quote-block">
+    "好的 Flavor Text 不是描述物品——而是描述曾经持有这件物品的人。"
+    <span class="author">—— 游戏文案写作不成文法则</span>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ==================== SECTION 10 ==================== -->
+<section class="section fade-up" id="s10">
+  <div class="section-header">
+    <span class="section-num">CHAPTER 10</span>
+    <h2>实践：构建互动叙事原型</h2>
+  </div>
+
+  <p>理论需要实践来验证。在这一章中，我们将走通一个完整的互动叙事原型构建流程——从故事大纲到可运行的分支叙事。</p>
+
+  <h3>用 Twine/Ink 做一个分支故事</h3>
+
+  <p>让我们以 Ink 为例，走通一个完整的迷你互动叙事的开发流程。</p>
+
+  <h4>第一步：构思故事大纲</h4>
+
+  <div class="card card-accent">
+    <h5>故事概念：《灯塔守望者》</h5>
+    <p><strong>概念</strong>：一个孤独的灯塔守望者在暴风雨之夜发现海上有求救信号，但打开灯塔的灯会暴露灯塔的存在给追捕他的人。</p>
+    <p><strong>主题</strong>：自我保全 vs 拯救他人</p>
+    <p><strong>核心选择</strong>：开灯（救人、暴露自己）还是不开灯（自保、见死不救）</p>
+    <p><strong>结构</strong>：故事圈——从日常（守望灯塔）到危机（求救信号）到选择到后果再到新的日常</p>
+  </div>
+
+  <h4>第二步：设计分支结构</h4>
+
+  <div class="diagram">
+    <div class="diagram-title">《灯塔守望者》分支结构图</div>
+    <div class="branch-tree" style="text-align:center;">              <span style="color:var(--accent);">序幕：暴风雨之夜</span>
+                    |
+          <span style="color:var(--accent);">发现求救信号</span>
+            /              \
+    <span style="color:var(--teal);">开灯</span>                <span style="color:var(--warm);">不开灯</span>
+    /       \              /        \
+<span style="color:var(--teal);">船获救</span>   <span style="color:var(--teal);">灯引来追兵</span>  <span style="color:var(--warm);">船沉没</span>   <span style="color:var(--warm);">安全度过</span>
+  |          |            |           |
+<span style="color:var(--teal);">感恩者</span>  <span style="color:var(--purple);">最终对峙</span>   <span style="color:var(--warm);">愧疚</span>     <span style="color:var(--warm);">孤独</span>
+  |        /     \        |           |
+<span style="color:var(--teal);">和解</span> <span style="color:var(--purple);">逃脱</span>  <span style="color:var(--purple);">面对</span> <span style="color:var(--warm);">发现真相</span>  <span style="color:var(--warm);">循环</span>
+<span style="color:var(--text-dim);">
+5 种结局，每种反映不同的主题答案</span></div>
+  </div>
+
+  <h4>第三步：用 Ink 编写</h4>
+
+  <div class="code-block"><span class="cmt">// 《灯塔守望者》Ink 原型</span>
+
+<span class="var">VAR courage = 0</span>
+<span class="var">VAR guilt = 0</span>
+<span class="var">VAR days_alone = 847</span>
+
+<span class="kw">===</span> <span class="fn">prologue</span> <span class="kw">===</span>
+第 {days_alone} 天。
+
+暴风雨从午后就开始了，到了夜晚更加凶猛。
+海浪拍打灯塔的声音像某种巨兽在撞门。
+
+你坐在二楼的小桌前，面前是一碗已经凉透的罐头汤。
+灯塔的灯已经关了三个月了。
+
+你有你的理由。
+
+<span class="kw">*</span> <span class="str">[检查窗外]</span>
+  你走到窗前，擦去雾气。
+  黑暗中什么也看不见——只有雨。
+  然后你看到了。
+  <span class="kw">-></span> <span class="fn">signal</span>
+<span class="kw">*</span> <span class="str">[继续吃冷汤]</span>
+  你舀起一勺。金属味。
+  就在勺子碰到嘴唇的时候，一道光从窗外闪过。
+  不是闪电。
+  <span class="kw">-></span> <span class="fn">signal</span>
+
+<span class="kw">===</span> <span class="fn">signal</span> <span class="kw">===</span>
+远处的海面上，一点红光在规律地闪烁。
+三短，三长，三短。SOS。
+有人在求救。
+你的心跳加速了。
+
+你知道该怎么做——爬上去，打开灯。
+但你也知道打开灯意味着什么。
+<span class="var">他们</span>会看到光。<span class="var">他们</span>一直在找你。
+
+<span class="kw">*</span> <span class="str">[爬上灯塔，打开灯]</span>
+  <span class="var">~ courage += 3</span>
+  你的手在发抖，但你还是抓住了梯子。
+  <span class="kw">-></span> <span class="fn">light_on</span>
+<span class="kw">*</span> <span class="str">[留在原地，假装没看到]</span>
+  <span class="var">~ guilt += 3</span>
+  你放下勺子。坐回椅子。
+  红光还在闪。三短，三长，三短。
+  <span class="kw">-></span> <span class="fn">light_off</span>
+<span class="kw">*</span> <span class="str">{courage > 0} [用手电筒发信号——不开大灯]</span>
+  折中方案。也许够亮引导他们，又不至于暴露。
+  <span class="var">~ courage += 1</span>
+  <span class="kw">-></span> <span class="fn">flashlight</span></div>
+
+  <h4>第四步：测试与迭代</h4>
+
+  <div class="card card-teal">
+    <h5>原型测试清单</h5>
+    <ul>
+      <li><strong>走完所有路径</strong>：确保每条分支都有合理的结局，没有死胡同</li>
+      <li><strong>计时</strong>：玩家每次通关需要多长时间？太短不满足，太长失去耐心</li>
+      <li><strong>选择感觉</strong>：让 5 个人玩，问他们："你在做选择时感觉到了什么？"</li>
+      <li><strong>信息量</strong>：玩家是否有足够信息做出"知情选择"？还是在盲目猜测？</li>
+      <li><strong>重玩动力</strong>：玩完一次后，玩家是否想知道"如果我选了另一个会怎样"？</li>
+      <li><strong>变量追踪</strong>：所有条件变量是否正确更新？有没有逻辑矛盾？</li>
+    </ul>
+  </div>
+
+  <h3>叙事设计文档模板</h3>
+
+  <p>正式的叙事设计文档（Narrative Design Document）是团队协作的基础。以下是一个实用的模板框架：</p>
+
+  <div class="template"><span class="heading">========================================
+叙事设计文档 · [项目名称]
+========================================</span>
+
+<span class="heading">一、故事概览</span>
+<span class="field">  概念一句话（Logline）：</span>____________________________
+<span class="field">  主题（Theme）：</span>____________________________
+<span class="field">  基调（Tone）：</span>____________________________
+<span class="field">  叙事视角：</span>□ 第一人称  □ 第三人称  □ 上帝视角
+<span class="field">  目标受众的情感体验：</span>____________________________
+
+<span class="heading">二、世界观</span>
+<span class="field">  世界规则摘要：</span>____________________________
+<span class="field">  历史年表（关键事件）：</span>____________________________
+<span class="field">  主要势力/阵营：</span>____________________________
+<span class="field">  文化特征：</span>____________________________
+
+<span class="heading">三、角色</span>
+<span class="field">  主角：</span>
+<span class="field">    名称/背景：</span>____________________________
+<span class="field">    Want（表面目标）：</span>____________________________
+<span class="field">    Need（内在需求）：</span>____________________________
+<span class="field">    弧光类型：</span>□ 正向  □ 负向  □ 平坦
+<span class="field">  核心配角列表：</span>____________________________
+
+<span class="heading">四、故事结构</span>
+<span class="field">  使用的结构模型：</span>□ 三幕式  □ 英雄之旅  □ 故事圈  □ 其他
+<span class="field">  章节/幕 划分：</span>____________________________
+<span class="field">  关键转折点：</span>____________________________
+<span class="field">  结局数量与条件：</span>____________________________
+
+<span class="heading">五、分支设计</span>
+<span class="field">  分支结构类型：</span>□ 折叠  □ 平行  □ 混合
+<span class="field">  核心选择数量：</span>____________________________
+<span class="field">  选择-后果矩阵：</span>（附表）
+<span class="field">  变量/标记清单：</span>（附表）
+
+<span class="heading">六、对话系统</span>
+<span class="field">  对话类型：</span>□ 线性  □ 分支  □ Hub-and-Spoke  □ 混合
+<span class="field">  对话 UI 方案：</span>____________________________
+<span class="field">  语音计划：</span>□ 全语音  □ 部分语音  □ 无语音
+<span class="field">  使用工具：</span>□ Ink  □ Yarn  □ Articy  □ 自研
+
+<span class="heading">七、叙事交付清单</span>
+<span class="field">  □ 主线剧本</span>
+<span class="field">  □ 支线任务文案</span>
+<span class="field">  □ NPC 对话</span>
+<span class="field">  □ 物品描述 / Flavor Text</span>
+<span class="field">  □ UI 文本 / 教程文本</span>
+<span class="field">  □ 世界观词条 / Codex</span>
+<span class="field">  □ 过场脚本</span>
+<span class="field">  □ 本地化准备</span></div>
+
+  <h3>从故事大纲到游戏叙事的转化</h3>
+
+  <p>有了一个好的故事大纲，如何把它变成"游戏叙事"？这是从文学到互动的关键转化过程。</p>
+
+  <div class="card card-accent">
+    <h5>转化流程</h5>
+    <ol>
+      <li>
+        <strong>确定玩家角色</strong>：玩家在这个故事中是谁？是主角、是旁观者、还是上帝？这决定了叙事视角。
+      </li>
+      <li>
+        <strong>识别互动点</strong>：故事中哪些时刻适合让玩家做选择？不是每个情节点都需要互动——选择那些最能体现主题的时刻。
+      </li>
+      <li>
+        <strong>分配叙事手段</strong>：哪些信息通过对话传达？哪些通过环境叙事？哪些通过过场？哪些通过玩法本身？
+      </li>
+      <li>
+        <strong>设计节奏</strong>：叙事与玩法如何交替？高叙事密度的段落（过场、重要对话）之间需要用玩法段落（战斗、探索、解谜）来调节节奏。
+      </li>
+      <li>
+        <strong>处理分支</strong>：如果故事有分支，画出完整的分支图，确认：每条路径是否完整？汇聚点在哪里？变量如何影响后续？
+      </li>
+      <li>
+        <strong>为非叙事玩家设计</strong>：确保不喜欢阅读的玩家也能享受游戏。关键信息不能只存在于可跳过的文本中。
+      </li>
+    </ol>
+  </div>
+
+  <div class="info-box tip">
+    <div class="info-box-title">终极建议</div>
+    <p>叙事设计不是一个人的工作。即使你是独立开发者，也要<strong>让别人玩你的原型</strong>。观察他们在哪里停下来阅读、在哪里跳过、在哪里犹豫、在哪里惊讶。玩家的行为数据比任何理论都更有价值。</p>
+    <p style="margin-top:0.75rem;">最后，记住叙事设计的黄金法则：<span class="hl">玩家的体验才是最终的故事。</span>你写了什么不重要，玩家感受到了什么才重要。</p>
+  </div>
+
+  <div class="quote-block">
+    "游戏是唯一一种观众不是旁观者的叙事艺术形式。珍视这个特权，用好它。"
+    <span class="author">—— 致所有游戏叙事设计师</span>
+  </div>
+</section>
+
+<!-- ==================== PAGINATION ==================== -->
+<div class="pagination">
+  <a href="05-systems.html">&larr; 系统与关卡设计</a>
+  <a href="07-engineering.html">工程实践 &rarr;</a>
+</div>
+
+</div><!-- end content-wrapper -->
+
+<!-- ==================== FOOTER ==================== -->
+<footer>
+  游戏开发完全指南 &middot; AI 生成 &middot; 2026
+</footer>
+
+<!-- ==================== JS ==================== -->
+<script>
+// Intersection Observer for fade-up animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, {
+  threshold: 0.08,
+  rootMargin: '0px 0px -40px 0px'
+});
+
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+// Smooth scroll for TOC links
+document.querySelectorAll('.toc-item').forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
+// Interactive dialogue choices (cosmetic)
+document.querySelectorAll('.dialogue-choice').forEach(choice => {
+  choice.addEventListener('click', function() {
+    this.style.background = 'rgba(255,159,67,0.3)';
+    this.style.borderColor = 'var(--accent)';
+    setTimeout(() => {
+      this.style.background = '';
+      this.style.borderColor = '';
+    }, 600);
+  });
+});
+</script>
+
+<script>
+(function() {
+  var saved = localStorage.getItem('gd-theme');
+  var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', theme);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+  btn && btn.addEventListener('click', function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gd-theme', next);
+    btn.textContent = next === 'light' ? '🌙' : '☀️';
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 — 音频设计 | 游戏开发完全指南</title>
+<style>
+/* ========================================
+   CSS Variables
+   ======================================== */
+:root {
+  --bg-page: #08080f;
+  --bg-surface: #0d0d17;
+  --bg-card: #141425;
+  --bg-code: #0a0a18;
+  --card-hover: #1a1a30;
+  --border: #1e1e3a;
+  --border-bright: #2a2a4a;
+  --text-primary: #ffffff;
+  --text-body: #c8c8d8;
+  --text-muted: #7878a0;
+  --accent: #feca57;
+  --accent-dim: rgba(254, 202, 87, 0.1);
+  --accent-mid: rgba(254, 202, 87, 0.25);
+  --accent-glow: rgba(254, 202, 87, 0.06);
+  --font-body: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --max-width: 880px;
+  --nav-height: 60px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --green: #34d399;
+  --green-dim: rgba(52, 211, 153, 0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96, 165, 250, 0.12);
+  --red: #f87171;
+  --red-dim: rgba(248, 113, 113, 0.1);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167, 139, 250, 0.12);
+  --orange: #fb923c;
+  --orange-dim: rgba(251, 146, 60, 0.12);
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34, 211, 238, 0.1);
+}
+
+[data-theme="light"] {
+  --bg-page: #f5f6fa;
+  --bg-surface: #ffffff;
+  --bg-card: #eeeef6;
+  --bg-code: #e6e6f0;
+  --border: #d5d5e2;
+  --border-bright: #c5c5d5;
+  --text-body: #3a3a50;
+  --text-primary: #1a1a2e;
+  --text-muted: #6a6a85;
+  --accent: #c99a10;
+  --accent-dim: rgba(201,154,16,0.1);
+  --accent-mid: rgba(201,154,16,0.25);
+}
+
+[data-theme="light"] nav,
+[data-theme="light"] .navbar {
+  background: rgba(245,246,250,0.88);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .hero-number {
+  color: rgba(0,0,0,0.03);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+/* ── 日间模式组件修复 ── */
+[data-theme="light"] .code-block {
+  color: var(--text-body);
+}
+[data-theme="light"] code {
+  background: var(--bg-card);
+  color: #c0392b;
+}
+[data-theme="light"] .code-block code {
+  background: none;
+  color: inherit;
+}
+[data-theme="light"] td {
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="light"] tbody tr:hover {
+  background: rgba(0,0,0,0.02);
+}
+[data-theme="light"] .card:hover {
+  background: var(--bg-card);
+}
+[data-theme="light"] .hero::before {
+  background: radial-gradient(ellipse, rgba(201,154,16,0.06) 0%, transparent 70%);
+}
+[data-theme="light"] .spectrum-bars .sbar {
+  background: linear-gradient(to top, var(--accent), rgba(201,154,16,0.3));
+}
+
+/* ========================================
+   Reset & Base
+   ======================================== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.85;
+  color: var(--text-body);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ========================================
+   Scrollbar
+   ======================================== */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ========================================
+   Navbar
+   ======================================== */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  background: rgba(8, 8, 15, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.navbar a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  transition: color 0.2s;
+}
+.navbar a:hover { color: var(--accent); }
+.navbar .nav-center {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+}
+.navbar .nav-left, .navbar .nav-right { min-width: 120px; }
+.navbar .nav-right { text-align: right; }
+
+/* ========================================
+   Layout
+   ======================================== */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+section {
+  margin-bottom: 80px;
+}
+
+/* ========================================
+   Typography
+   ======================================== */
+h1 {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.3;
+  margin-bottom: 20px;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 14px;
+  margin-top: 36px;
+}
+
+h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 10px;
+  margin-top: 24px;
+}
+
+p {
+  margin-bottom: 16px;
+  color: var(--text-body);
+}
+
+strong { color: var(--text-primary); font-weight: 600; }
+em { color: var(--accent); font-style: normal; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+ul, ol {
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+
+li {
+  margin-bottom: 8px;
+}
+
+li::marker {
+  color: var(--accent);
+}
+
+/* ========================================
+   Hero
+   ======================================== */
+.hero {
+  padding-top: 120px;
+  padding-bottom: 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(254, 202, 87, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-number {
+  font-size: 7rem;
+  font-weight: 900;
+  color: rgba(254, 202, 87, 0.08);
+  line-height: 1;
+  margin-bottom: -20px;
+  letter-spacing: -0.04em;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  margin-top: 16px;
+  line-height: 1.7;
+  max-width: 600px;
+}
+
+/* Waveform decoration */
+.waveform-deco {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 24px 0;
+  height: 40px;
+}
+
+.waveform-deco .bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: waveform 1.5s ease-in-out infinite;
+}
+
+@keyframes waveform {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* ========================================
+   Cards
+   ======================================== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin-bottom: 20px;
+  transition: border-color 0.3s, background 0.3s;
+}
+
+.card:hover {
+  border-color: var(--border-bright);
+  background: var(--card-hover);
+}
+
+.card-accent {
+  border-left: 3px solid var(--accent);
+}
+
+.card-green { border-left: 3px solid var(--green); }
+.card-blue { border-left: 3px solid var(--blue); }
+.card-purple { border-left: 3px solid var(--purple); }
+.card-red { border-left: 3px solid var(--red); }
+
+/* ========================================
+   Code blocks
+   ======================================== */
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px 24px;
+  margin: 16px 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: #d4d4e8;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: rgba(254, 202, 87, 0.08);
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.code-block code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.code-comment { color: #5a5a7a; }
+.code-keyword { color: var(--purple); }
+.code-string { color: var(--green); }
+.code-func { color: var(--accent); }
+.code-type { color: var(--cyan); }
+.code-number { color: var(--orange); }
+
+/* ========================================
+   Grid
+   ======================================== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+
+/* ========================================
+   Tags & Badges
+   ======================================== */
+.tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.tag-accent { background: var(--accent-dim); color: var(--accent); }
+.tag-green { background: var(--green-dim); color: var(--green); }
+.tag-blue { background: var(--blue-dim); color: var(--blue); }
+.tag-purple { background: var(--purple-dim); color: var(--purple); }
+.tag-red { background: var(--red-dim); color: var(--red); }
+.tag-orange { background: var(--orange-dim); color: var(--orange); }
+
+/* ========================================
+   Table
+   ======================================== */
+.table-wrap {
+  overflow-x: auto;
+  margin: 16px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+thead { background: var(--bg-card); }
+
+th {
+  text-align: left;
+  padding: 12px 16px;
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(30, 30, 58, 0.5);
+  color: var(--text-body);
+}
+
+tbody tr:hover { background: rgba(254, 202, 87, 0.03); }
+
+/* ========================================
+   Blockquote / Callout
+   ======================================== */
+.callout {
+  background: var(--accent-dim);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 18px 22px;
+  margin: 20px 0;
+  font-size: 0.95rem;
+}
+
+.callout-blue {
+  background: var(--blue-dim);
+  border-left-color: var(--blue);
+}
+
+.callout-green {
+  background: var(--green-dim);
+  border-left-color: var(--green);
+}
+
+.callout-red {
+  background: var(--red-dim);
+  border-left-color: var(--red);
+}
+
+.callout strong { display: block; margin-bottom: 4px; }
+
+/* ========================================
+   Diagram / Visual
+   ======================================== */
+.diagram {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin: 20px 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ========================================
+   Waveform Canvas
+   ======================================== */
+.waveform-visual {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 20px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.waveform-visual canvas {
+  width: 100%;
+  height: 80px;
+  display: block;
+}
+
+/* ========================================
+   Spectrum bars
+   ======================================== */
+.spectrum-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 60px;
+  padding: 12px 0;
+}
+
+.spectrum-bars .sbar {
+  flex: 1;
+  background: linear-gradient(to top, var(--accent), rgba(254, 202, 87, 0.3));
+  border-radius: 2px 2px 0 0;
+  min-width: 4px;
+  animation: spectrum-pulse 2s ease-in-out infinite;
+}
+
+@keyframes spectrum-pulse {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+/* ========================================
+   TOC
+   ======================================== */
+.toc {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin: 32px 0;
+}
+
+.toc-title {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  columns: 2;
+  column-gap: 24px;
+}
+
+.toc-list li {
+  margin-bottom: 8px;
+  break-inside: avoid;
+}
+
+.toc-list a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.92rem;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toc-list a:hover { color: var(--accent); }
+
+.toc-num {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.8rem;
+  min-width: 28px;
+}
+
+/* ========================================
+   Footer nav
+   ======================================== */
+.footer-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 60px 0 40px;
+}
+
+.footer-nav a {
+  flex: 1;
+  display: block;
+  padding: 20px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: border-color 0.3s, background 0.3s;
+}
+
+.footer-nav a:hover {
+  border-color: var(--accent);
+  background: var(--card-hover);
+}
+
+.footer-nav .fn-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.footer-nav .fn-title {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.footer-nav .fn-next { text-align: right; }
+
+/* ========================================
+   Footer
+   ======================================== */
+footer {
+  text-align: center;
+  padding: 40px 24px 60px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ========================================
+   Separator
+   ======================================== */
+.sep {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+  margin: 48px 0;
+}
+
+/* ========================================
+   Scroll animation
+   ======================================== */
+.fade-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+@media (max-width: 768px) {
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; }
+  .hero-number { font-size: 4.5rem; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .toc-list { columns: 1; }
+  .container { padding: 0 16px; }
+  .navbar { padding: 0 16px; }
+  .footer-nav { flex-direction: column; }
+  .footer-nav .fn-next { text-align: left; }
+  .code-block { padding: 14px 16px; font-size: 0.82rem; }
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 1.7rem; }
+  .hero-number { font-size: 3.5rem; }
+  section { margin-bottom: 56px; }
+}
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: Focus Styles ── */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+#theme-toggle:hover {
+  border-color: var(--accent);
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== Navbar ==================== -->
+<nav class="navbar">
+  <div class="nav-left"><a href="index.html">&larr; 索引</a></div>
+  <div class="nav-center">音频设计</div>
+  <div class="nav-right">
+    <a href="03-art.html">上一页</a>&ensp;/&ensp;<a href="05-systems.html">下一页</a>
+    <button id="theme-toggle" aria-label="切换主题">☀️</button>
+  </div>
+</nav>
+
+<!-- ==================== Hero ==================== -->
+<div class="hero">
+  <div class="container">
+    <div class="hero-number">04</div>
+    <h1>音频设计<br><span style="color:var(--accent)">The Art of Game Audio</span></h1>
+    <p class="hero-subtitle">
+      声音是游戏中最容易被忽视、却最能影响体验品质的维度。从一声清脆的金币音效到动态变化的战斗配乐，音频设计决定了玩家的情绪节奏、空间感知与沉浸深度。
+    </p>
+    <div class="waveform-deco" id="heroWaveform"></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ==================== TOC ==================== -->
+  <div class="toc fade-in">
+    <div class="toc-title">目录</div>
+    <ul class="toc-list">
+      <li><a href="#s1"><span class="toc-num">01</span> 游戏音频的重要性</a></li>
+      <li><a href="#s2"><span class="toc-num">02</span> 音效设计</a></li>
+      <li><a href="#s3"><span class="toc-num">03</span> 音乐设计</a></li>
+      <li><a href="#s4"><span class="toc-num">04</span> 音频引擎与中间件</a></li>
+      <li><a href="#s5"><span class="toc-num">05</span> 空间音频</a></li>
+      <li><a href="#s6"><span class="toc-num">06</span> 音频编程</a></li>
+      <li><a href="#s7"><span class="toc-num">07</span> 声音与游戏手感</a></li>
+      <li><a href="#s8"><span class="toc-num">08</span> 工具与资源</a></li>
+      <li><a href="#s9"><span class="toc-num">09</span> 实践：音频系统搭建</a></li>
+    </ul>
+  </div>
+
+  <!-- ========================================================================
+       SECTION 1: 游戏音频的重要性
+       ======================================================================== -->
+  <section id="s1" class="fade-in">
+    <h2>01 — 游戏音频的重要性</h2>
+
+    <h3>音频在游戏体验中的角色</h3>
+    <p>如果说画面是游戏的「形」，那么声音就是游戏的「魂」。音频在游戏中承担着多重不可替代的职能：</p>
+
+    <div class="grid-2">
+      <div class="card card-accent">
+        <h4>信息传递</h4>
+        <p>声音是最快速的反馈通道。子弹命中的音效、受伤的呻吟、金币入袋的叮当——玩家甚至不需要看屏幕就能获知游戏状态。在格斗游戏和射击游戏中，音频反馈的延迟容忍度通常要求在 <strong>20ms 以内</strong>。</p>
+      </div>
+      <div class="card card-accent">
+        <h4>空间建构</h4>
+        <p>环境音效定义了虚拟空间。森林中的虫鸣鸟叫、洞穴中的回声与水滴、城市街道的嘈杂——这些声音告诉大脑「你在哪里」。空间音频技术（HRTF、混响）让玩家能用耳朵感知方位和距离，建立起三维认知地图。</p>
+      </div>
+      <div class="card card-accent">
+        <h4>情绪调控</h4>
+        <p>音乐和环境音是最强大的情绪操纵工具。恐怖游戏中的低频嗡鸣可以引发生理性的不安；胜利画面的管弦乐章能让人热泪盈眶。音频能够绕过理性思维，直接作用于情绪中枢——杏仁核对声音的响应速度比视觉快约 <strong>40ms</strong>。</p>
+      </div>
+      <div class="card card-accent">
+        <h4>节奏驱动</h4>
+        <p>游戏音乐控制着玩家的心理节奏。快节拍的战斗音乐加速心跳、激发肾上腺素；舒缓的探索音乐让人放松下来仔细观察环境。BPM（每分钟节拍数）的选择直接影响玩家的操作频率和决策速度。</p>
+      </div>
+    </div>
+
+    <h3>被低估的设计维度</h3>
+    <p>在独立游戏开发中，音频几乎总是「最后才做」的部分。这是一个战略性错误。原因如下：</p>
+
+    <div class="card">
+      <p><strong>音频占感知权重的比例远超直觉判断</strong>。心理学研究显示，在多模态感知中，听觉对「时序判断」的权重高达 70%——当声音和画面的时序不一致时，人脑倾向于相信耳朵而非眼睛。这意味着，即使你的动画帧完美无瑕，如果打击音效延迟了 3 帧，玩家依然会觉得「手感不对」。</p>
+      <p><strong>「静默」同样是设计</strong>。很多新手开发者的误区是觉得「没有声音 = 没做完」，于是在所有场景都铺满音乐和音效。实际上，精心设计的沉默瞬间——比如 Boss 战前的突然安静——可以制造出极度的紧张感。音频设计的本质是对「有声」和「无声」的编排。</p>
+      <p><strong>音频是成本效率最高的品质提升手段</strong>。一个制作精良的打击音效组（通常只需要几小时的工作量）可以让战斗手感提升一个档次。相比之下，要通过美术手段达到同等品质提升，所需的工作量可能是十倍以上。</p>
+    </div>
+
+    <h3>声音如何影响情绪和沉浸感</h3>
+
+    <p>神经科学研究表明，声音通过以下几种机制影响人类的情绪与行为：</p>
+
+    <div class="card card-blue">
+      <h4>频率与情绪的映射关系</h4>
+      <ul>
+        <li><strong>低频（20-200Hz）</strong>——威胁、力量、压迫感。次声波（低于 20Hz）虽然听不见，但会引发生理不适（心跳加速、焦虑感），恐怖游戏和 Boss 战常利用这一点</li>
+        <li><strong>中低频（200-500Hz）</strong>——温暖、厚重、安全感。壁炉的噼啪声、人声的基频都在这个范围</li>
+        <li><strong>中频（500Hz-2kHz）</strong>——人耳最敏感的区间，也是语音的核心频段。用于传递关键信息</li>
+        <li><strong>中高频（2-6kHz）</strong>——存在感、攻击性。金属碰撞、剑刃出鞘的音效重点都在这里</li>
+        <li><strong>高频（6-20kHz）</strong>——空气感、亮度、精致感。风铃、星光闪烁的音效依赖这个频段</li>
+      </ul>
+    </div>
+
+    <div class="card card-green">
+      <h4>音乐调式与情绪</h4>
+      <ul>
+        <li><strong>大调</strong>——明亮、欢快、胜利。马力欧的主题曲就是经典大调</li>
+        <li><strong>小调</strong>——忧伤、紧张、神秘。大量恐怖游戏配乐使用自然小调或和声小调</li>
+        <li><strong>利底亚调式</strong>——梦幻、飘浮、魔法感。常用于奇幻世界的探索场景</li>
+        <li><strong>弗里几亚调式</strong>——异域、危险、古老。中东/北非风格音乐的基础</li>
+        <li><strong>全音阶/无调性</strong>——迷失、疯狂、超现实。用于表现角色的精神异常或空间扭曲</li>
+      </ul>
+    </div>
+
+    <h3>经典案例分析</h3>
+
+    <div class="card card-purple">
+      <h4>暗黑破坏神 (Diablo) — Matt Uelmen 的声景构建</h4>
+      <p>暗黑破坏神的音频设计堪称教科书级别。Matt Uelmen 用 12 弦吉他录制的 <em>Tristram</em> 主题曲，以简洁的旋律线和大量的混响空间，让玩家瞬间进入「孤独冒险者面对未知黑暗」的心理状态。</p>
+      <p>更值得学习的是地牢中的环境音设计。暗黑2的地牢没有用传统意义上的「背景音乐」，而是用<strong>环境音层</strong>——远处的呻吟、水滴声、石头碎裂声、若隐若现的低频嗡鸣——构建出一个充满威胁的声景。音乐元素（吉他的不和谐泛音、低音弦的震颤）被嵌入环境音中，模糊了「音乐」和「音效」的边界。这种手法后来被称为 <em>ambient scoring</em>（环境配乐法）。</p>
+    </div>
+
+    <div class="card card-purple">
+      <h4>塞尔达传说：旷野之息 — 减法音频设计</h4>
+      <p>旷野之息的音频设计理念可以用一个词概括：<strong>「少」</strong>。在一个开放世界游戏中，任天堂选择了极度克制的音频策略——大部分探索时间没有传统意义上的背景音乐，只有环境音：风声、鸟鸣、草叶沙沙、远处河流的水声。</p>
+      <p>偶尔出现的钢琴音符（单音或简短的和弦）像散落在寂静中的珍珠，反而因为「稀少」而格外动人。这种设计让玩家将注意力放在环境本身，强化了「孤身一人在荒野中冒险」的体验核心。只有在关键时刻——遭遇 Guardian 的追击、进入 Hyrule Castle——音乐才全力爆发，形成极强的情绪对比。</p>
+      <p>这个案例证明：<em>音频设计不是加法游戏，而是减法艺术</em>。</p>
+    </div>
+
+    <div class="card card-purple">
+      <h4>寂静岭 (Silent Hill) — 山冈晃的噪音美学</h4>
+      <p>山冈晃（Akira Yamaoka）在寂静岭系列中的音频设计彻底重新定义了恐怖游戏的声学标准。他的方法论核心是<strong>噪音即音乐</strong>——收音机的静电噪音、金属刮擦、工业机械声、失真的人声——这些在传统音乐理论中被视为「噪音」的元素，被他编织成了极具辨识度的恐怖声景。</p>
+      <p>寂静岭中最经典的设计是<strong>收音机</strong>：当怪物接近时，手持收音机会发出越来越强烈的静电噪音。这个设计天才之处在于：它将恐惧从「视觉确认」前移到「听觉预感」——你还没看到怪物，但耳朵已经告诉你危险在逼近。这种<em>预期性恐惧</em>比突然跳出一个怪物（jump scare）要可怕得多。</p>
+    </div>
+
+    <div class="card card-purple">
+      <h4>其他值得研究的案例</h4>
+      <ul>
+        <li><strong>Celeste</strong>——音乐与关卡难度曲线完美同步。Lena Raine 的配乐根据玩家的进度逐渐加入新的层次，音乐的高潮总是恰好对应关卡的最难段落</li>
+        <li><strong>Hollow Knight</strong>——Christopher Larkin 用极简编制（钢琴+弦乐+少量管乐）为每个区域赋予独特性格，同时保持整体风格统一</li>
+        <li><strong>DOOM (2016/Eternal)</strong>——Mick Gordon 的重金属配乐与战斗系统深度绑定，音乐强度随战斗节奏动态变化，「打架不给力因为音乐不到位」是完全成立的</li>
+        <li><strong>Journey</strong>——Austin Wintory 创作了全程无缝的交互式管弦乐配乐，根据玩家行为实时混合不同音乐层，大提琴代表玩家角色，其旋律随游戏进程演化</li>
+        <li><strong>Dead Space</strong>——几乎完全取消了传统 HUD 和非叙事性 UI 音效，所有声音都来自游戏世界本身（diegetic audio），极大增强了临场感</li>
+      </ul>
+    </div>
+
+    <div class="callout">
+      <strong>核心认知</strong>
+      音频不是「给画面配上声音」，而是一个独立的叙事和体验维度。最好的游戏音频设计不是让人注意到「声音真好听」，而是让人沉浸到完全意识不到声音的存在——直到你把它关掉。
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ========================================================================
+       SECTION 2: 音效设计
+       ======================================================================== -->
+  <section id="s2" class="fade-in">
+    <h2>02 — 音效设计 (Sound Design)</h2>
+
+    <h3>音效的分类体系</h3>
+    <p>游戏音效可以按功能和来源分为若干大类，每一类都有不同的设计方法论和技术要求：</p>
+
+    <div class="grid-2">
+      <div class="card card-accent">
+        <h4>UI 音效</h4>
+        <p><strong>定义</strong>：所有与用户界面交互相关的声音。按钮点击、菜单切换、页面翻转、确认/取消、成就弹出等。</p>
+        <p><strong>设计原则</strong>：</p>
+        <ul>
+          <li>简短（通常 50-200ms）</li>
+          <li>频率集中在中高频（2-8kHz），确保在任何场景下都清晰可辨</li>
+          <li>音量适中，不抢占游戏音效的注意力</li>
+          <li>风格统一，形成品牌化的声音识别</li>
+          <li>「确认」应使用上行音程，「取消/错误」使用下行或不和谐音程</li>
+        </ul>
+      </div>
+      <div class="card card-green">
+        <h4>环境音效</h4>
+        <p><strong>定义</strong>：构建游戏世界声景的背景音。风声、雨声、人群嘈杂、机器运转等。</p>
+        <p><strong>设计原则</strong>：</p>
+        <ul>
+          <li>必须可以无缝循环（loop point 无明显断裂）</li>
+          <li>频谱应覆盖广泛，为其他音效「铺底」</li>
+          <li>音量保持在 -20dB 到 -12dB 范围</li>
+          <li>可分为「底层」（持续）和「点缀层」（随机触发的鸟叫、远处犬吠等）</li>
+          <li>应随时间/天气/区域动态变化</li>
+        </ul>
+      </div>
+      <div class="card card-blue">
+        <h4>角色音效</h4>
+        <p><strong>定义</strong>：与角色动作和状态相关的声音。脚步声、攻击声、受伤声、死亡声、技能声效等。</p>
+        <p><strong>设计原则</strong>：</p>
+        <ul>
+          <li>脚步声需要根据地面材质（石、木、草、金属、水）提供变体</li>
+          <li>攻击声需要分层：挥击（whoosh）+ 接触（impact）+ 反馈（result）</li>
+          <li>角色声效是「游戏手感」的核心组成部分</li>
+          <li>需要大量的随机变体来避免重复感</li>
+          <li>人声/口语化音效（grunt、shout）需要与角色性格匹配</li>
+        </ul>
+      </div>
+      <div class="card card-purple">
+        <h4>物理/交互音效</h4>
+        <p><strong>定义</strong>：物体碰撞、破碎、弹跳、摩擦等物理交互产生的声音。</p>
+        <p><strong>设计原则</strong>：</p>
+        <ul>
+          <li>必须与视觉效果的 timing 完全同步</li>
+          <li>需要根据材质（木、金属、玻璃、石头）和力度（轻碰、重撞）提供不同变体</li>
+          <li>碰撞音效的响度应与物理力的大小成比例</li>
+          <li>破碎类音效是分层设计的典型案例</li>
+          <li>高频率触发场景（如弹幕游戏）需要特殊的优先级管理</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Foley 音效与录音</h3>
+    <p>Foley（拟音）是一项起源于电影工业的技术，指的是通过物理手段录制模拟现实声音的过程。在游戏音效设计中，Foley 依然是最重要的声音素材来源之一。</p>
+
+    <div class="card">
+      <h4>基本录音原则</h4>
+      <ul>
+        <li><strong>环境噪音控制</strong>——录音环境的底噪应低于 -60dBFS。家庭工作室可以用衣柜+毛毯搭建简易隔音环境</li>
+        <li><strong>话筒选择</strong>——电容麦克风适合捕捉细节（Rode NT1 是性价比之选）；动圈麦克风适合录制响亮的冲击/爆破声</li>
+        <li><strong>采样率与位深</strong>——至少 48kHz/24bit 录制。如果计划大量 pitch shift 处理，建议 96kHz</li>
+        <li><strong>录音距离</strong>——近距离录音（10-30cm）获取干净的直达声；远距离录音（1-3m）捕捉自然的空间感和早期反射</li>
+        <li><strong>多角度录音</strong>——同一动作从不同角度录制，后期可以混合使用获得更丰富的声音</li>
+      </ul>
+    </div>
+
+    <div class="card card-accent">
+      <h4>常见 Foley 技巧</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>目标声音</th><th>Foley 替代方案</th><th>技巧说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>骨骼断裂</td><td>折断芹菜/胡萝卜</td><td>在安静环境中靠近麦克风折断，后期叠加低频冲击</td></tr>
+            <tr><td>打斗拳击</td><td>拍打生肉/皮革</td><td>用不同力度拍打，录制多个变体</td></tr>
+            <tr><td>火焰</td><td>揉搓塑料袋 + 实际小火焰</td><td>塑料袋提供噼啪声，叠加在真实火焰录音上</td></tr>
+            <tr><td>怪物脚步</td><td>湿毛巾拍地 + 木块</td><td>湿毛巾提供「肉质」触感，木块提供重量和冲击</td></tr>
+            <tr><td>盔甲/锁甲</td><td>钥匙串 + 金属链</td><td>随走动节奏晃动，注意金属碰撞的随机性</td></tr>
+            <tr><td>魔法充能</td><td>甩动软管 + 电弧声</td><td>软管的呼呼声提供「能量聚集」的感觉</td></tr>
+            <tr><td>雪地脚步</td><td>玉米淀粉 + 棉布袋</td><td>将淀粉装入布袋中挤压，完美模拟雪的嘎吱声</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>合成音效制作</h3>
+    <p>有些声音在现实中不存在（激光、传送门、魔法），或者用录音方式很难获得理想效果。这时需要使用合成器和数字信号处理来创造全新的声音。</p>
+
+    <div class="card">
+      <h4>核心合成方法</h4>
+      <ul>
+        <li><strong>减法合成 (Subtractive)</strong>——从频率丰富的波形（锯齿波、噪音）出发，用滤波器「雕刻」出所需的音色。适合制作 UI 音效、电子风格的交互反馈。经典工具：Serum、Vital（免费）</li>
+        <li><strong>FM 合成</strong>——用载波和调制波的频率关系产生复杂的谐波。适合制作金属音色、铃声、激光。两个正弦波就能产生极其丰富的音色变化</li>
+        <li><strong>粒子合成 (Granular)</strong>——将声音切碎成极短的「粒子」（1-100ms），然后重新排列和叠加。适合制作大气音效、变形音效、异世界的声音。工具：Ableton 的 Granulator、Paul Stretch</li>
+        <li><strong>物理建模</strong>——用数学模型模拟真实物理过程（弦振动、管共鸣、膜振动）。结果极其自然但参数调节复杂。适合制作乐器音色和自然碰撞声</li>
+        <li><strong>加法合成</strong>——从零开始叠加正弦波。精确控制每个谐波的幅度和相位。理论上可以构造任何声音，但参数量巨大</li>
+      </ul>
+    </div>
+
+    <div class="callout-blue callout">
+      <strong>实用技巧：用合成器制作激光音效</strong>
+      以减法合成器（如 Vital）为例：选择锯齿波 → 将音高包络设为快速下降（attack 0ms, decay 100ms, 起始音高 +2 octaves）→ 加入低通滤波器并设置与音高同步的包络 → 加入少量混响和延迟。30 秒内就能得到一个经典的「pew pew」激光音效。
+    </div>
+
+    <h3>分层音效设计 (Sound Layering)</h3>
+    <p>专业音效设计的核心技术之一是<strong>分层</strong>——将多个独立的声音元素叠加在一起，形成一个丰富、有深度的复合音效。</p>
+
+    <div class="card card-accent">
+      <h4>爆炸音效的经典分层结构</h4>
+      <div class="diagram">
+Layer 5: 高频碎片   ████░░░░░░░░░░░░░   [金属碎片、玻璃碎裂 - 8-16kHz]
+Layer 4: 中频冲击   ██████░░░░░░░░░░░   [火焰 whoosh、空气冲击 - 1-4kHz]
+Layer 3: 低频轰鸣   ████████████░░░░░   [次低频爆炸核心 - 40-200Hz]
+Layer 2: 尾音/余震  ░░████████████████   [隆隆声、碎石滚落 - 延长 decay]
+Layer 1: 前置瞬态   █░░░░░░░░░░░░░░░░   [短促尖锐的 transient - &lt;10ms]
+                    ─────────────────→ 时间轴</div>
+      <p><strong>关键点</strong>：每一层负责不同的频段和时间段。前置瞬态层提供「冲击感」，低频层提供「力量感」，碎片层提供「真实感」，尾音层提供「规模感」。分层设计时，每层都应该能单独发挥作用，叠加后更丰富但不混浊。</p>
+    </div>
+
+    <div class="card">
+      <h4>分层设计的黄金法则</h4>
+      <ul>
+        <li><strong>频段分离</strong>——每层应占据不同的频率范围，避免频段重叠导致的「糊」。用 EQ 为每层划出自己的空间</li>
+        <li><strong>时间错位</strong>——不同层的起攻时间（attack）应略有错位。前置瞬态层先到，主体层紧随，尾音层延后。这种微妙的时间差增加了声音的「厚度」</li>
+        <li><strong>动态对比</strong>——不是每一层都应该等响。核心层（通常是低频主体）应该最响，细节层（碎片、泛音）应该较轻</li>
+        <li><strong>单声道检查</strong>——将所有层合并为单声道后检查是否存在相位抵消问题。特别注意低频层的相位一致性</li>
+        <li><strong>通常 3-5 层就足够</strong>——新手容易过度分层导致声音混浊。宁可每层都做精、做到位，也不要堆叠过多「差不多」的素材</li>
+      </ul>
+    </div>
+
+    <h3>随机化与变体 (Randomization & Variation)</h3>
+    <p>重复播放同一个音效是快速打破沉浸感的捷径。人耳对重复的模式极度敏感——连续播放同一个脚步声 3 次，玩家就会注意到「这是同一个声音」。解决方案是<strong>随机化</strong>。</p>
+
+    <div class="card card-green">
+      <h4>变体策略层次</h4>
+      <ul>
+        <li>
+          <strong>Level 1：音高随机 (Pitch Randomization)</strong>
+          <p>最简单也最有效的方法。每次播放时随机偏移 ±2 到 ±5 个半音（semitone）。这在中间件中通常只需要设置一个参数。注意：对于有明确音高特征的音效（如金属敲击），偏移范围不宜过大。</p>
+        </li>
+        <li>
+          <strong>Level 2：多变体轮播 (Round Robin)</strong>
+          <p>录制/制作同一动作的 3-8 个不同版本，每次触发时顺序或随机选择一个播放。关键：确保变体之间不存在「同一个声音的不同处理版本」——它们应该是真正不同的录音。</p>
+        </li>
+        <li>
+          <strong>Level 3：不重复逻辑 (No-Repeat)</strong>
+          <p>在变体轮播的基础上加入「不连续重复」的规则——上一次播放的变体在这次不会被选中。对于 4 个变体，这就保证了至少隔一次才会重复。</p>
+        </li>
+        <li>
+          <strong>Level 4：参数化变体 (Parameterized)</strong>
+          <p>根据游戏参数（速度、力度、材质）动态调整音效属性。脚步声的响度和高低随移动速度变化；碰撞音效的频率和持续时间随冲击力度变化。这需要音频中间件的 RTPC 支持。</p>
+        </li>
+        <li>
+          <strong>Level 5：实时合成</strong>
+          <p>不使用预录音效，而是在运行时通过物理模型或合成算法实时生成声音。《赛车计划》(Project CARS) 的引擎声就是实时合成的——根据 RPM、负载、排气温度等参数动态生成，理论上永远不会重复。</p>
+        </li>
+      </ul>
+    </div>
+
+    <div class="callout">
+      <strong>经验法则：变体数量</strong>
+      高频触发的音效（脚步、枪声、拳击）需要至少 5-8 个变体 + 音高随机化。低频触发的音效（开门、拾取物品）3-4 个变体通常足够。环境点缀音效（鸟叫、远处犬吠）需要尽可能多的变体——这些声音的可预测性直接决定环境的「真实度」。
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ========================================================================
+       SECTION 3: 音乐设计
+       ======================================================================== -->
+  <section id="s3" class="fade-in">
+    <h2>03 — 音乐设计</h2>
+
+    <h3>游戏音乐 vs 电影音乐</h3>
+    <p>游戏音乐和电影音乐虽然共享许多音乐理论基础，但在设计方法论上有本质的区别：</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>维度</th><th>电影音乐</th><th>游戏音乐</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>时间</strong></td><td>固定时长，精确到帧同步</td><td>时长不确定，取决于玩家行为</td></tr>
+          <tr><td><strong>线性</strong></td><td>线性叙事，单一路径</td><td>非线性，多分支，玩家驱动</td></tr>
+          <tr><td><strong>循环</strong></td><td>几乎不需要</td><td>核心需求，大部分曲目需循环</td></tr>
+          <tr><td><strong>过渡</strong></td><td>由导演/剪辑师控制</td><td>实时触发，需要程序化过渡系统</td></tr>
+          <tr><td><strong>混音</strong></td><td>后期固定混音</td><td>动态混音，根据游戏状态调整</td></tr>
+          <tr><td><strong>重复</strong></td><td>听一次</td><td>可能被听几十上百次</td></tr>
+          <tr><td><strong>互动</strong></td><td>观众被动接收</td><td>玩家行为直接影响音乐走向</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>这些差异意味着游戏音乐作曲需要一套独特的思维方式。你不是在写一首「会被听一次的曲子」，而是在设计一个「能够在各种游戏状态下都保持良好体验的音乐系统」。</p>
+
+    <h3>循环音乐设计技巧</h3>
+    <p>循环（Loop）是游戏音乐最基础也最重要的技术。一段 2 分钟的探索音乐可能会被连续播放 30 分钟——如果循环点设计不好，玩家会在第三次循环时就感到烦躁。</p>
+
+    <div class="card">
+      <h4>无缝循环的技术要点</h4>
+      <ul>
+        <li><strong>循环点选择</strong>——不要在曲子的「结尾」设置循环点。而是让旋律在循环点处于一个自然的「进行中」状态，使得尾部直接接入头部时，听起来像是连续的音乐流。</li>
+        <li><strong>交叉淡入淡出 (Crossfade)</strong>——在循环点前后各留 200-500ms 的重叠区域，用 crossfade 处理。这可以掩盖微小的不连续性。</li>
+        <li><strong>和声连续性</strong>——循环尾部的和弦应能自然解决到头部的和弦。最常用的手法是尾部用属七和弦（V7），头部用主和弦（I）。</li>
+        <li><strong>节奏对齐</strong>——循环点必须在小节线上。确保 BPM 精确到小数点后两位，循环长度是整数小节。</li>
+        <li><strong>混响尾音</strong>——循环尾部的混响尾音会被循环头部截断。解决方案：在头部前加入一小段静音缓冲区，或者让头部的音乐在混响衰减完成前就开始。</li>
+      </ul>
+    </div>
+
+    <div class="callout-green callout">
+      <strong>「耐听」的秘诀</strong>
+      让循环音乐耐听的关键不是旋律多好听，而是纹理（texture）的丰富度。在每次循环中，让一些元素有微妙的变化——轻微的音量变化、偶尔出现/消失的副旋律、随机触发的装饰音。这些细微的差异让大脑每次循环都能发现「新东西」，延缓听觉疲劳。长度建议：探索音乐至少 3-4 分钟，战斗音乐至少 2 分钟。
+    </div>
+
+    <h3>自适应/动态音乐</h3>
+    <p>动态音乐（Adaptive/Dynamic Music）是游戏音频设计中最激动人心的领域之一。它让音乐不再是一个固定的「播放列表」，而是一个能够感知游戏状态并实时调整自身的<strong>有机系统</strong>。</p>
+
+    <h4>横向分层 (Horizontal Re-sequencing)</h4>
+    <p>将音乐拆分为多个<strong>时间段（Segment）</strong>，根据游戏状态在段之间切换。每个段都是一个完整的音乐片段，但它们共享 BPM 和调性，可以在过渡点（transition point）之间无缝衔接。</p>
+
+    <div class="diagram">
+[探索段 A] ──→ [过渡段] ──→ [战斗段 B] ──→ [过渡段] ──→ [探索段 A']
+     │                           │
+     │   ◆ 触发条件：发现敌人      │   ◆ 触发条件：战斗结束
+     │   ◆ 过渡方式：下一小节线     │   ◆ 过渡方式：逐渐降温 4 小节
+     │                           │
+     └───────────── 循环 ─────────┘</div>
+
+    <h4>纵向分层 (Vertical Layering / Re-orchestration)</h4>
+    <p>将音乐拆分为多个<strong>同步播放的层（Layer）</strong>，通过调节各层的音量/混音来改变音乐的强度和情绪。所有层共享相同的和声结构和 BPM，始终保持同步。</p>
+
+    <div class="diagram">
+Layer 4: 打击乐/战斗   ░░░░░░░░████████████████░░░░░░░░
+Layer 3: 铜管/紧张感   ░░░░████████████████████████░░░░
+Layer 2: 弦乐/旋律     ████████████████████████████████
+Layer 1: 底垫/氛围     ████████████████████████████████
+                       ─── 探索 ──── 遭遇 ── 战斗 ── 探索 ──→
+                       安静          逐渐紧张  高潮    回落</div>
+
+    <div class="card card-accent">
+      <h4>混合方法：实战中的最佳实践</h4>
+      <p>大多数商业游戏使用<strong>横向+纵向混合</strong>的策略。纵向分层处理同一场景内的强度渐变（如战斗从遭遇到白热化），横向切换处理场景之间的大跳转（如从探索进入Boss战）。</p>
+      <p><strong>示例——《巫师3》的战斗音乐</strong>：探索时只有环境层+轻旋律层；发现敌人时，战斗鼓点层渐入；进入战斗后，完整管弦乐层全力演奏；战斗激烈时，额外的打击乐和人声层加入。同时，如果战斗从野外转移到室内（横向切换），整套音乐会在下一个过渡点切换到室内版本。</p>
+    </div>
+
+    <h3>交互式音乐系统</h3>
+    <p>更进一步的设计是让音乐直接响应玩家的操作，而非仅仅响应游戏「状态」。</p>
+
+    <div class="card card-blue">
+      <h4>参数驱动的音乐系统</h4>
+      <p>定义一组<strong>游戏参数</strong>（如「威胁等级 0-100」「体力百分比」「距离目标远近」），将这些参数映射到音乐的混音、编曲、速度上：</p>
+      <ul>
+        <li>威胁等级 0-30：只播放环境垫层 + 轻柔旋律</li>
+        <li>威胁等级 30-60：加入紧张弦乐震音，BPM 从 90 加速到 110</li>
+        <li>威胁等级 60-80：加入战斗鼓点，低频层增强</li>
+        <li>威胁等级 80-100：全部层全力演奏，加入不和谐的铜管 stab</li>
+        <li>体力低于 20%：所有层音量降低 6dB，加入心跳声层，低通滤波器缓慢关闭</li>
+      </ul>
+    </div>
+
+    <div class="card card-green">
+      <h4>Stinger 系统</h4>
+      <p><strong>Stinger</strong> 是短促的音乐片段（通常 1-4 小节），在特定事件发生时叠加在当前音乐之上。不会中断正在播放的音乐，而是作为「标点符号」强调重要瞬间：</p>
+      <ul>
+        <li>发现宝箱 → 上行琶音 stinger</li>
+        <li>Boss 出场 → 铜管下行动机 + 定音鼓</li>
+        <li>角色死亡 → 弦乐下行 + 消逝</li>
+        <li>完成任务 → 胜利号角 fanfare</li>
+      </ul>
+      <p>Stinger 必须与当前音乐的调性兼容（或使用足够短/无调性的设计以避免冲突）。FMOD 和 Wwise 都提供 stinger 对齐到下一拍/小节的功能。</p>
+    </div>
+
+    <h3>情感曲线与音乐</h3>
+    <p>好的游戏音乐设计始于<strong>情感曲线图（Emotional Arc Map）</strong>——在开始作曲之前，先画出整个游戏体验中情绪的起伏变化，然后用音乐去匹配和强化这条曲线。</p>
+
+    <div class="card">
+      <h4>情感曲线设计步骤</h4>
+      <ol>
+        <li><strong>绘制体验地图</strong>——按游戏流程列出所有场景/关卡，标注预期的情绪状态（紧张/放松/惊喜/悲伤/高潮/低谷）</li>
+        <li><strong>确定音乐区域</strong>——哪些区域需要音乐？哪些区域应该留给环境音？哪些是过渡区？</li>
+        <li><strong>定义调色板</strong>——选择整个游戏的音乐「调色板」：乐器编制、调性体系、核心动机。所有曲目应共享这个调色板以保持风格统一</li>
+        <li><strong>主题动机设计</strong>——为关键角色/地点/概念设计 leitmotif（主导动机），在不同场景中以不同编排方式复现</li>
+        <li><strong>高潮预算管理</strong>——不能每个场景都是高潮。控制「全力演奏」的频率，让高潮段落真正具有冲击力</li>
+      </ol>
+    </div>
+
+    <div class="callout">
+      <strong>动态音乐的常见陷阱</strong>
+      过度复杂的动态音乐系统往往适得其反。如果音乐每 5 秒就变化一次，玩家会觉得音乐「不稳定」「焦躁」。好的动态系统应该有合理的「最小保持时间」——至少让一个音乐段播放 8-16 小节（约 15-30 秒）再考虑切换。
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ========================================================================
+       SECTION 4: 音频引擎与中间件
+       ======================================================================== -->
+  <section id="s4" class="fade-in">
+    <h2>04 — 音频引擎与中间件</h2>
+
+    <p>音频中间件是连接「音频设计」和「游戏引擎」的桥梁。它们让音频设计师可以不写代码就能实现复杂的交互式音频行为，同时为程序员提供清晰的 API 接口。</p>
+
+    <h3>FMOD 详解</h3>
+    <div class="card card-accent">
+      <h4>概述</h4>
+      <p>FMOD 由 Firelight Technologies 开发，是游戏行业最广泛使用的音频中间件之一。它由两个部分组成：</p>
+      <ul>
+        <li><strong>FMOD Studio</strong>——可视化创作工具。音频设计师在这里创建 Event、设置参数、设计混音。界面类似 DAW，学习曲线相对平缓</li>
+        <li><strong>FMOD Engine</strong>——运行时库。集成到游戏引擎中，负责实时音频处理和播放。提供 C/C++/C# API，以及 Unity 和 Unreal 的官方插件</li>
+      </ul>
+      <p><strong>授权</strong>：年收入低于 20 万美元的独立开发者免费使用。</p>
+    </div>
+
+    <div class="card">
+      <h4>FMOD 核心工作流</h4>
+      <ol>
+        <li>在 FMOD Studio 中创建 <strong>Event</strong>（事件），每个 Event 包含一个或多个音频轨道</li>
+        <li>在 Event 中添加音频资产（Audio Clip），设置播放逻辑（随机、顺序、混合）</li>
+        <li>定义 <strong>Parameter</strong>（参数），将参数映射到音量、音高、滤波器等属性的变化</li>
+        <li>设置 <strong>Bus</strong>（总线）路由和混音层级（Music Bus、SFX Bus、UI Bus 等）</li>
+        <li>构建 Bank 文件（.bank），在游戏中通过 API 加载并触发</li>
+      </ol>
+    </div>
+
+    <div class="code-block">
+<span class="code-comment">// Unity 中使用 FMOD 的典型代码</span>
+<span class="code-keyword">using</span> FMODUnity;
+<span class="code-keyword">using</span> FMOD.Studio;
+
+<span class="code-keyword">public class</span> <span class="code-type">AudioController</span> : <span class="code-type">MonoBehaviour</span> {
+    <span class="code-comment">// 通过 Inspector 引用 FMOD Event</span>
+    [<span class="code-type">SerializeField</span>] <span class="code-keyword">private</span> <span class="code-type">EventReference</span> footstepEvent;
+    [<span class="code-type">SerializeField</span>] <span class="code-keyword">private</span> <span class="code-type">EventReference</span> musicEvent;
+
+    <span class="code-keyword">private</span> <span class="code-type">EventInstance</span> musicInstance;
+
+    <span class="code-keyword">void</span> <span class="code-func">Start</span>() {
+        <span class="code-comment">// 创建并启动持续播放的音乐实例</span>
+        musicInstance = RuntimeManager.<span class="code-func">CreateInstance</span>(musicEvent);
+        musicInstance.<span class="code-func">start</span>();
+    }
+
+    <span class="code-keyword">public void</span> <span class="code-func">PlayFootstep</span>(<span class="code-type">string</span> surface) {
+        <span class="code-comment">// 一次性音效：创建 → 设置参数 → 播放</span>
+        <span class="code-keyword">var</span> instance = RuntimeManager.<span class="code-func">CreateInstance</span>(footstepEvent);
+        instance.<span class="code-func">setParameterByName</span>(<span class="code-string">"Surface"</span>, <span class="code-func">GetSurfaceValue</span>(surface));
+        instance.<span class="code-func">set3DAttributes</span>(RuntimeUtils.<span class="code-func">To3DAttributes</span>(transform));
+        instance.<span class="code-func">start</span>();
+        instance.<span class="code-func">release</span>(); <span class="code-comment">// 播放完毕后自动释放</span>
+    }
+
+    <span class="code-keyword">public void</span> <span class="code-func">SetThreatLevel</span>(<span class="code-type">float</span> threat) {
+        <span class="code-comment">// 动态调节音乐参数</span>
+        musicInstance.<span class="code-func">setParameterByName</span>(<span class="code-string">"ThreatLevel"</span>, threat);
+    }
+}
+</div>
+
+    <h3>Wwise 详解</h3>
+    <div class="card card-blue">
+      <h4>概述</h4>
+      <p>Wwise（Wave Works Interactive Sound Engine）由 Audiokinetic 开发，是 AAA 游戏中使用率最高的音频中间件。它的设计哲学是<strong>给音频设计师最大的控制权</strong>——几乎所有在代码中能做的事情，都可以在 Wwise 的可视化界面中完成。</p>
+      <p>Wwise 的功能比 FMOD 更加全面和精细，但学习曲线也更陡峭。它的 SoundBank 管理、空间音频管线、和 Profiler 工具在业界首屈一指。</p>
+      <p><strong>授权</strong>：免费版限制 500 个媒体资产（对小型项目足够），商业版按项目规模定价。</p>
+    </div>
+
+    <div class="card">
+      <h4>Wwise 的独特优势</h4>
+      <ul>
+        <li><strong>Actor-Mixer 层级</strong>——树状结构管理所有音频对象。子节点自动继承父节点的属性（音量、Bus 路由、效果器），可在任意层级覆盖。这让管理数千个音效变得可控</li>
+        <li><strong>Interactive Music 系统</strong>——内置的交互式音乐编辑器比 FMOD 更强大，支持复杂的 segment 切换规则、stinger、多段同步播放</li>
+        <li><strong>SoundSeed</strong>——程序化音效生成。比如 SoundSeed Wind 可以根据参数实时生成逼真的风声，不需要预录音频文件</li>
+        <li><strong>Spatial Audio</strong>——内置完整的空间音频管线，包括房间/传送门模型、衍射计算、反射模拟</li>
+        <li><strong>Profiler</strong>——实时查看 CPU/内存使用、活跃的 Voice 数量、Bus 层级的音量峰值等，远程连接游戏进行实时调试</li>
+      </ul>
+    </div>
+
+    <h3>引擎内置音频系统</h3>
+
+    <div class="grid-2">
+      <div class="card">
+        <h4>Unity Audio</h4>
+        <ul>
+          <li>基于 AudioSource + AudioClip 的组件式架构</li>
+          <li>支持 3D 空间化、混音器（Audio Mixer）、快照系统</li>
+          <li>Audio Mixer 支持效果器链（EQ、混响、压缩器等）</li>
+          <li>DSP 滤波器可通过脚本控制</li>
+          <li><strong>局限</strong>：没有 Event 系统、随机变体需手写代码、动态音乐需自行实现</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Unreal MetaSounds</h4>
+        <ul>
+          <li>Unreal Engine 5 的新一代音频系统</li>
+          <li>基于节点图的 DSP 编程——可视化创建音频处理管线</li>
+          <li>程序化音效生成能力极强，无需中间件即可实现复杂音频逻辑</li>
+          <li>与 Unreal 的 Quartz（音频时钟）系统深度集成</li>
+          <li><strong>局限</strong>：仅限 Unreal Engine，学习曲线陡峭，文档仍在完善中</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>选择指南</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>场景</th><th>推荐方案</th><th>理由</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>独立小游戏 / Game Jam</td><td>引擎内置</td><td>快速上手，不增加复杂度</td></tr>
+          <tr><td>中型独立游戏</td><td>FMOD</td><td>免费、好学、功能足够</td></tr>
+          <tr><td>有专业音频设计师的团队</td><td>Wwise</td><td>功能最全面，设计师友好</td></tr>
+          <tr><td>Unreal Engine 5 项目</td><td>MetaSounds + 可选中间件</td><td>MetaSounds 能力很强，按需补充</td></tr>
+          <tr><td>音乐节奏游戏</td><td>自研 + FMOD/Wwise</td><td>节奏精度要求极高，核心逻辑自研</td></tr>
+          <tr><td>开放世界 AAA</td><td>Wwise</td><td>空间音频、资源管理、调试工具无可替代</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>核心概念详解</h3>
+
+    <div class="grid-2">
+      <div class="card card-accent">
+        <h4>Bus（总线）</h4>
+        <p>音频路由和混音的基本单元。所有声音最终都通过 Bus 层级汇聚到 Master Bus 输出。典型结构：</p>
+        <ul>
+          <li>Master Bus
+            <ul>
+              <li>Music Bus（音乐）</li>
+              <li>SFX Bus（音效）
+                <ul>
+                  <li>Weapon Bus</li>
+                  <li>Footstep Bus</li>
+                  <li>Ambient Bus</li>
+                </ul>
+              </li>
+              <li>UI Bus（界面）</li>
+              <li>Voice Bus（语音/对话）</li>
+            </ul>
+          </li>
+        </ul>
+        <p>每个 Bus 可以独立设置音量、挂载效果器链、设置 duck（闪避）规则。玩家设置中的「音乐音量」「音效音量」滑块就是控制对应 Bus 的音量。</p>
+      </div>
+      <div class="card card-green">
+        <h4>Event（事件）</h4>
+        <p>音频中间件中的核心抽象单元。一个 Event 封装了「播放什么声音、怎么播放」的所有逻辑。程序员只需要触发 Event 名称（如 "Play_Footstep"），不需要关心底层的音频文件和播放逻辑。</p>
+        <p>Event 内部可以包含：</p>
+        <ul>
+          <li>多个音频素材（随机/顺序选择）</li>
+          <li>音高/音量随机化范围</li>
+          <li>参数驱动的行为变化</li>
+          <li>自动化包络（音量/滤波器随时间变化）</li>
+          <li>播放限制（最大实例数、优先级）</li>
+        </ul>
+      </div>
+      <div class="card card-blue">
+        <h4>Parameter（参数）</h4>
+        <p>连接「游戏逻辑」和「音频行为」的纽带。参数是一个有名称和范围的浮点数值（如 "Speed" 0-100），音频设计师在中间件中定义参数值到音频属性的映射曲线。</p>
+        <p>常见参数设计：</p>
+        <ul>
+          <li>Speed → 脚步声音高+频率</li>
+          <li>Health → 心跳声音量+BPM</li>
+          <li>Altitude → 风声音量+频率</li>
+          <li>TimeOfDay → 环境音混合（白天虫鸣⇔夜晚蛙叫）</li>
+          <li>IndoorOutdoor → 混响量+高频衰减</li>
+        </ul>
+      </div>
+      <div class="card card-purple">
+        <h4>RTPC（实时参数控制）</h4>
+        <p>RTPC 是 Wwise 特有的术语（Real-Time Parameter Control），本质上就是「从游戏到音频的实时参数桥梁」。FMOD 中的等价概念叫做 Parameter。</p>
+        <p>RTPC 的核心是<strong>映射曲线</strong>——在 Wwise 的图形界面中，音频设计师画出「参数值 → 音频属性」的曲线。这条曲线可以是线性的、对数的、S 曲线、或者完全自定义形状的。</p>
+        <p>例如：RPM（0-8000） → 引擎音高（-12 到 +24 半音），曲线设为对数形状，这样低 RPM 时音高变化缓慢，高 RPM 时变化加快——符合真实引擎的听觉特征。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ========================================================================
+       SECTION 5: 空间音频
+       ======================================================================== -->
+  <section id="s5" class="fade-in">
+    <h2>05 — 空间音频</h2>
+
+    <p>空间音频是让玩家「用耳朵感知三维空间」的技术。从最基础的左右声像（Pan）到最前沿的基于物理的声学模拟，空间音频技术决定了游戏世界的「声学真实感」。</p>
+
+    <h3>3D 音频原理（HRTF）</h3>
+
+    <div class="card card-accent">
+      <h4>人类如何判断声音方向？</h4>
+      <p>人耳通过以下几种线索判断声源方位：</p>
+      <ul>
+        <li><strong>ITD（双耳时间差）</strong>——声音到达左右耳的时间差。声源在左边时，声音先到达左耳，延迟约 0-0.7ms。大脑利用这个微小的时间差判断左右方位</li>
+        <li><strong>ILD（双耳强度差）</strong>——由于头部的遮挡效应，远离声源一侧的耳朵接收到的声音更弱，且高频衰减更明显。这在高频（&gt;1.5kHz）时特别显著</li>
+        <li><strong>耳廓滤波</strong>——声音进入耳道前会被耳廓（pinna）反射和衍射，产生复杂的频率着色。这种着色的模式随声源的仰角而变化，是人耳判断「上下」方位的关键线索</li>
+        <li><strong>头部运动</strong>——当声源方位模糊时，人会本能地微微转头，用动态变化的 ITD/ILD 来消除方位歧义</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>HRTF（头相关传递函数）</h4>
+      <p>HRTF 是描述「从空间中某一点到人耳的声音传播特性」的传递函数。它是一个复杂的频率响应曲线，随声源方位（方位角、仰角）和频率而变化。</p>
+      <p>在游戏中使用 HRTF 空间化意味着：对于每个声源，根据它相对于听者的方位，将一组 HRTF 滤波器实时应用到音频信号上，使得通过普通耳机播放时，大脑能感知到声音来自三维空间中的正确位置。</p>
+      <p><strong>实现层面</strong>：</p>
+      <ul>
+        <li><strong>Steam Audio</strong>——Valve 的开源空间音频 SDK，提供高质量 HRTF 空间化、物理声学模拟、Ambisonics 支持</li>
+        <li><strong>Oculus Spatializer</strong>——Meta 为 VR 优化的空间音频方案</li>
+        <li><strong>Project Acoustics</strong>——微软的基于波动的物理声学模拟，预计算声学传播</li>
+        <li><strong>Resonance Audio</strong>——Google 的跨平台空间音频 SDK</li>
+        <li><strong>Wwise Spatial Audio</strong>——Wwise 内置的空间音频管线，支持房间/传送门模型</li>
+      </ul>
+    </div>
+
+    <h3>声音衰减与距离模型</h3>
+
+    <p>在真实物理中，声音强度随距离的平方递减（反平方定律）。在游戏中，我们通常使用自定义的衰减曲线来平衡「物理准确性」和「游戏性需求」。</p>
+
+    <div class="card card-green">
+      <h4>常用衰减模型</h4>
+      <div class="diagram">
+音量
+ │
+1.0├──╮
+   │  ╲
+   │   ╲  线性衰减
+   │    ╲  (最简单，但不自然)
+0.5├     ╲
+   │      ╲
+   │       ╲
+0.0├────────╲──────────
+   0   Min    Max     距离
+
+
+音量
+ │
+1.0├──╮
+   │  │╲
+   │  │  ╲  对数衰减
+   │  │    ╲  (接近物理真实)
+0.5├  │      ╲
+   │  │        ──╲
+   │  │            ──────
+0.0├──┴────────────────
+   0   Min         Max   距离
+
+
+音量
+ │
+1.0├──────╮
+   │      │╲
+   │      │  ╲  自定义曲线
+   │      │   ╲  (游戏中最常用)
+0.5├      │    │
+   │      │    ╲
+   │      │     ╲──
+0.0├──────┴────────────
+   0   Min    Mid  Max  距离</div>
+
+      <ul>
+        <li><strong>Min Distance</strong>——在此距离内声音保持最大音量，不衰减。通常设为声源的物理尺寸</li>
+        <li><strong>Max Distance</strong>——超过此距离声音完全静默（或保持极低音量）。对于重要的环境音，Max Distance 可以设得很远</li>
+        <li><strong>自定义曲线</strong>——在 Min 和 Max 之间手动绘制衰减形状。游戏设计中最灵活的选择</li>
+      </ul>
+    </div>
+
+    <h3>遮挡与障碍物</h3>
+
+    <div class="card card-blue">
+      <h4>遮挡 (Occlusion) vs 障碍 (Obstruction)</h4>
+      <ul>
+        <li><strong>遮挡</strong>：声源和听者之间存在<strong>完全隔离</strong>的物体（如墙壁）。效果：整体音量降低 + 高频强烈衰减（低通滤波），因为高频声波难以穿透固体</li>
+        <li><strong>障碍</strong>：声源和听者之间存在<strong>部分遮挡</strong>的物体（如矮墙、柱子）。效果：音量轻微降低 + 声像扩散（声音变得更「弥散」）</li>
+      </ul>
+      <p><strong>实现方式</strong>：</p>
+      <ul>
+        <li><strong>射线检测 (Raycast)</strong>——从听者到声源发射射线，检测途中碰到的障碍物。简单高效但精度有限</li>
+        <li><strong>多射线</strong>——发射多条射线（如 5-10 条），计算被遮挡的比例作为遮挡系数。更准确但 CPU 开销增大</li>
+        <li><strong>预计算</strong>——在编辑时对场景进行声学烘焙（acoustic baking），将遮挡信息存储为查找表。运行时高效，但不支持动态场景变化</li>
+        <li><strong>波动模拟</strong>——基于物理的声波传播模拟（如 Project Acoustics）。最准确但计算开销最大，通常需要预计算</li>
+      </ul>
+    </div>
+
+    <h3>环境混响</h3>
+
+    <div class="card card-purple">
+      <h4>混响参数解读</h4>
+      <p>混响（Reverb）是声音在封闭空间中多次反射后形成的声学现象。在游戏中，正确的混响可以让玩家立刻感知所处空间的大小和材质。</p>
+      <ul>
+        <li><strong>Pre-delay（预延迟）</strong>：直达声和第一次反射之间的时间间隔。大空间 = 长预延迟（50-100ms），小空间 = 短预延迟（5-20ms）</li>
+        <li><strong>Decay Time / RT60</strong>：混响衰减到 -60dB 所需时间。浴室约 0.5s，礼堂约 2-3s，大教堂可达 5-8s</li>
+        <li><strong>Diffusion（扩散度）</strong>：反射的密度。高扩散 = 平滑温暖的混响（如音乐厅），低扩散 = 可辨别的独立回声（如走廊）</li>
+        <li><strong>High-Frequency Damping（高频阻尼）</strong>：高频在空气中和材质表面的衰减速度。木头/织物吸收高频快，石头/金属反射高频多</li>
+        <li><strong>Wet/Dry Mix</strong>：混响信号和直达信号的比例。室外几乎全 dry，室内增加 wet 比例</li>
+      </ul>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>环境</th><th>预延迟</th><th>RT60</th><th>扩散度</th><th>高频阻尼</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>小房间</td><td>5-15ms</td><td>0.3-0.8s</td><td>高</td><td>中</td></tr>
+          <tr><td>洞穴</td><td>20-40ms</td><td>1.5-3s</td><td>低-中</td><td>低（石头反射强）</td></tr>
+          <tr><td>大教堂</td><td>40-80ms</td><td>4-8s</td><td>高</td><td>低</td></tr>
+          <tr><td>走廊</td><td>10-25ms</td><td>1-2s</td><td>低</td><td>中</td></tr>
+          <tr><td>森林</td><td>5-15ms</td><td>0.5-1.2s</td><td>高</td><td>高（树叶吸收）</td></tr>
+          <tr><td>金属容器内</td><td>2-8ms</td><td>1-3s</td><td>中</td><td>很低（金属反射）</td></tr>
+          <tr><td>室外开阔</td><td>无</td><td>&lt;0.3s</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>双耳音频与环绕声</h3>
+
+    <div class="card">
+      <h4>输出格式的选择</h4>
+      <ul>
+        <li>
+          <strong>立体声 (Stereo)</strong>
+          <p>最基础的输出格式。左右两个声道。通过简单的声像（Pan）控制声源的左右位置。对于2D游戏和大部分移动端游戏足够。</p>
+        </li>
+        <li>
+          <strong>双耳音频 (Binaural)</strong>
+          <p>通过 HRTF 处理的立体声输出，可以在普通耳机上模拟三维空间感。这是目前PC和主机游戏中最推荐的3D音频方案——绝大部分玩家使用耳机。VR 游戏几乎必须使用双耳音频。</p>
+        </li>
+        <li>
+          <strong>环绕声 (Surround Sound)</strong>
+          <p>5.1（6声道）或 7.1（8声道）多声道输出。需要对应的物理扬声器布局。在家庭影院和部分主机场景中使用。Atmos 和 DTS:X 支持基于对象的空间音频，可动态渲染到任意扬声器布局。</p>
+        </li>
+        <li>
+          <strong>Ambisonics</strong>
+          <p>一种与扬声器布局无关的空间音频编码格式。先将声场编码为球谐函数系数（一阶=4通道，二阶=9通道，三阶=16通道），播放时再根据实际输出设备解码。常用于 VR 场景和 360 视频。</p>
+        </li>
+      </ul>
+    </div>
+
+    <div class="callout">
+      <strong>实用建议</strong>
+      对于大部分游戏项目，优先支持<strong>双耳音频（HRTF）</strong>——这是覆盖面最广、效果最好的3D音频方案。然后考虑提供环绕声输出作为备选。Ambisonics 主要用于 VR 或需要精确声场录制/还原的场景。
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ========================================================================
+       SECTION 6: 音频编程
+       ======================================================================== -->
+  <section id="s6" class="fade-in">
+    <h2>06 — 音频编程</h2>
+
+    <h3>音频系统架构</h3>
+    <p>一个设计良好的游戏音频系统应该将「音频逻辑」从「游戏逻辑」中解耦。游戏代码不应该直接操作音频文件，而是通过一个中间层发送「语义化的音频请求」。</p>
+
+    <div class="diagram">
+┌──────────────────────────────────────────────────┐
+│                   游戏逻辑层                       │
+│    角色系统 │ 战斗系统 │ UI 系统 │ 环境系统          │
+└──────────┬───────────┬─────────┬────────────────┘
+           │ 语义化事件  │         │
+           ▼           ▼         ▼
+┌──────────────────────────────────────────────────┐
+│              音频管理器 (Audio Manager)             │
+│  ┌─────────┐ ┌──────────┐ ┌───────────────────┐  │
+│  │事件解析器│ │实例管理器 │ │混音/优先级管理器    │  │
+│  └─────────┘ └──────────┘ └───────────────────┘  │
+│  ┌─────────┐ ┌──────────┐ ┌───────────────────┐  │
+│  │对象池    │ │参数系统  │ │状态机             │  │
+│  └─────────┘ └──────────┘ └───────────────────┘  │
+└──────────────────────┬───────────────────────────┘
+                       │ 底层 API 调用
+                       ▼
+┌──────────────────────────────────────────────────┐
+│           底层音频引擎 / 中间件                     │
+│      FMOD │ Wwise │ Unity Audio │ Web Audio       │
+└──────────────────────────────────────────────────┘</div>
+
+    <h3>音频管理器设计</h3>
+
+    <div class="code-block">
+<span class="code-comment">// 音频管理器核心接口设计（伪代码）</span>
+<span class="code-keyword">class</span> <span class="code-type">AudioManager</span> {
+    <span class="code-comment">// ====== 生命周期 ======</span>
+    <span class="code-func">Initialize</span>(config: <span class="code-type">AudioConfig</span>)    <span class="code-comment">// 初始化音频系统</span>
+    <span class="code-func">Update</span>(deltaTime: <span class="code-type">float</span>)           <span class="code-comment">// 每帧更新（3D 位置、参数插值等）</span>
+    <span class="code-func">Shutdown</span>()                         <span class="code-comment">// 释放所有资源</span>
+
+    <span class="code-comment">// ====== 播放控制 ======</span>
+    <span class="code-func">PlayOneShot</span>(eventId, position?)    <span class="code-comment">// 一次性音效（发后即忘）</span>
+    <span class="code-func">PlayPersistent</span>(eventId) → handle  <span class="code-comment">// 持续音效（需要手动停止）</span>
+    <span class="code-func">Stop</span>(handle, fadeTime?)            <span class="code-comment">// 停止指定实例</span>
+    <span class="code-func">StopAll</span>(category?, fadeTime?)      <span class="code-comment">// 停止某类或全部音效</span>
+
+    <span class="code-comment">// ====== 参数控制 ======</span>
+    <span class="code-func">SetParameter</span>(handle, name, value)  <span class="code-comment">// 设置实例参数</span>
+    <span class="code-func">SetGlobalParameter</span>(name, value)    <span class="code-comment">// 设置全局参数</span>
+
+    <span class="code-comment">// ====== 混音控制 ======</span>
+    <span class="code-func">SetBusVolume</span>(busName, volume)       <span class="code-comment">// 设置 Bus 音量（0-1）</span>
+    <span class="code-func">SetSnapshot</span>(snapshotName)           <span class="code-comment">// 激活混音快照</span>
+    <span class="code-func">PauseAll</span>() / <span class="code-func">ResumeAll</span>()           <span class="code-comment">// 暂停/恢复</span>
+
+    <span class="code-comment">// ====== 监听者 ======</span>
+    <span class="code-func">SetListenerPosition</span>(position, forward, up)
+}
+</div>
+
+    <h3>对象池与音频实例</h3>
+
+    <div class="card card-accent">
+      <h4>为什么需要对象池？</h4>
+      <p>游戏中的音效是高频创建/销毁的对象。一个射击游戏中每秒可能需要创建几十个新的音效实例。如果每次都 new/delete，会导致：</p>
+      <ul>
+        <li>内存碎片化</li>
+        <li>GC 压力（在有垃圾回收的语言中）</li>
+        <li>创建延迟（尤其是需要解码音频数据时）</li>
+      </ul>
+      <p>解决方案是<strong>预分配一个音频实例池</strong>，需要播放时从池中获取一个空闲实例，播放完毕后归还。</p>
+    </div>
+
+    <div class="code-block">
+<span class="code-comment">// 音频对象池实现（伪代码）</span>
+<span class="code-keyword">class</span> <span class="code-type">AudioPool</span> {
+    pool: <span class="code-type">AudioInstance</span>[MAX_VOICES]   <span class="code-comment">// 预分配的实例数组</span>
+    active: <span class="code-type">Set</span>&lt;<span class="code-type">AudioInstance</span>&gt;          <span class="code-comment">// 当前活跃的实例</span>
+
+    <span class="code-func">Acquire</span>(priority: <span class="code-type">int</span>) → <span class="code-type">AudioInstance</span>? {
+        <span class="code-comment">// 1. 尝试找一个空闲实例</span>
+        <span class="code-keyword">for</span> inst <span class="code-keyword">in</span> pool:
+            <span class="code-keyword">if</span> !inst.isActive:
+                <span class="code-keyword">return</span> <span class="code-func">activate</span>(inst)
+
+        <span class="code-comment">// 2. 池已满——尝试偷取最低优先级的实例</span>
+        lowest = active.<span class="code-func">minBy</span>(i => i.priority)
+        <span class="code-keyword">if</span> lowest.priority < priority:
+            <span class="code-func">steal</span>(lowest)    <span class="code-comment">// 快速淡出并回收</span>
+            <span class="code-keyword">return</span> <span class="code-func">activate</span>(lowest)
+
+        <span class="code-comment">// 3. 没有可偷取的——拒绝播放</span>
+        <span class="code-keyword">return</span> null
+    }
+
+    <span class="code-func">Release</span>(inst: <span class="code-type">AudioInstance</span>) {
+        inst.isActive = <span class="code-keyword">false</span>
+        active.<span class="code-func">remove</span>(inst)
+    }
+}
+</div>
+
+    <h3>混音与优先级系统</h3>
+
+    <div class="card card-blue">
+      <h4>Voice 管理：为什么不能无限播放？</h4>
+      <p>每个同时播放的声音（Voice）都消耗 CPU 和内存。在移动平台上，同时播放超过 32 个 Voice 就可能导致性能问题。即使在 PC 上，128+ Voice 也会明显影响帧率。因此需要<strong>Voice 限制</strong>策略：</p>
+      <ul>
+        <li><strong>全局 Voice 上限</strong>——设置一个硬性上限（如 64），超过时根据优先级淘汰</li>
+        <li><strong>每 Event Voice 上限</strong>——同一个 Event 的最大同时播放数（如脚步声最多 3 个同时播放）</li>
+        <li><strong>Virtual Voice</strong>——不可闻的 Voice（音量极低或被遮挡）暂时进入「虚拟」状态，不消耗 DSP 资源但保持时间线同步。当重新可闻时恢复真实播放</li>
+      </ul>
+    </div>
+
+    <div class="card card-green">
+      <h4>优先级设计指南</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>优先级</th><th>类型</th><th>示例</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="tag tag-red">最高 (100)</span></td><td>玩家关键反馈</td><td>玩家受伤声、低血量警告</td></tr>
+            <tr><td><span class="tag tag-orange">高 (80)</span></td><td>对话/语音</td><td>NPC 对话、旁白</td></tr>
+            <tr><td><span class="tag tag-accent">中高 (60)</span></td><td>近处战斗音效</td><td>玩家武器声、近处敌人攻击</td></tr>
+            <tr><td><span class="tag tag-blue">中 (40)</span></td><td>环境关键音效</td><td>门开关、机关触发</td></tr>
+            <tr><td><span class="tag tag-purple">中低 (20)</span></td><td>远处音效</td><td>远处爆炸、远处NPC声音</td></tr>
+            <tr><td><span class="tag tag-green">低 (10)</span></td><td>环境氛围</td><td>虫鸣、风声、水流声</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>音频状态机</h3>
+    <p>音频状态机管理游戏「音频上下文」的切换，确保在不同游戏状态下应用正确的音频行为。</p>
+
+    <div class="card card-accent">
+      <h4>典型音频状态与转换</h4>
+      <div class="diagram">
+                  ┌──────────────────┐
+        ┌────────→│    主菜单         │←───────────┐
+        │         │ 背景音乐：Main    │             │
+        │         │ 环境音效：OFF     │             │
+        │         └───────┬──────────┘             │
+        │     开始游戏     │        退出到菜单       │
+        │                 ▼                        │
+        │         ┌──────────────────┐             │
+        │         │    探索模式       │─────────────┤
+        │         │ 音乐：Explore    │    暂停      │
+        │         │ 环境：区域环境音  │──────┐      │
+        │         │ Bus：正常混音     │      │      │
+        │         └──┬─────────┬────┘      │      │
+        │  遭遇敌人   │         │  进入对话   │      │
+        │            ▼         ▼           ▼      │
+        │    ┌────────────┐ ┌────────┐ ┌───────┐  │
+        │    │  战斗模式   │ │ 对话   │ │ 暂停  │  │
+        │    │音乐：Battle│ │音乐：-6dB│ │全部暂停│ │
+        │    │SFX：+3dB  │ │Voice优先│ │UI音效 │  │
+        │    │环境：-6dB  │ │SFX：-12dB││      │  │
+        │    └──────┬─────┘ └───┬────┘ └──┬────┘  │
+        │    战斗结束│    结束对话│    继续  │       │
+        │           └─────┬─────┘─────────┘       │
+        │                 ▼                        │
+        │         回到探索模式                       │
+        └──────────────────────────────────────────┘</div>
+      <p>状态转换时的关键操作：</p>
+      <ul>
+        <li><strong>音乐过渡</strong>——使用 crossfade 或等待过渡点切换音乐</li>
+        <li><strong>混音快照切换</strong>——应用对应状态的混音配置（Bus 音量、效果器参数）</li>
+        <li><strong>环境音切换</strong>——淡入新环境音、淡出旧环境音</li>
+        <li><strong>Duck/Sidechain</strong>——对话时自动降低音乐和音效音量</li>
+      </ul>
+    </div>
+
+    <div class="callout-blue callout">
+      <strong>设计原则：混音快照（Snapshot）</strong>
+      为每种游戏状态预定义一套混音配置（Snapshot），包含所有 Bus 的音量、效果器参数、空间音频设置。状态切换时在 Snapshot 之间插值过渡（通常 0.5-2 秒），而不是逐个调整参数。这让音频行为与游戏逻辑解耦，设计师可以在不改代码的情况下调整所有音频表现。
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ========================================================================
+       SECTION 7: 声音与游戏手感
+       ======================================================================== -->
+  <section id="s7" class="fade-in">
+    <h2>07 — 声音与游戏手感</h2>
+
+    <p>「Game Feel」（游戏手感）是一个看不见摸不着但极其关键的品质维度。声音在其中扮演的角色之重要，怎么强调都不为过。</p>
+
+    <h3>打击感的音效设计</h3>
+
+    <div class="card card-accent">
+      <h4>什么让一拳「有力」？</h4>
+      <p>打击感是「视觉表现 + 音效设计 + 操作反馈 + 时序控制」的协同产物。在音效维度，一个有力的打击需要：</p>
+      <ul>
+        <li><strong>瞬态冲击（Transient）</strong>——打击瞬间的尖锐短促声音（&lt;10ms 的 attack）。这是「冲击力」的核心来源。没有强烈瞬态的打击声听起来「软」</li>
+        <li><strong>低频推力（Sub Impact）</strong>——40-100Hz 的短促低频脉冲，给予「重量感」。可以用正弦波+快速衰减的音高下降来合成</li>
+        <li><strong>中频肉感（Body）</strong>——200-800Hz 的「肉体打击」质感。通常来自 Foley 录音（拍打肉类、皮革）</li>
+        <li><strong>高频碎裂（Sweetener）</strong>——4-12kHz 的碎裂/飞溅声，增加「破坏力」的感知。骨骼碎裂、盔甲破损、火花飞溅</li>
+        <li><strong>尾音/回响</strong>——打击后的余音。在空旷空间中的打击应有回声，增加「距离感」和「力量感」</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>打击音效的时序黄金法则</h4>
+      <p>打击音效的时序（timing）决定一切。这是音频在游戏手感中最关键的一课：</p>
+      <ul>
+        <li><strong>音效必须在视觉接触帧的 ±1 帧内触发</strong>。在 60fps 游戏中，这意味着误差容忍度是 ±16ms。超过这个范围，大脑就会感知到「不同步」</li>
+        <li><strong>预触发（Pre-hit）</strong>——在打击前 50-100ms 播放一个「挥动」音效（whoosh），为大脑提供「即将有冲击」的预期。这让实际打击的瞬态感知更加强烈（预期增强效应）</li>
+        <li><strong>后续（Follow-up）</strong>——打击后 100-300ms 的「结果」音效：敌人的受伤呻吟、盔甲碎裂声、物体倒地声。这些音效确认「打击产生了效果」</li>
+        <li><strong>时间拉伸（Hitstop）</strong>——许多格斗游戏在打击瞬间暂停 2-4 帧（hitstop），同时让打击音效的瞬态部分完整播放。这一小段停顿让音效有「呼吸空间」，使冲击感知倍增</li>
+      </ul>
+    </div>
+
+    <div class="diagram">
+                    打击点
+                      │
+    ─────────────────[■]──────────────────→ 时间
+         │            │          │
+    [-100ms]     [0ms]    [+100~300ms]
+    Whoosh      Transient   Follow-up
+    挥动声       冲击瞬态      后续反馈
+                  │
+           ┌──────┼──────┐
+           │      │      │
+         低频   中频    高频
+         推力   肉感    碎裂
+         Sub   Body   Sweetener</div>
+
+    <h3>反馈循环中的声音</h3>
+
+    <div class="card card-green">
+      <h4>正反馈循环</h4>
+      <p>声音是强化正反馈循环的利器。每当玩家做出「正确」行为时，及时的正面音效反馈可以激活大脑的奖赏回路：</p>
+      <ul>
+        <li><strong>连击计数</strong>——每次连击的音效音高递增（每级+2半音），给予「越来越强」的感知。许多格斗游戏和动作游戏使用这个技巧</li>
+        <li><strong>收集品</strong>——连续快速收集物品时，音效的音高逐渐升高，形成一个上行音阶。马力欧的金币音效就是这样设计的</li>
+        <li><strong>完美时机</strong>——在「perfect timing」窗口内触发特殊的「清脆」版音效，与普通版形成对比。这是音乐节奏游戏的核心设计</li>
+      </ul>
+    </div>
+
+    <div class="card card-red">
+      <h4>负反馈/警告</h4>
+      <p>声音同样是传达危险和错误的有效工具：</p>
+      <ul>
+        <li><strong>低血量</strong>——心跳声加速、低通滤波器逐渐关闭（世界声音变「闷」）、高频耳鸣。塞尔达系列的经典低血量哔哔声虽然烦人，但绝对有效</li>
+        <li><strong>弹药耗尽</strong>——枪声变为空膛的金属撞击声（dry fire），立即告知「没子弹了」</li>
+        <li><strong>错误操作</strong>——不和谐音程、低沉的「嗡」声、短促的噪音脉冲。避免使用过于刺耳的音效，以免引发负面情绪</li>
+        <li><strong>环境危险</strong>——进入危险区域时，环境音开始包含不安的元素（低频嗡鸣、不和谐的风声、隐约的呜咽声）</li>
+      </ul>
+    </div>
+
+    <h3>UI 音效与微交互</h3>
+
+    <div class="card card-blue">
+      <h4>UI 音效设计原则</h4>
+      <p>UI 音效是玩家每次游戏都会听到成百上千次的声音。设计得好，它们是「自然而然」的触觉延伸；设计得差，它们是折磨。</p>
+      <ul>
+        <li><strong>极简</strong>——UI 音效应该是所有音效中最短（50-200ms）、最克制的。不要让每次按钮点击都发出华丽的音效</li>
+        <li><strong>层次感</strong>——不同层级的交互使用不同「分量」的音效。悬停（最轻）→ 点击（中等）→ 确认（最重）→ 取消（独特但轻柔）</li>
+        <li><strong>一致性</strong>——整套 UI 使用统一的音色家族。如果确认键是钢琴音色，取消键不应该突然变成 8-bit 音色</li>
+        <li><strong>信息性</strong>——上行音程 = 打开/展开/确认；下行音程 = 关闭/收起/取消；不和谐 = 错误/警告</li>
+        <li><strong>可关闭</strong>——始终提供关闭 UI 音效的选项。有些玩家需要安静</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>微交互音效清单</h4>
+      <div class="grid-2">
+        <div>
+          <p><strong>常见 UI 交互</strong></p>
+          <ul>
+            <li>按钮悬停（hover）</li>
+            <li>按钮点击（click）</li>
+            <li>滑块拖动（slider）</li>
+            <li>开关切换（toggle）</li>
+            <li>页面/Tab 切换</li>
+            <li>列表滚动</li>
+            <li>弹窗出现/关闭</li>
+            <li>文字输入打字声</li>
+          </ul>
+        </div>
+        <div>
+          <p><strong>游戏内微交互</strong></p>
+          <ul>
+            <li>物品拾取</li>
+            <li>物品放入背包</li>
+            <li>装备穿戴/切换</li>
+            <li>地图标记</li>
+            <li>任务接受/完成</li>
+            <li>经验值获取</li>
+            <li>等级提升</li>
+            <li>成就解锁</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>声音的时序与节奏</h3>
+
+    <div class="card card-purple">
+      <h4>声音节奏感的设计</h4>
+      <p>人类大脑是一台节奏感知机器。有节奏感的声音序列让人感到「舒适」和「可控」，无节奏的声音让人感到「混乱」和「失控」。利用这一点：</p>
+      <ul>
+        <li><strong>脚步声的节奏</strong>应与角色动画的步频完美同步。不同移动速度（走/跑/冲刺）对应不同的 BPM，过渡时 BPM 应平滑变化而非突变</li>
+        <li><strong>收集品的音效</strong>可以设计成与当前背景音乐的 BPM 对齐（quantize to beat），让收集行为本身产生「音乐性」</li>
+        <li><strong>战斗的节奏</strong>——连续攻击的音效间隔应创造出有节奏感的模式。《鬼泣5》的战斗音效经过精心编排，连续攻击的声音序列本身就构成一段有节拍的打击乐</li>
+        <li><strong>环境音的节奏</strong>——表面看似随机的环境音（如钟表滴答、水滴、远处锤击声），如果赋予一个隐含的节奏模式，会让环境感觉更「有生命」。但节奏不能太规律，否则会变成机械感</li>
+      </ul>
+    </div>
+
+    <div class="callout">
+      <strong>终极法则</strong>
+      声音和画面之间的同步性（synchronization）是游戏手感的基石。一个「手感好」的游戏，首先是一个「音画完美同步」的游戏。如果你只有精力做一件音频相关的事情，请确保每个音效都在正确的时间点触发。
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ========================================================================
+       SECTION 8: 工具与资源
+       ======================================================================== -->
+  <section id="s8" class="fade-in">
+    <h2>08 — 工具与资源</h2>
+
+    <h3>DAW 工具（数字音频工作站）</h3>
+
+    <div class="grid-3">
+      <div class="card card-accent">
+        <h4>Audacity</h4>
+        <p><span class="tag tag-green">免费开源</span></p>
+        <p>最轻量的音频编辑器。适合基础的音效剪辑、格式转换、简单处理。不适合复杂的多轨混音或合成工作。</p>
+        <ul>
+          <li>剪切、拼接、淡入淡出</li>
+          <li>基础效果器（EQ、压缩、混响）</li>
+          <li>噪音移除</li>
+          <li>支持 VST 插件</li>
+          <li>批量处理</li>
+        </ul>
+        <p><strong>适合</strong>：快速编辑、素材预处理、格式转换</p>
+      </div>
+      <div class="card card-green">
+        <h4>Reaper</h4>
+        <p><span class="tag tag-accent">$60 个人版</span></p>
+        <p>游戏音频设计师的首选 DAW。功能完整、性能优秀、价格低廉、高度可定制。与 FMOD/Wwise 有良好的工作流集成。</p>
+        <ul>
+          <li>无限轨道、非破坏性编辑</li>
+          <li>强大的路由和混音功能</li>
+          <li>原生 surround 支持</li>
+          <li>可编写自定义脚本（ReaScript）</li>
+          <li>资源占用极低</li>
+          <li>内置 SWS 扩展</li>
+        </ul>
+        <p><strong>适合</strong>：专业音效设计、混音、批量导出</p>
+      </div>
+      <div class="card card-blue">
+        <h4>FL Studio</h4>
+        <p><span class="tag tag-purple">$99-$499</span></p>
+        <p>以音乐制作见长的 DAW，内置大量合成器和效果器。Pattern-based 的工作流非常适合游戏音乐作曲。终身免费更新是亮点。</p>
+        <ul>
+          <li>直观的 Piano Roll</li>
+          <li>内置 Sytrus、Harmor 等强大合成器</li>
+          <li>Pattern + Playlist 工作流</li>
+          <li>Edison 音频编辑器</li>
+          <li>大量第三方插件生态</li>
+        </ul>
+        <p><strong>适合</strong>：游戏音乐作曲、电子音色合成</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h4>其他值得了解的 DAW</h4>
+      <ul>
+        <li><strong>Ableton Live</strong>——Session View 模式非常适合实验性的音效设计和实时音频处理。Granulator III 是粒子合成的利器。价格较高（$99-$749）</li>
+        <li><strong>Logic Pro</strong>——Mac 专属，$199 买断。内置丰富的乐器和效果器，适合管弦乐编写</li>
+        <li><strong>Pro Tools</strong>——录音行业标准，但对游戏音频设计来说性价比不如 Reaper</li>
+      </ul>
+    </div>
+
+    <h3>音效库</h3>
+
+    <div class="grid-2">
+      <div class="card card-accent">
+        <h4>免费资源</h4>
+        <ul>
+          <li><strong>Freesound.org</strong>——最大的免费音效社区。用户上传的 CC 授权素材。质量参差不齐，需要筛选。搜索功能强大，支持按频谱/时长筛选</li>
+          <li><strong>Sonniss GDC Bundle</strong>——每年 GDC 期间 Sonniss 发布的免费音效包，累计数十 GB 的专业品质素材，商用免费</li>
+          <li><strong>BBC Sound Effects</strong>——BBC 开放的 33000+ 音效库，非商用免费</li>
+          <li><strong>NASA Sound Library</strong>——太空相关的真实录音，科幻游戏的灵感来源</li>
+          <li><strong>OpenGameArt.org</strong>——专门面向游戏开发的免费资源站，音效分类清晰</li>
+        </ul>
+      </div>
+      <div class="card card-blue">
+        <h4>商业音效库</h4>
+        <ul>
+          <li><strong>Boom Library</strong>——好莱坞级别的音效库，按类别销售（武器、车辆、自然、科幻等），$50-200/套</li>
+          <li><strong>Pro Sound Effects</strong>——订阅制，250000+ 音效</li>
+          <li><strong>Artlist / Epidemic Sound</strong>——订阅制音乐+音效库，适合持续性项目</li>
+          <li><strong>Splice</strong>——按点数购买单个素材，适合按需使用</li>
+          <li><strong>SoundSnap</strong>——大量高质量的 Foley 和环境音效</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>AI 音乐生成</h3>
+    <div class="card card-purple">
+      <h4>AI 音乐工具现状（2026）</h4>
+      <p>AI 音乐生成技术已经能产出可用于原型阶段的游戏配乐，但仍有明显局限：</p>
+      <ul>
+        <li><strong>Suno</strong>——文本描述生成音乐。擅长流行/电子/摇滚风格。生成速度快，适合快速探索方向。局限：循环点控制差，难以做精细的时长控制。<em>适合</em>：Game Jam、原型验证、寻找灵感</li>
+        <li><strong>Udio</strong>——与 Suno 类似但在音质和风格多样性上各有优势。两者可以对比使用</li>
+        <li><strong>MusicLM / MusicGen</strong>——Google 和 Meta 的开源音乐模型。可本地部署，可定制化训练。需要技术能力</li>
+        <li><strong>Stable Audio</strong>——Stability AI 的音乐生成模型，商用授权清晰</li>
+      </ul>
+      <p><strong>版权警告</strong>：AI 生成音乐的版权归属目前仍有法律争议。在商业项目中使用时，务必确认所用平台的授权条款，并在游戏上线前做好法律咨询。</p>
+    </div>
+
+    <h3>音效生成器</h3>
+
+    <div class="grid-2">
+      <div class="card card-green">
+        <h4>sfxr / Bfxr / jsfxr</h4>
+        <p><span class="tag tag-green">免费</span></p>
+        <p>一键生成 8-bit / 复古风格音效的神器。原版 sfxr 由 DrPetter 开发，后来衍生出多个增强版本：</p>
+        <ul>
+          <li><strong>sfxr</strong>——原版，极简界面，6 种波形</li>
+          <li><strong>Bfxr</strong>——增强版，更多波形和效果器，可在浏览器中运行</li>
+          <li><strong>jsfxr</strong>——Web 版本，带可视化波形预览</li>
+          <li><strong>LabChirp</strong>——sfxr 理念的高级版本，更精细的参数控制</li>
+        </ul>
+        <p><strong>典型用途</strong>：像素/复古游戏的全套音效、Game Jam 快速原型</p>
+      </div>
+      <div class="card card-orange">
+        <h4>其他音效生成工具</h4>
+        <ul>
+          <li><strong>ChipTone</strong>——Web 工具，比 sfxr 更直观的界面，更多控制参数</li>
+          <li><strong>Vital</strong>——免费的波表合成器，不仅是乐器，也是强大的音效设计工具。可视化的调制矩阵让复杂音色设计变得直观</li>
+          <li><strong>ZzFX</strong>——JavaScript 库，用代码生成音效，适合 Web 游戏（体积极小）</li>
+          <li><strong>Surge XT</strong>——免费开源合成器，功能与商业产品媲美</li>
+          <li><strong>AudioMass</strong>——在线音频编辑器，轻量替代 Audacity</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout-green callout">
+      <strong>推荐工具组合（独立开发者）</strong>
+      <strong>音效设计</strong>：Reaper（编辑/混音）+ Vital（合成）+ sfxr（快速原型）+ Freesound（素材）<br>
+      <strong>音乐制作</strong>：FL Studio 或 Reaper + 免费 VST 乐器（Spitfire LABS、BBC Orchestra Discover）<br>
+      <strong>中间件</strong>：FMOD（免费 tier 足够）<br>
+      <strong>总预算</strong>：$60-200，足够搭建专业级的游戏音频工作流。
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ========================================================================
+       SECTION 9: 实践
+       ======================================================================== -->
+  <section id="s9" class="fade-in">
+    <h2>09 — 实践：为游戏配置音频系统</h2>
+
+    <h3>从零搭建音频管理器</h3>
+    <p>下面是一个适用于 Web 游戏（使用 Web Audio API）的轻量级音频管理器实现。这个架构同样适用于其他引擎——只需替换底层 API 调用。</p>
+
+    <div class="code-block">
+<span class="code-comment">// ============================================</span>
+<span class="code-comment">// 游戏音频管理器 — 完整实现</span>
+<span class="code-comment">// ============================================</span>
+
+<span class="code-keyword">class</span> <span class="code-type">GameAudioManager</span> {
+  <span class="code-keyword">constructor</span>() {
+    <span class="code-keyword">this</span>.ctx = <span class="code-keyword">new</span> (<span class="code-type">AudioContext</span> || webkitAudioContext)();
+    <span class="code-keyword">this</span>.masterGain = <span class="code-keyword">this</span>.ctx.<span class="code-func">createGain</span>();
+    <span class="code-keyword">this</span>.masterGain.<span class="code-func">connect</span>(<span class="code-keyword">this</span>.ctx.destination);
+
+    <span class="code-comment">// Bus 系统</span>
+    <span class="code-keyword">this</span>.buses = {
+      music:  <span class="code-keyword">this</span>.<span class="code-func">_createBus</span>(<span class="code-number">0.7</span>),
+      sfx:    <span class="code-keyword">this</span>.<span class="code-func">_createBus</span>(<span class="code-number">0.8</span>),
+      ui:     <span class="code-keyword">this</span>.<span class="code-func">_createBus</span>(<span class="code-number">0.6</span>),
+      ambience: <span class="code-keyword">this</span>.<span class="code-func">_createBus</span>(<span class="code-number">0.5</span>),
+    };
+
+    <span class="code-comment">// 音频缓冲区缓存</span>
+    <span class="code-keyword">this</span>.bufferCache = <span class="code-keyword">new</span> <span class="code-type">Map</span>();
+
+    <span class="code-comment">// 活跃实例跟踪</span>
+    <span class="code-keyword">this</span>.activeInstances = <span class="code-keyword">new</span> <span class="code-type">Set</span>();
+    <span class="code-keyword">this</span>.MAX_VOICES = <span class="code-number">32</span>;
+  }
+
+  <span class="code-comment">// 创建 Bus（总线）</span>
+  <span class="code-func">_createBus</span>(volume) {
+    <span class="code-keyword">const</span> gain = <span class="code-keyword">this</span>.ctx.<span class="code-func">createGain</span>();
+    gain.gain.value = volume;
+    gain.<span class="code-func">connect</span>(<span class="code-keyword">this</span>.masterGain);
+    <span class="code-keyword">return</span> { gain, volume };
+  }
+
+  <span class="code-comment">// 加载音频文件</span>
+  <span class="code-keyword">async</span> <span class="code-func">load</span>(id, url) {
+    <span class="code-keyword">if</span> (<span class="code-keyword">this</span>.bufferCache.<span class="code-func">has</span>(id)) <span class="code-keyword">return</span>;
+    <span class="code-keyword">const</span> response = <span class="code-keyword">await</span> <span class="code-func">fetch</span>(url);
+    <span class="code-keyword">const</span> arrayBuf = <span class="code-keyword">await</span> response.<span class="code-func">arrayBuffer</span>();
+    <span class="code-keyword">const</span> audioBuf = <span class="code-keyword">await</span> <span class="code-keyword">this</span>.ctx.<span class="code-func">decodeAudioData</span>(arrayBuf);
+    <span class="code-keyword">this</span>.bufferCache.<span class="code-func">set</span>(id, audioBuf);
+  }
+
+  <span class="code-comment">// 播放一次性音效</span>
+  <span class="code-func">playOneShot</span>(id, {
+    bus = <span class="code-string">'sfx'</span>,
+    volume = <span class="code-number">1.0</span>,
+    pitchVariation = <span class="code-number">0</span>,  <span class="code-comment">// 半音随机范围 (±)</span>
+    pan = <span class="code-number">0</span>,
+  } = {}) {
+    <span class="code-keyword">const</span> buffer = <span class="code-keyword">this</span>.bufferCache.<span class="code-func">get</span>(id);
+    <span class="code-keyword">if</span> (!buffer) <span class="code-keyword">return</span> <span class="code-keyword">null</span>;
+
+    <span class="code-comment">// Voice 限制检查</span>
+    <span class="code-keyword">if</span> (<span class="code-keyword">this</span>.activeInstances.size >= <span class="code-keyword">this</span>.MAX_VOICES) {
+      <span class="code-keyword">this</span>.<span class="code-func">_evictLowest</span>();
+    }
+
+    <span class="code-keyword">const</span> source = <span class="code-keyword">this</span>.ctx.<span class="code-func">createBufferSource</span>();
+    source.buffer = buffer;
+
+    <span class="code-comment">// 音高变化</span>
+    <span class="code-keyword">if</span> (pitchVariation > <span class="code-number">0</span>) {
+      <span class="code-keyword">const</span> semitones = (<span class="code-type">Math</span>.<span class="code-func">random</span>() * <span class="code-number">2</span> - <span class="code-number">1</span>) * pitchVariation;
+      source.playbackRate.value = <span class="code-type">Math</span>.<span class="code-func">pow</span>(<span class="code-number">2</span>, semitones / <span class="code-number">12</span>);
+    }
+
+    <span class="code-comment">// 音量</span>
+    <span class="code-keyword">const</span> gainNode = <span class="code-keyword">this</span>.ctx.<span class="code-func">createGain</span>();
+    gainNode.gain.value = volume;
+
+    <span class="code-comment">// 声像（Pan）</span>
+    <span class="code-keyword">const</span> panner = <span class="code-keyword">this</span>.ctx.<span class="code-func">createStereoPanner</span>();
+    panner.pan.value = pan;
+
+    <span class="code-comment">// 连接音频图</span>
+    source.<span class="code-func">connect</span>(gainNode)
+      .<span class="code-func">connect</span>(panner)
+      .<span class="code-func">connect</span>(<span class="code-keyword">this</span>.buses[bus].gain);
+
+    source.<span class="code-func">start</span>();
+
+    <span class="code-comment">// 跟踪并自动清理</span>
+    <span class="code-keyword">const</span> instance = { source, gainNode, bus, id };
+    <span class="code-keyword">this</span>.activeInstances.<span class="code-func">add</span>(instance);
+    source.onended = () => <span class="code-keyword">this</span>.activeInstances.<span class="code-func">delete</span>(instance);
+
+    <span class="code-keyword">return</span> instance;
+  }
+
+  <span class="code-comment">// 播放循环音乐（带淡入淡出切换）</span>
+  <span class="code-func">playMusic</span>(id, { fadeIn = <span class="code-number">2.0</span>, volume = <span class="code-number">1.0</span> } = {}) {
+    <span class="code-keyword">const</span> buffer = <span class="code-keyword">this</span>.bufferCache.<span class="code-func">get</span>(id);
+    <span class="code-keyword">if</span> (!buffer) <span class="code-keyword">return</span>;
+
+    <span class="code-comment">// 淡出当前音乐</span>
+    <span class="code-keyword">if</span> (<span class="code-keyword">this</span>.currentMusic) {
+      <span class="code-keyword">this</span>.<span class="code-func">_fadeOut</span>(<span class="code-keyword">this</span>.currentMusic, fadeIn);
+    }
+
+    <span class="code-keyword">const</span> source = <span class="code-keyword">this</span>.ctx.<span class="code-func">createBufferSource</span>();
+    source.buffer = buffer;
+    source.loop = <span class="code-keyword">true</span>;
+
+    <span class="code-keyword">const</span> gainNode = <span class="code-keyword">this</span>.ctx.<span class="code-func">createGain</span>();
+    gainNode.gain.value = <span class="code-number">0</span>;
+    gainNode.gain.<span class="code-func">linearRampToValueAtTime</span>(
+      volume,
+      <span class="code-keyword">this</span>.ctx.currentTime + fadeIn
+    );
+
+    source.<span class="code-func">connect</span>(gainNode).<span class="code-func">connect</span>(<span class="code-keyword">this</span>.buses.music.gain);
+    source.<span class="code-func">start</span>();
+
+    <span class="code-keyword">this</span>.currentMusic = { source, gainNode };
+  }
+
+  <span class="code-comment">// 设置 Bus 音量（玩家设置）</span>
+  <span class="code-func">setBusVolume</span>(busName, value) {
+    <span class="code-keyword">const</span> bus = <span class="code-keyword">this</span>.buses[busName];
+    <span class="code-keyword">if</span> (!bus) <span class="code-keyword">return</span>;
+    bus.gain.gain.<span class="code-func">linearRampToValueAtTime</span>(
+      value,
+      <span class="code-keyword">this</span>.ctx.currentTime + <span class="code-number">0.1</span>
+    );
+  }
+
+  <span class="code-comment">// 淡出</span>
+  <span class="code-func">_fadeOut</span>(instance, duration = <span class="code-number">1.0</span>) {
+    instance.gainNode.gain.<span class="code-func">linearRampToValueAtTime</span>(
+      <span class="code-number">0</span>,
+      <span class="code-keyword">this</span>.ctx.currentTime + duration
+    );
+    <span class="code-func">setTimeout</span>(() => instance.source.<span class="code-func">stop</span>(), duration * <span class="code-number">1000</span>);
+  }
+
+  <span class="code-comment">// 淘汰最低优先级实例</span>
+  <span class="code-func">_evictLowest</span>() {
+    <span class="code-keyword">const</span> oldest = <span class="code-keyword">this</span>.activeInstances.<span class="code-func">values</span>().<span class="code-func">next</span>().value;
+    <span class="code-keyword">if</span> (oldest) {
+      oldest.source.<span class="code-func">stop</span>();
+      <span class="code-keyword">this</span>.activeInstances.<span class="code-func">delete</span>(oldest);
+    }
+  }
+}
+</div>
+
+    <h3>音频资源管理最佳实践</h3>
+
+    <div class="card card-accent">
+      <h4>目录结构规范</h4>
+      <div class="code-block">
+audio/
+├── music/
+│   ├── exploration/
+│   │   ├── forest_explore.ogg
+│   │   └── cave_explore.ogg
+│   ├── combat/
+│   │   ├── normal_battle.ogg
+│   │   └── boss_battle.ogg
+│   └── ui/
+│       └── main_menu.ogg
+├── sfx/
+│   ├── character/
+│   │   ├── footsteps/
+│   │   │   ├── stone_01.ogg  ... stone_06.ogg
+│   │   │   ├── grass_01.ogg  ... grass_06.ogg
+│   │   │   └── wood_01.ogg   ... wood_06.ogg
+│   │   ├── attacks/
+│   │   │   ├── sword_swing_01.ogg ... _04.ogg
+│   │   │   └── sword_hit_01.ogg   ... _04.ogg
+│   │   └── voice/
+│   │       ├── hurt_01.ogg ... hurt_05.ogg
+│   │       └── death_01.ogg ... death_03.ogg
+│   ├── environment/
+│   │   ├── ambient_forest.ogg
+│   │   ├── ambient_cave.ogg
+│   │   ├── wind_loop.ogg
+│   │   └── rain_loop.ogg
+│   ├── objects/
+│   │   ├── door_open.ogg
+│   │   ├── chest_open.ogg
+│   │   └── coin_pickup_01.ogg ... _04.ogg
+│   └── ui/
+│       ├── button_hover.ogg
+│       ├── button_click.ogg
+│       ├── confirm.ogg
+│       └── cancel.ogg
+└── banks/                <span class="code-comment">&lt;-- FMOD/Wwise 构建输出</span>
+    ├── Master.bank
+    ├── Master.strings.bank
+    ├── Music.bank
+    └── SFX.bank</div>
+    </div>
+
+    <div class="card card-green">
+      <h4>命名约定</h4>
+      <ul>
+        <li>使用小写 + 下划线：<code>sword_hit_metal_01.ogg</code></li>
+        <li>变体编号从 01 开始（不是 1），方便排序：<code>_01, _02, ... _12</code></li>
+        <li>命名中包含关键属性：<code>footstep_stone_run_01.ogg</code>（动作_材质_状态_编号）</li>
+        <li>循环音频加 <code>_loop</code> 后缀：<code>wind_loop.ogg</code></li>
+        <li>单次音效加 <code>_oneshot</code>（可选）：<code>explosion_large_oneshot.ogg</code></li>
+      </ul>
+    </div>
+
+    <h3>文件格式选择</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>格式</th><th>类型</th><th>压缩比</th><th>质量</th><th>解码负担</th><th>适用场景</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>WAV</strong></td>
+            <td>无压缩 PCM</td>
+            <td>1:1</td>
+            <td>无损</td>
+            <td>无</td>
+            <td>开发阶段源文件、低延迟关键音效</td>
+          </tr>
+          <tr>
+            <td><strong>OGG Vorbis</strong></td>
+            <td>有损压缩</td>
+            <td>~10:1</td>
+            <td>优秀</td>
+            <td>低</td>
+            <td><em>游戏首选</em>。音乐、较长音效、环境音</td>
+          </tr>
+          <tr>
+            <td><strong>MP3</strong></td>
+            <td>有损压缩</td>
+            <td>~10:1</td>
+            <td>良好</td>
+            <td>低</td>
+            <td>兼容性最广（Web），但有专利历史包袱</td>
+          </tr>
+          <tr>
+            <td><strong>FLAC</strong></td>
+            <td>无损压缩</td>
+            <td>~2:1</td>
+            <td>无损</td>
+            <td>中</td>
+            <td>存档、需要无损但要节省空间</td>
+          </tr>
+          <tr>
+            <td><strong>Opus</strong></td>
+            <td>有损压缩</td>
+            <td>~15:1</td>
+            <td>极优</td>
+            <td>低</td>
+            <td>语音/对话（极低比特率下质量最佳）</td>
+          </tr>
+          <tr>
+            <td><strong>ADPCM</strong></td>
+            <td>轻量压缩</td>
+            <td>~4:1</td>
+            <td>尚可</td>
+            <td>极低</td>
+            <td>需要快速解码的高频音效（脚步、枪声）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card card-blue">
+      <h4>格式选择决策树</h4>
+      <ul>
+        <li><strong>这是短促的高频音效（&lt;2秒）？</strong> → WAV 或 ADPCM。解码延迟最低</li>
+        <li><strong>这是音乐或长环境音（&gt;10秒）？</strong> → OGG Vorbis（128-192kbps）。质量/体积平衡最佳</li>
+        <li><strong>这是对话/语音？</strong> → Opus（48-96kbps）或 OGG（96kbps）。人声在低比特率下 Opus 质量远超 OGG</li>
+        <li><strong>Web 游戏？</strong> → MP3 作为回退格式保证兼容性，优先提供 OGG</li>
+        <li><strong>移动端存储紧张？</strong> → 全部 OGG，音乐 96kbps，音效 128kbps</li>
+      </ul>
+    </div>
+
+    <h3>压缩与加载策略</h3>
+
+    <div class="card card-purple">
+      <h4>内存管理策略</h4>
+      <ul>
+        <li>
+          <strong>预加载 (Preload)</strong>
+          <p>游戏启动或场景加载时一次性加载到内存。适合<strong>频繁使用的短音效</strong>——UI 音效、脚步声、常用攻击音效。这些文件应保持较小（&lt;100KB），总预加载体积控制在 10-50MB。</p>
+        </li>
+        <li>
+          <strong>流式播放 (Streaming)</strong>
+          <p>不加载到内存，而是从磁盘实时读取并解码。适合<strong>音乐和长环境音</strong>——这些文件可能单个就有 5-20MB。流式播放的 CPU 开销略高但内存开销极低。注意：流式播放有启动延迟（通常 50-200ms），不适合需要精确触发时机的音效。</p>
+        </li>
+        <li>
+          <strong>按需加载 (On-demand)</strong>
+          <p>在需要时异步加载，加载完成后缓存。适合<strong>不常用但不紧急的音效</strong>——特定 Boss 的音效、过场动画音频。需要处理「加载未完成就被触发」的情况（跳过或使用占位音效）。</p>
+        </li>
+        <li>
+          <strong>分 Bank 加载</strong>
+          <p>将音频资源按场景/功能分成多个 Bank。进入新场景时加载对应 Bank，离开时卸载。FMOD 和 Wwise 都原生支持 Bank 管理。典型划分：Common Bank（始终加载） + 每个场景一个 Bank。</p>
+        </li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>音频预算参考</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>平台</th><th>总音频体积</th><th>运行时内存</th><th>同时 Voice 数</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>移动端（轻量级）</td><td>20-50 MB</td><td>10-20 MB</td><td>16-24</td></tr>
+            <tr><td>移动端（中型）</td><td>50-150 MB</td><td>20-40 MB</td><td>24-32</td></tr>
+            <tr><td>PC 独立游戏</td><td>100-500 MB</td><td>30-80 MB</td><td>32-64</td></tr>
+            <tr><td>PC/主机 AA</td><td>500MB-2GB</td><td>80-150 MB</td><td>64-96</td></tr>
+            <tr><td>AAA</td><td>2-10 GB</td><td>150-300 MB</td><td>96-256</td></tr>
+            <tr><td>Web 游戏</td><td>5-30 MB</td><td>5-15 MB</td><td>16-32</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>最终建议</strong>
+      音频系统不需要从第一天就做到完美。从最简单的方案开始（一个单例音频管理器 + WAV/OGG 文件直接加载），在开发过程中逐步迭代：先加入 Bus 分层 → 再加入变体随机化 → 然后考虑对象池和优先级 → 最后引入中间件做动态音乐。每一步都让音频体验上一个台阶，而不是一开始就搭建一个过度工程化的系统。
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ==================== Footer Nav ==================== -->
+  <div class="footer-nav">
+    <a href="03-art.html">
+      <div class="fn-label">&larr; 上一章</div>
+      <div class="fn-title">美术与视觉</div>
+    </a>
+    <a href="05-systems.html" class="fn-next">
+      <div class="fn-label">下一章 &rarr;</div>
+      <div class="fn-title">系统与关卡设计</div>
+    </a>
+  </div>
+
+</div>
+
+<!-- ==================== Footer ==================== -->
+<footer>
+  游戏开发完全指南 &middot; AI 生成 &middot; 2026
+</footer>
+
+<!-- ==================== JavaScript ==================== -->
+<script>
+// ============================================
+// Hero waveform decoration
+// ============================================
+(function() {
+  const container = document.getElementById('heroWaveform');
+  if (!container) return;
+  const barCount = 60;
+  for (let i = 0; i < barCount; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const h = 8 + Math.sin(i * 0.3) * 16 + Math.random() * 12;
+    bar.style.height = h + 'px';
+    bar.style.animationDelay = (i * 0.04) + 's';
+    bar.style.opacity = 0.3 + Math.random() * 0.5;
+    container.appendChild(bar);
+  }
+})();
+
+// ============================================
+// Scroll-triggered fade-in
+// ============================================
+(function() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, {
+    threshold: 0.08,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+})();
+
+// ============================================
+// Smooth scroll for TOC links
+// ============================================
+document.querySelectorAll('.toc-list a').forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      const y = target.getBoundingClientRect().top + window.pageYOffset - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  });
+});
+
+// ============================================
+// Navbar scroll shadow
+// ============================================
+(function() {
+  const navbar = document.querySelector('.navbar');
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        if (window.scrollY > 20) {
+          navbar.style.boxShadow = '0 2px 20px rgba(0,0,0,0.5)';
+        } else {
+          navbar.style.boxShadow = 'none';
+        }
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+})();
+</script>
+
+<script>
+(function() {
+  var saved = localStorage.getItem('gd-theme');
+  var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', theme);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+  btn && btn.addEventListener('click', function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gd-theme', next);
+    btn.textContent = next === 'light' ? '🌙' : '☀️';
+  });
+})();
+</script>
+
+</body>
+</html>
