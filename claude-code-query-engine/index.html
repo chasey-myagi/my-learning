@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 查询引擎：流式处理与多轮工具编排</title>
+<style>
+/* ========== CSS 变量系统 ========== */
+:root{--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03)}
+[data-theme="dark"]{--bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;--fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;--accent:#fb923c;--accent-2:#fdba74;--green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);--border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);--quote-bg:rgba(255,255,255,0.03)}
+
+/* ========== 基础重置 ========== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--fg);line-height:1.75;transition:background .3s,color .3s}
+
+/* ========== 滚动进度条 ========== */
+#progress-bar{position:fixed;top:0;left:0;width:0;height:3px;background:var(--accent);z-index:9999;transition:width 80ms linear}
+
+/* ========== 主题切换 ========== */
+.theme-toggle{position:fixed;top:16px;right:16px;z-index:9998;background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--fg-2);font-size:14px;transition:all .2s}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ========== 导航侧栏 ========== */
+.side-nav{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:9997;display:flex;flex-direction:column;gap:4px;padding:8px}
+.side-nav a{display:block;width:8px;height:8px;border-radius:50%;background:var(--fg-3);opacity:.4;transition:all .2s;text-decoration:none}
+.side-nav a:hover,.side-nav a.active{opacity:1;background:var(--accent);transform:scale(1.4)}
+@media(max-width:768px){.side-nav{display:none}}
+
+/* ========== 内容布局 ========== */
+.container{max-width:960px;margin:0 auto;padding:0 24px}
+.body-text{max-width:65ch;margin:0 auto}
+
+/* ========== Hero ========== */
+.hero{padding:80px 0 60px;text-align:center}
+.hero h1{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-0.02em;line-height:1.2;margin-bottom:16px}
+.hero h1 span{color:var(--accent)}
+.hero .subtitle{font-size:1.1rem;color:var(--fg-2);max-width:55ch;margin:0 auto 32px}
+.hero .meta{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.hero .tag{display:inline-block;padding:4px 12px;border-radius:20px;background:var(--tag-bg);color:var(--tag-fg);font-size:13px;font-weight:500}
+
+/* ========== 章节 ========== */
+section{padding:60px 0}
+section:nth-child(odd){background:var(--bg)}
+section:nth-child(even){background:var(--bg-alt)}
+section h2{font-size:1.6rem;font-weight:700;margin-bottom:8px;color:var(--fg);letter-spacing:-0.01em}
+section h2 .num{color:var(--accent);margin-right:8px;font-weight:800}
+section h3{font-size:1.15rem;font-weight:600;margin:32px 0 12px;color:var(--fg)}
+section p{color:var(--fg-2);margin-bottom:16px}
+section .lead{font-size:1.05rem;color:var(--fg-3);margin-bottom:32px;border-left:3px solid var(--accent);padding-left:16px}
+
+/* ========== 代码块 ========== */
+pre{background:var(--bg-code);color:#e7e5e4;padding:20px 24px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;margin:16px 0 24px;border:1px solid var(--border)}
+code{font-family:"SF Mono",SFMono-Regular,ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;font-size:.9em}
+p code,li code,td code{background:var(--tag-bg);color:var(--tag-fg);padding:2px 6px;border-radius:4px}
+
+/* ========== 表格 ========== */
+table{width:100%;border-collapse:collapse;margin:16px 0 24px;font-size:14px}
+th{text-align:left;padding:10px 12px;background:var(--bg-alt);border-bottom:2px solid var(--border);font-weight:600;color:var(--fg);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--fg-2);vertical-align:top}
+tr:hover td{background:var(--quote-bg)}
+
+/* ========== ASCII 图 ========== */
+.ascii-diagram{background:var(--bg-code);color:#4ade80;padding:24px;border-radius:8px;font-family:"SF Mono",SFMono-Regular,ui-monospace,monospace;font-size:12.5px;line-height:1.5;overflow-x:auto;margin:20px 0 28px;border:1px solid var(--border);white-space:pre}
+
+/* ========== 统计卡片 ========== */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0}
+.stat-card{background:var(--bg-alt);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;transition:transform .2s,border-color .2s}
+.stat-card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.stat-card .value{font-size:2rem;font-weight:800;color:var(--accent);display:block}
+.stat-card .label{font-size:13px;color:var(--fg-3);margin-top:4px}
+
+/* ========== 引用块 ========== */
+blockquote{background:var(--quote-bg);border-left:3px solid var(--accent);padding:16px 20px;margin:16px 0 24px;border-radius:0 8px 8px 0;color:var(--fg-2);font-style:italic}
+
+/* ========== 列表 ========== */
+ul,ol{padding-left:24px;margin-bottom:16px;color:var(--fg-2)}
+li{margin-bottom:6px}
+li strong{color:var(--fg)}
+
+/* ========== 特殊高亮块 ========== */
+.highlight-box{border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin:20px 0;background:var(--quote-bg)}
+.highlight-box.green{border-color:var(--green);background:var(--green-bg)}
+.highlight-box.red{background:var(--red-bg);border-color:#ef4444}
+.highlight-box .title{font-weight:600;color:var(--fg);margin-bottom:8px;font-size:14px;text-transform:uppercase;letter-spacing:.04em}
+
+/* ========== 文件路径标签 ========== */
+.filepath{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-family:monospace;background:var(--tag-bg);color:var(--tag-fg);margin:2px 0}
+
+/* ========== 页脚 ========== */
+footer{padding:40px 0;text-align:center;color:var(--fg-3);font-size:13px;border-top:1px solid var(--border)}
+
+/* ========== Scroll Reveal 动画 ========== */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ========== Reduced Motion ========== */
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  html{scroll-behavior:auto}
+  #progress-bar{transition:none}
+  .stat-card{transition:none}
+  .theme-toggle{transition:none}
+}
+
+/* ========== 自动主题检测 ========== */
+@media(prefers-color-scheme:light){
+  html:not([data-theme="dark"]){--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03)}
+}
+
+/* ========== 目录列表 ========== */
+.toc{list-style:none;padding:0;margin:24px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.toc li a{display:block;padding:10px 16px;border-radius:8px;background:var(--quote-bg);border:1px solid var(--border);text-decoration:none;color:var(--fg);font-size:14px;transition:all .2s}
+.toc li a:hover{border-color:var(--accent);color:var(--accent);transform:translateX(4px)}
+.toc li a .toc-num{color:var(--accent);font-weight:700;margin-right:8px}
+
+/* ========== 流程图容器 ========== */
+.flow-container{overflow-x:auto;margin:20px 0 28px}
+
+/* ========== 双栏布局 ========== */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:20px 0}
+@media(max-width:768px){.two-col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+<button class="theme-toggle" onclick="toggleTheme()">Dark / Light</button>
+
+<nav class="side-nav" id="sideNav"></nav>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+  <div class="container">
+    <h1>Claude Code <span>查询引擎</span></h1>
+    <p class="subtitle">流式处理与多轮工具编排 -- 从 SSE 事件流到推测执行的完整架构解析</p>
+    <div class="meta">
+      <span class="tag">QueryEngine.ts ~1295 行</span>
+      <span class="tag">query.ts ~1729 行</span>
+      <span class="tag">StreamingToolExecutor</span>
+      <span class="tag">withRetry 指数退避</span>
+      <span class="tag">Speculation 推测执行</span>
+    </div>
+  </div>
+</header>
+
+<!-- ==================== 目录 ==================== -->
+<section>
+  <div class="container body-text">
+    <h2>目录</h2>
+    <ul class="toc">
+      <li><a href="#s1"><span class="toc-num">01</span>查询引擎总体架构</a></li>
+      <li><a href="#s2"><span class="toc-num">02</span>主查询循环 -- while(true) 状态机</a></li>
+      <li><a href="#s3"><span class="toc-num">03</span>流式响应与 SSE 事件处理</a></li>
+      <li><a href="#s4"><span class="toc-num">04</span>StreamingToolExecutor -- 流式并行工具编排</a></li>
+      <li><a href="#s5"><span class="toc-num">05</span>重试与错误恢复 -- withRetry 全解析</a></li>
+      <li><a href="#s6"><span class="toc-num">06</span>推测执行 -- Speculation 机制</a></li>
+      <li><a href="#s7"><span class="toc-num">07</span>令牌管理与成本追踪</a></li>
+      <li><a href="#s8"><span class="toc-num">08</span>思考模式集成</a></li>
+      <li><a href="#s9"><span class="toc-num">09</span>多轮控制与终止条件</a></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ==================== 01 查询引擎总体架构 ==================== -->
+<section id="s1">
+  <div class="container body-text reveal">
+    <h2><span class="num">01</span>查询引擎总体架构</h2>
+    <p class="lead">QueryEngine 是 Claude Code 整个对话生命周期的核心管控器，一个 QueryEngine 实例对应一次完整会话，每次 submitMessage() 启动一个新的"轮次"。</p>
+
+    <h3>核心类 QueryEngine</h3>
+    <p><span class="filepath">src/QueryEngine.ts</span></p>
+    <p>QueryEngine 是一个 <strong>AsyncGenerator 驱动的状态机</strong>。它的 <code>submitMessage()</code> 方法返回 <code>AsyncGenerator&lt;SDKMessage&gt;</code>，调用者通过 <code>for await</code> 逐步消费产出的 SDK 消息。</p>
+
+    <pre><code>export class QueryEngine {
+  private config: QueryEngineConfig
+  private mutableMessages: Message[]       // 会话历史（跨轮次持久化）
+  private abortController: AbortController // 中断控制
+  private permissionDenials: SDKPermissionDenial[]
+  private totalUsage: NonNullableUsage     // 累计 token 用量
+  private readFileState: FileStateCache    // 文件状态缓存
+  private discoveredSkillNames: Set&lt;string&gt;()
+
+  async *submitMessage(prompt, options): AsyncGenerator&lt;SDKMessage&gt; {
+    // 1. 构建系统提示词
+    // 2. 处理用户输入（斜杠命令、附件等）
+    // 3. 调用 query() 进入主循环
+    // 4. 消费并转发消息给 SDK 调用者
+  }
+}</code></pre>
+
+    <h3>配置结构 QueryEngineConfig</h3>
+    <p>QueryEngine 接受极其丰富的配置，涵盖了会话运行所需的一切：</p>
+
+    <table>
+      <tr><th>配置项</th><th>类型</th><th>说明</th></tr>
+      <tr><td><code>tools</code></td><td>Tools</td><td>可用工具列表</td></tr>
+      <tr><td><code>maxTurns</code></td><td>number?</td><td>最大工具调用轮次</td></tr>
+      <tr><td><code>maxBudgetUsd</code></td><td>number?</td><td>美元预算上限</td></tr>
+      <tr><td><code>taskBudget</code></td><td>{total: number}?</td><td>API 任务令牌预算</td></tr>
+      <tr><td><code>thinkingConfig</code></td><td>ThinkingConfig?</td><td>思考模式配置</td></tr>
+      <tr><td><code>fallbackModel</code></td><td>string?</td><td>529 错误时的后备模型</td></tr>
+      <tr><td><code>jsonSchema</code></td><td>Record?</td><td>结构化输出 JSON Schema</td></tr>
+      <tr><td><code>snipReplay</code></td><td>function?</td><td>历史裁剪边界处理器</td></tr>
+    </table>
+
+    <h3>分层架构</h3>
+    <div class="ascii-diagram">
+┌─────────────────────────────────────────────────────┐
+│                SDK / REPL / Cowork                   │   调用层
+├─────────────────────────────────────────────────────┤
+│              QueryEngine.submitMessage()              │   会话管理层
+│  ┌─ processUserInput()                               │
+│  ├─ fetchSystemPromptParts()                         │
+│  ├─ recordTranscript()                               │
+│  └─ for await (query(...))  ─────────────────────┐   │
+├──────────────────────────────────────────────────│───┤
+│              query() / queryLoop()                │   │   核心查询循环
+│  ┌─ autoCompactIfNeeded()                        │   │
+│  ├─ microcompactMessages()                       │   │
+│  ├─ callModel() ─── queryModelWithStreaming()  ──┘   │
+│  ├─ StreamingToolExecutor                            │
+│  ├─ handleStopHooks()                                │
+│  └─ checkTokenBudget()                               │
+├─────────────────────────────────────────────────────┤
+│              API 通信层 (claude.ts)                   │   HTTP / SSE
+│  ┌─ queryModel() ─── stream.create()                 │
+│  ├─ withRetry() ─── 指数退避 + 模型降级              │
+│  └─ handleMessageFromStream() ─── SSE 事件分发       │
+└─────────────────────────────────────────────────────┘</div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><span class="value">~1295</span><span class="label">QueryEngine.ts 行数</span></div>
+      <div class="stat-card"><span class="value">~1729</span><span class="label">query.ts 行数</span></div>
+      <div class="stat-card"><span class="value">531</span><span class="label">StreamingToolExecutor.ts 行数</span></div>
+      <div class="stat-card"><span class="value">823</span><span class="label">withRetry.ts 行数</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 02 主查询循环 ==================== -->
+<section id="s2">
+  <div class="container body-text reveal">
+    <h2><span class="num">02</span>主查询循环 -- while(true) 状态机</h2>
+    <p class="lead">query.ts 中的 queryLoop() 是一个无限循环的 AsyncGenerator，通过 State 对象在迭代间传递可变状态，用 Continue 语义标记转换原因。</p>
+
+    <h3>State 结构</h3>
+    <p>每次循环迭代开始时解构 State，读取当前状态：</p>
+    <pre><code>type State = {
+  messages: Message[]                    // 消息数组（含工具结果）
+  toolUseContext: ToolUseContext          // 工具执行上下文
+  autoCompactTracking: AutoCompactTrackingState | undefined
+  maxOutputTokensRecoveryCount: number   // max_output_tokens 恢复尝试次数
+  hasAttemptedReactiveCompact: boolean   // 是否已尝试响应式压缩
+  maxOutputTokensOverride: number | undefined
+  pendingToolUseSummary: Promise&lt;ToolUseSummaryMessage | null&gt; | undefined
+  stopHookActive: boolean | undefined
+  turnCount: number                      // 当前轮次计数
+  transition: Continue | undefined       // 上一次迭代的转换原因
+}</code></pre>
+
+    <h3>循环流程</h3>
+    <div class="ascii-diagram">
+while (true) {
+  ┌─────────────────────────────────────────────────┐
+  │  1. 解构 State，初始化查询链追踪                  │
+  │  2. applyToolResultBudget() - 工具结果预算控制     │
+  │  3. snipCompactIfNeeded() - 历史裁剪             │
+  │  4. microcompactMessages() - 微压缩              │
+  │  5. applyCollapsesIfNeeded() - 上下文折叠         │
+  │  6. autoCompactIfNeeded() - 自动压缩              │
+  ├─────────────────────────────────────────────────┤
+  │  7. callModel() → 流式接收 SSE 事件               │
+  │     ├─ 工具块 → StreamingToolExecutor.addTool()  │
+  │     ├─ 文本块 → yield 给调用者                    │
+  │     └─ 错误块 → 判断是否 withhold（PTL/MOT）      │
+  ├─────────────────────────────────────────────────┤
+  │  8. 后模型阶段 (needsFollowUp == false?)          │
+  │     ├─ PTL 恢复: collapse drain → reactive compact│
+  │     ├─ MOT 恢复: escalate 8k→64k → multi-turn    │
+  │     ├─ Stop Hooks 评估                            │
+  │     └─ Token Budget 检查                          │
+  │         → return { reason: 'completed' }          │
+  ├─────────────────────────────────────────────────┤
+  │  9. 工具执行阶段 (needsFollowUp == true)          │
+  │     ├─ getRemainingResults() / runTools()          │
+  │     ├─ getAttachmentMessages() - 文件变更/记忆     │
+  │     ├─ 队列命令注入                                │
+  │     └─ maxTurns 检查                              │
+  │         → state = { ...next, turnCount++ }        │
+  │         → continue                                │
+  └─────────────────────────────────────────────────┘
+}</div>
+
+    <h3>状态转换（Transition）类型</h3>
+    <p>每次 <code>continue</code> 时，State 的 <code>transition</code> 字段记录了为什么需要继续循环：</p>
+    <table>
+      <tr><th>Transition 原因</th><th>触发条件</th><th>说明</th></tr>
+      <tr><td><code>next_turn</code></td><td>工具返回结果后</td><td>正常的下一轮工具循环</td></tr>
+      <tr><td><code>reactive_compact_retry</code></td><td>Prompt Too Long 后</td><td>响应式压缩后重试</td></tr>
+      <tr><td><code>collapse_drain_retry</code></td><td>上下文折叠后</td><td>排空折叠队列后重试</td></tr>
+      <tr><td><code>max_output_tokens_escalate</code></td><td>8k 输出不够</td><td>升级到 64k 输出限制</td></tr>
+      <tr><td><code>max_output_tokens_recovery</code></td><td>输出截断</td><td>注入恢复消息让模型继续</td></tr>
+      <tr><td><code>stop_hook_blocking</code></td><td>Stop Hook 阻止</td><td>停止钩子要求重试</td></tr>
+      <tr><td><code>token_budget_continuation</code></td><td>预算未用完</td><td>nudge 消息推动模型继续</td></tr>
+    </table>
+
+    <div class="highlight-box green">
+      <div class="title">设计亮点</div>
+      <p>queryLoop 使用 <strong>显式 State 对象</strong> + <code>continue</code> 替代递归调用。避免递归导致的栈溢出和 GC 压力，同时 <code>transition</code> 字段让测试可以断言恢复路径是否触发——无需检查消息内容。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 03 流式响应处理 ==================== -->
+<section id="s3">
+  <div class="container body-text reveal">
+    <h2><span class="num">03</span>流式响应与 SSE 事件处理</h2>
+    <p class="lead">queryModelWithStreaming 将 Anthropic API 的 SSE 流转换为类型安全的 AsyncGenerator，经过 withRetry 包装后具备自动重试和模型降级能力。</p>
+
+    <h3>调用链路</h3>
+    <pre><code>// query.ts 中调用
+for await (const message of deps.callModel({...})) {
+  // message: StreamEvent | AssistantMessage | SystemAPIErrorMessage
+}
+
+// deps.callModel 指向 queryModelWithStreaming
+export async function* queryModelWithStreaming({...}) {
+  return yield* withStreamingVCR(messages, async function* () {
+    yield* queryModel(messages, systemPrompt, thinkingConfig, tools, signal, options)
+  })
+}
+
+// queryModel 是核心实现
+async function* queryModel(...) {
+  // 1. 构建 API 参数 (paramsFromContext)
+  // 2. 通过 withRetry 包装，创建 stream
+  // 3. 遍历 SSE 事件并 yield 类型化消息
+}</code></pre>
+
+    <h3>SSE 事件类型映射</h3>
+    <table>
+      <tr><th>API SSE 事件</th><th>内部消息类型</th><th>处理方式</th></tr>
+      <tr><td><code>message_start</code></td><td>StreamEvent</td><td>重置用量计数，记录 requestId</td></tr>
+      <tr><td><code>content_block_start</code></td><td>StreamEvent</td><td>创建新内容块（text/tool_use/thinking）</td></tr>
+      <tr><td><code>content_block_delta</code></td><td>StreamEvent</td><td>增量文本/JSON/思考内容</td></tr>
+      <tr><td><code>content_block_stop</code></td><td>AssistantMessage</td><td>完成一个内容块，yield 完整助手消息</td></tr>
+      <tr><td><code>message_delta</code></td><td>StreamEvent</td><td>更新 stop_reason 和 usage</td></tr>
+      <tr><td><code>message_stop</code></td><td>StreamEvent</td><td>累加 usage 到 totalUsage</td></tr>
+    </table>
+
+    <h3>非流式降级</h3>
+    <p>当流式请求因 529 过载失败时，系统会自动降级到非流式请求：</p>
+    <pre><code>// executeNonStreamingRequest -- 封装非流式 API 调用
+// 特点：
+// 1. 有独立超时控制（远程 120s，本地 300s）
+// 2. 共享 withRetry 重试逻辑
+// 3. MAX_NON_STREAMING_TOKENS 限制输出长度
+// 4. 结果转换为与流式相同的消息格式</code></pre>
+
+    <h3>流式回退处理</h3>
+    <p>当 <code>onStreamingFallback</code> 触发时，query.ts 执行清理：</p>
+    <ul>
+      <li>为已产出的孤立助手消息 yield <code>tombstone</code>，通知 UI 和 transcript 移除</li>
+      <li>清空 <code>assistantMessages</code>、<code>toolResults</code>、<code>toolUseBlocks</code></li>
+      <li>调用 <code>streamingToolExecutor.discard()</code> 丢弃进行中的工具</li>
+      <li>创建新的 StreamingToolExecutor 实例</li>
+    </ul>
+
+    <div class="highlight-box">
+      <div class="title">Withhold 机制</div>
+      <p>某些错误消息（Prompt Too Long、Max Output Tokens、Media Size Error）不会立即 yield 给调用者，而是被 <strong>withhold</strong>（扣留），等待恢复逻辑判定。这防止了 SDK 消费者（如 Desktop 端）在收到 error 后提前终止会话，而恢复循环仍在运行的情况。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 04 StreamingToolExecutor ==================== -->
+<section id="s4">
+  <div class="container body-text reveal">
+    <h2><span class="num">04</span>StreamingToolExecutor -- 流式并行工具编排</h2>
+    <p class="lead">当模型流式输出多个 tool_use 块时，StreamingToolExecutor 在流接收过程中就开始执行工具，大幅缩短整体延迟。</p>
+
+    <h3>并发控制模型</h3>
+    <p><span class="filepath">src/services/tools/StreamingToolExecutor.ts</span></p>
+
+    <div class="ascii-diagram">
+模型流输出:  [text][tool_use A][tool_use B][tool_use C][message_stop]
+                     │             │             │
+                     ▼             ▼             ▼
+              addTool(A)     addTool(B)     addTool(C)
+                     │             │             │
+                     ▼             ▼             ▼
+              ┌──────────────────────────────────────┐
+              │         processQueue()                │
+              │                                      │
+              │  A: isConcurrencySafe? ───┐          │
+              │  B: isConcurrencySafe? ───┤ 并行     │
+              │  C: !isConcurrencySafe    │ 执行     │
+              │                           ▼          │
+              │  [A 执行] [B 执行]                    │
+              │       ↓         ↓                    │
+              │  [A 完成] [B 完成]                    │
+              │           ↓                          │
+              │       [C 排队等待] → [C 执行]         │
+              └──────────────────────────────────────┘</div>
+
+    <h3>ToolStatus 状态流转</h3>
+    <pre><code>type ToolStatus = 'queued' | 'executing' | 'completed' | 'yielded'
+
+// 状态流转:
+// queued → executing → completed → yielded
+//   ↓ (abort/error)
+// queued → completed (synthetic error) → yielded</code></pre>
+
+    <h3>并发安全判定</h3>
+    <p>每个工具通过 <code>isConcurrencySafe(parsedInput)</code> 方法声明自己是否可以并发执行：</p>
+    <ul>
+      <li><strong>并发安全工具</strong>：Read、Glob、Grep 等只读工具可以彼此并行</li>
+      <li><strong>非并发工具</strong>：Write、Edit、Bash 等需要独占执行</li>
+      <li>判定规则：所有当前执行中的工具都是并发安全 + 新工具也是并发安全 = 允许并行</li>
+    </ul>
+
+    <h3>错误级联</h3>
+    <div class="highlight-box red">
+      <div class="title">Bash 错误级联</div>
+      <p>只有 <strong>Bash 工具</strong>的错误会触发兄弟取消（<code>siblingAbortController.abort('sibling_error')</code>）。Bash 命令通常有隐式依赖链（如 mkdir 失败后续命令无意义），而 Read/WebFetch 等独立工具的失败不应影响其他工具。</p>
+    </div>
+
+    <h3>Progress 消息即时传递</h3>
+    <p>工具执行过程中产生的 <code>progress</code> 类型消息不等待工具完成，而是通过 <code>pendingProgress</code> 队列 + <code>progressAvailableResolve</code> Promise 信号立即传递给调用者，实现实时进度反馈。</p>
+
+    <pre><code>// getRemainingResults() 中的等待逻辑
+if (this.hasExecutingTools() && !this.hasCompletedResults() && !this.hasPendingProgress()) {
+  const executingPromises = this.tools
+    .filter(t => t.status === 'executing' && t.promise)
+    .map(t => t.promise!)
+  const progressPromise = new Promise&lt;void&gt;(resolve => {
+    this.progressAvailableResolve = resolve
+  })
+  // 任一工具完成 OR 任一 progress 可用 → 继续
+  await Promise.race([...executingPromises, progressPromise])
+}</code></pre>
+
+    <h3>中断行为分类</h3>
+    <table>
+      <tr><th>中断原因</th><th>行为</th><th>说明</th></tr>
+      <tr><td><code>user_interrupted</code></td><td>按 interruptBehavior</td><td>cancel 型工具立即终止，block 型继续</td></tr>
+      <tr><td><code>sibling_error</code></td><td>生成合成错误</td><td>Bash 兄弟出错，取消排队中的工具</td></tr>
+      <tr><td><code>streaming_fallback</code></td><td>全部丢弃</td><td>流式降级，所有结果作废</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== 05 重试与错误恢复 ==================== -->
+<section id="s5">
+  <div class="container body-text reveal">
+    <h2><span class="num">05</span>重试与错误恢复 -- withRetry 全解析</h2>
+    <p class="lead">withRetry 是一个 AsyncGenerator，将 API 调用包装为具有指数退避、模型降级、Fast Mode 回退、持久重试等能力的健壮调用层。</p>
+
+    <h3>核心参数</h3>
+    <p><span class="filepath">src/services/api/withRetry.ts</span></p>
+    <pre><code>const DEFAULT_MAX_RETRIES = 10
+const FLOOR_OUTPUT_TOKENS = 3000
+const MAX_529_RETRIES = 3
+const BASE_DELAY_MS = 500</code></pre>
+
+    <h3>重试决策树</h3>
+    <div class="ascii-diagram">
+API Error
+  │
+  ├── 用户中断 (AbortError) ─────────→ 抛出，不重试
+  │
+  ├── Fast Mode 活跃 + 429/529?
+  │     ├── retry-after < 20s ───────→ 等待后重试（保持 Fast Mode）
+  │     ├── overage 被禁用 ──────────→ 永久关闭 Fast Mode
+  │     └── 其他 ────────────────────→ 触发冷却期，降级标准速度
+  │
+  ├── 529 + 非前台查询源? ───────────→ 立即放弃（防止级联放大）
+  │
+  ├── 529 + 连续 >= 3次?
+  │     ├── 有 fallbackModel ────────→ 抛出 FallbackTriggeredError
+  │     └── 无 fallbackModel ────────→ 抛出 CannotRetryError
+  │
+  ├── Max Tokens 溢出 (400)?
+  │     └── 计算 adjustedMaxTokens ──→ 带 maxTokensOverride 重试
+  │
+  ├── 持久模式 (UNATTENDED_RETRY)?
+  │     └── 429/529 无限重试 ────────→ 心跳式 yield（30s 间隔）
+  │
+  └── 正常重试
+        └── 指数退避: min(500ms * 2^(attempt-1), 32s) + 25% jitter</code></pre>
+
+    <h3>模型降级（Fallback）</h3>
+    <p>当连续 529 错误达到 <code>MAX_529_RETRIES</code>（3次）时：</p>
+    <ol>
+      <li>抛出 <code>FallbackTriggeredError</code></li>
+      <li>query.ts 捕获该错误，将 <code>currentModel</code> 切换为 <code>fallbackModel</code></li>
+      <li>为已产出的孤立消息生成 tool_result 错误块</li>
+      <li>清空所有中间状态，用新模型重新发起请求</li>
+      <li>如果消息中有 thinking 签名块，需要 <code>stripSignatureBlocks</code>（签名与模型绑定）</li>
+      <li>yield 系统消息通知用户模型已切换</li>
+    </ol>
+
+    <h3>持久重试模式</h3>
+    <p>通过 <code>CLAUDE_CODE_UNATTENDED_RETRY</code> 环境变量启用，专为无人值守场景设计：</p>
+    <div class="two-col">
+      <div class="highlight-box">
+        <div class="title">429 速率限制</div>
+        <p>读取 <code>anthropic-ratelimit-unified-reset</code> 头部获取重置时间，最多等待 6 小时。每 30 秒产出心跳 SystemAPIErrorMessage，防止宿主环境判定会话空闲。</p>
+      </div>
+      <div class="highlight-box">
+        <div class="title">529 过载</div>
+        <p>指数退避最高到 5 分钟，不使用模型降级。for 循环的 attempt 被钳位（clamped）以防止终止，使用独立的 persistentAttempt 计数器。</p>
+      </div>
+    </div>
+
+    <h3>前台查询源白名单</h3>
+    <p>只有用户正在等待结果的查询源才会重试 529，后台任务立即放弃：</p>
+    <pre><code>const FOREGROUND_529_RETRY_SOURCES = new Set([
+  'repl_main_thread',
+  'sdk',
+  'agent:custom', 'agent:default', 'agent:builtin',
+  'compact',
+  'hook_agent', 'hook_prompt',
+  'verification_agent',
+  'side_question',
+  'auto_mode',
+  // ... 各种 outputStyle 变体
+])</code></pre>
+  </div>
+</section>
+
+<!-- ==================== 06 推测执行 ==================== -->
+<section id="s6">
+  <div class="container body-text reveal">
+    <h2><span class="num">06</span>推测执行 -- Speculation 机制</h2>
+    <p class="lead">Speculation 是 Claude Code 的一项前沿优化：在用户还未确认发送时，预测性地执行模型建议的操作，接受后直接注入结果，跳过等待时间。</p>
+
+    <h3>核心流程</h3>
+    <p><span class="filepath">src/services/PromptSuggestion/speculation.ts</span></p>
+
+    <div class="ascii-diagram">
+用户停止输入 → promptSuggestion 生成建议 → 用户看到建议
+                                              │
+                                              ▼
+                                    startSpeculation()
+                                              │
+                          ┌───────────────────┤
+                          ▼                   ▼
+                   创建 overlay 目录     runForkedAgent()
+                   (copy-on-write)       (最多 20 轮/100 消息)
+                          │                   │
+                          │    ┌──────────────┤
+                          │    │ canUseTool 检查
+                          │    │   ├─ Read/Glob/Grep → 允许
+                          │    │   ├─ Write/Edit → 检查权限模式
+                          │    │   │   ├─ acceptEdits/bypass → overlay 隔离后允许
+                          │    │   │   └─ 其他 → boundary(edit)，中止
+                          │    │   ├─ Bash(只读) → 允许
+                          │    │   ├─ Bash(写入) → boundary(bash)，中止
+                          │    │   └─ 其他工具 → boundary(denied_tool)，中止
+                          │    │
+                          │    ▼
+                          │  boundary 到达或完成
+                          ▼
+                    用户按 Tab 接受
+                          │
+                ┌─────────┤
+                ▼         ▼
+         copyOverlayToMain()   prepareMessagesForInjection()
+         (overlay → 主目录)    (过滤 thinking/中断消息)
+                │                      │
+                └──────────┬───────────┘
+                           ▼
+                 注入消息到会话历史
+                           │
+                    ┌──────┤
+                    ▼      ▼
+              complete?   incomplete?
+                 │           │
+             无需查询     需要继续查询
+             (Tab 直达)   (模型接续)</div>
+
+    <h3>安全边界（Boundary）</h3>
+    <table>
+      <tr><th>Boundary 类型</th><th>触发条件</th><th>行为</th></tr>
+      <tr><td><code>complete</code></td><td>Agent 自然完成</td><td>全部结果可注入，不需后续查询</td></tr>
+      <tr><td><code>bash</code></td><td>非只读 Bash 命令</td><td>中止推测，保留已完成工具结果</td></tr>
+      <tr><td><code>edit</code></td><td>文件编辑且权限不足</td><td>中止推测，等用户确认</td></tr>
+      <tr><td><code>denied_tool</code></td><td>未知/不允许的工具</td><td>中止推测，保留只读结果</td></tr>
+    </table>
+
+    <h3>Overlay 文件隔离</h3>
+    <p>推测执行中的文件写入不直接修改工作目录，而是写入临时 overlay 目录：</p>
+    <ul>
+      <li><strong>写入路径</strong>：<code>/tmp/claude/speculation/{pid}/{id}/{相对路径}</code></li>
+      <li><strong>Copy-on-Write</strong>：首次写入时将原始文件复制到 overlay</li>
+      <li><strong>读取重定向</strong>：如果文件已在 overlay 中写入过，后续读取也重定向到 overlay</li>
+      <li><strong>接受时</strong>：<code>copyOverlayToMain()</code> 将 overlay 文件复制回主目录</li>
+      <li><strong>中止/错误时</strong>：<code>safeRemoveOverlay()</code> 删除整个 overlay 目录</li>
+    </ul>
+
+    <h3>流水线建议（Pipelined Suggestion）</h3>
+    <p>当推测执行完成后，系统不闲等——它立即开始为下一轮生成建议。用户接受当前推测后，下一个建议已经准备好，形成连续的推测链。</p>
+
+    <div class="highlight-box green">
+      <div class="title">性能影响</div>
+      <p>推测执行可以节省每次工具调用的完整往返时间。对于典型的 Read + Grep + Edit 工作流，这可以节省 5-15 秒。会话累计节省时间通过 <code>speculationSessionTimeSavedMs</code> 跟踪，并展示给用户。</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><span class="value">20</span><span class="label">MAX_SPECULATION_TURNS</span></div>
+      <div class="stat-card"><span class="value">100</span><span class="label">MAX_SPECULATION_MESSAGES</span></div>
+      <div class="stat-card"><span class="value">7</span><span class="label">安全工具类型</span></div>
+      <div class="stat-card"><span class="value">3</span><span class="label">写入工具类型</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 07 令牌管理 ==================== -->
+<section id="s7">
+  <div class="container body-text reveal">
+    <h2><span class="num">07</span>令牌管理与成本追踪</h2>
+    <p class="lead">Claude Code 维护了多层次的令牌跟踪系统——从 API 响应的精确 usage 到跨压缩边界的估算，再到美元成本上限控制。</p>
+
+    <h3>tokenCountWithEstimation</h3>
+    <p><span class="filepath">src/utils/tokens.ts</span></p>
+    <p>这是最核心的令牌估算函数，在自动压缩阈值判断、阻塞限制检查等场景广泛使用：</p>
+
+    <pre><code>export function tokenCountWithEstimation(messages: readonly Message[]): number {
+  // 1. 从后往前找到最近一个有 usage 的助手消息
+  // 2. 处理同一 API 响应被拆分为多条消息的情况（相同 message.id）
+  // 3. 使用精确 usage 数据：input + cache_creation + cache_read + output
+  // 4. 对 usage 之后的消息使用粗略估算：
+  //    roughTokenCountEstimationForMessages(messages.slice(i + 1))
+  //    （大致是 chars / 4）
+  return getTokenCountFromUsage(usage)
+       + roughTokenCountEstimationForMessages(messages.slice(i + 1))
+}</code></pre>
+
+    <h3>三层成本控制</h3>
+    <div class="two-col">
+      <div class="highlight-box">
+        <div class="title">1. maxBudgetUsd -- 美元预算</div>
+        <p>QueryEngine.submitMessage 每消费一条消息后检查 <code>getTotalCost() >= maxBudgetUsd</code>，超出则终止并返回 <code>error_max_budget_usd</code> 结果。</p>
+      </div>
+      <div class="highlight-box">
+        <div class="title">2. taskBudget -- API 令牌预算</div>
+        <p>通过 <code>output_config.task_budget</code> 传递给 API，让服务端感知预算。跨压缩边界时，客户端计算 <code>remaining = total - preCompactContext</code>。</p>
+      </div>
+    </div>
+    <div class="highlight-box">
+      <div class="title">3. Token Budget -- 输出令牌预算</div>
+      <p>Feature-gated 的 <code>TOKEN_BUDGET</code> 机制。<code>checkTokenBudget()</code> 在每轮结束时检查：如果输出令牌未达预算的 90%，注入 nudge 消息让模型继续；如果连续 3 次增量 < 500 tokens，判定为收益递减并停止。</p>
+    </div>
+
+    <h3>Usage 数据流</h3>
+    <div class="ascii-diagram">
+API Response (SSE)
+  │
+  ├── message_start: usage.input_tokens, cache_*_tokens
+  ├── message_delta: usage.output_tokens (增量)
+  └── message_stop: 触发累加
+         │
+         ▼
+  currentMessageUsage = updateUsage(current, delta)
+         │
+         ▼ (message_stop)
+  totalUsage = accumulateUsage(total, currentMessage)
+         │
+         ▼
+  addToTotalSessionCost(calculateUSDCost(usage, model))
+         │
+         ▼
+  cost-tracker.ts → getTotalCost() / getModelUsage()</div>
+
+    <h3>finalContextTokensFromLastResponse</h3>
+    <p>用于 task_budget 的跨压缩计算。优先使用 <code>usage.iterations[-1]</code>（包含服务端工具循环后的最终窗口），否则回退到 <code>input_tokens + output_tokens</code>（不含缓存令牌）。</p>
+  </div>
+</section>
+
+<!-- ==================== 08 思考模式 ==================== -->
+<section id="s8">
+  <div class="container body-text reveal">
+    <h2><span class="num">08</span>思考模式集成</h2>
+    <p class="lead">Extended Thinking 让模型在生成最终回答前进行内部推理。Claude Code 精心管理思考块的生命周期，遵循严格的 API 规则以避免"一整天的调试和拔头发"。</p>
+
+    <blockquote>The rules of thinking are lengthy and fortuitous. They require plenty of thinking of most long duration and deep meditation for a wizard to wrap one's noggin around. -- query.ts 源码注释</blockquote>
+
+    <h3>三大铁律</h3>
+    <ol>
+      <li><strong>开启规则</strong>：包含 thinking 或 redacted_thinking 块的消息必须属于 <code>max_thinking_length > 0</code> 的请求</li>
+      <li><strong>位置规则</strong>：thinking 块不能是消息中的最后一个块</li>
+      <li><strong>保持规则</strong>：thinking 块必须在助手轨迹期间保持——如果该轮包含 tool_use，则思考块必须保留到后续的 tool_result 和下一个助手消息</li>
+    </ol>
+
+    <h3>思考配置类型</h3>
+    <pre><code>type ThinkingConfig =
+  | { type: 'disabled' }               // 完全关闭
+  | { type: 'adaptive' }               // 自适应（模型自行决定）
+  | { type: 'enabled'; budgetTokens: number }  // 显式预算</code></pre>
+
+    <h3>模型能力匹配</h3>
+    <p>paramsFromContext 中的思考参数构建遵循严格的模型能力检查：</p>
+    <pre><code>if (hasThinking && modelSupportsThinking(model)) {
+  if (modelSupportsAdaptiveThinking(model)) {
+    // 支持自适应：不设预算，让模型自行决定
+    thinking = { type: 'adaptive' }
+  } else {
+    // 不支持自适应：使用显式预算
+    let thinkingBudget = getMaxThinkingTokensForModel(model)
+    // 预算不能超过 maxOutputTokens - 1
+    thinkingBudget = Math.min(maxOutputTokens - 1, thinkingBudget)
+    thinking = { type: 'enabled', budget_tokens: thinkingBudget }
+  }
+}</code></pre>
+
+    <h3>思考清除（Thinking Clear）</h3>
+    <p>当距上次 API 调用超过 1 小时（<code>CACHE_TTL_1HOUR_MS</code>），系统会启用 <code>context_management</code> 中的 thinking clear 策略——指示 API 清除历史中的思考块以释放缓存空间。这通过 <strong>sticky-on latch</strong> 实现：一旦启用就在会话内持续，避免 header 翻转导致缓存失效。</p>
+
+    <h3>推测执行中的思考处理</h3>
+    <p>推测执行的 <code>prepareMessagesForInjection()</code> 会过滤掉所有 <code>thinking</code> 和 <code>redacted_thinking</code> 块。因为推测消息要注入到主会话历史中，而思考块的签名与模型绑定，跨模型注入会导致 API 400 错误。</p>
+  </div>
+</section>
+
+<!-- ==================== 09 多轮控制 ==================== -->
+<section id="s9">
+  <div class="container body-text reveal">
+    <h2><span class="num">09</span>多轮控制与终止条件</h2>
+    <p class="lead">查询循环通过多个独立的终止条件协调停止，形成一套层级化的"出口"系统。</p>
+
+    <h3>终止条件全景图</h3>
+    <table>
+      <tr><th>终止原因</th><th>检查点</th><th>返回值</th></tr>
+      <tr><td>自然完成</td><td><code>needsFollowUp == false</code></td><td><code>{ reason: 'completed' }</code></td></tr>
+      <tr><td>用户中断</td><td>abort signal</td><td><code>{ reason: 'aborted_streaming' | 'aborted_tools' }</code></td></tr>
+      <tr><td>maxTurns 达到</td><td><code>nextTurnCount > maxTurns</code></td><td><code>{ reason: 'max_turns' }</code></td></tr>
+      <tr><td>阻塞限制</td><td>tokenCountWithEstimation 检查</td><td><code>{ reason: 'blocking_limit' }</code></td></tr>
+      <tr><td>Prompt Too Long</td><td>API 413 + 恢复失败</td><td><code>{ reason: 'prompt_too_long' }</code></td></tr>
+      <tr><td>图片错误</td><td>ImageSizeError/ResizeError</td><td><code>{ reason: 'image_error' }</code></td></tr>
+      <tr><td>模型错误</td><td>queryModel 抛出异常</td><td><code>{ reason: 'model_error' }</code></td></tr>
+      <tr><td>Stop Hook 阻止</td><td>handleStopHooks 返回 prevent</td><td><code>{ reason: 'stop_hook_prevented' }</code></td></tr>
+      <tr><td>Hook 终止</td><td>hook_stopped_continuation</td><td><code>{ reason: 'hook_stopped' }</code></td></tr>
+    </table>
+
+    <h3>QueryEngine 层的终止条件</h3>
+    <p>QueryEngine.submitMessage 在消费 query() 的输出时，还有额外的终止检查：</p>
+    <ul>
+      <li><strong>maxBudgetUsd</strong>：每条消息后检查 <code>getTotalCost() >= maxBudgetUsd</code>，产出 <code>error_max_budget_usd</code></li>
+      <li><strong>Structured Output 重试上限</strong>：JSON Schema 模式下，如果 StructuredOutput 工具调用超过 <code>MAX_STRUCTURED_OUTPUT_RETRIES</code>（默认 5），产出 <code>error_max_structured_output_retries</code></li>
+      <li><strong>max_turns_reached 附件</strong>：query.ts yield 的特殊附件消息，QueryEngine 转为 <code>error_max_turns</code> 结果</li>
+    </ul>
+
+    <h3>查询链追踪</h3>
+    <pre><code>type QueryChainTracking = {
+  chainId: string  // UUID，一个用户轮次内的所有查询共享
+  depth: number    // 从 0 开始递增，每次查询循环 +1
+}
+
+// 初始化
+const queryTracking = toolUseContext.queryTracking
+  ? { chainId: existing.chainId, depth: existing.depth + 1 }
+  : { chainId: deps.uuid(), depth: 0 }</code></pre>
+    <p><code>chainId</code> 和 <code>depth</code> 贯穿所有 analytics 事件，用于关联同一轮次中的多次 API 调用，追踪压缩、降级、恢复等操作的因果链。</p>
+
+    <h3>Output Tokens 恢复循环</h3>
+    <p>当模型输出被截断（<code>max_output_tokens</code> stop reason）时，系统最多尝试 3 次恢复：</p>
+    <ol>
+      <li><strong>Escalate（一次性）</strong>：如果使用了 8k 的 capped 默认值，直接升级到 64k——不注入消息，不增加轮次</li>
+      <li><strong>Multi-turn recovery（最多 3 次）</strong>：注入 "Output token limit hit. Resume directly -- no apology, no recap..." 让模型从断点继续</li>
+      <li><strong>放弃</strong>：恢复次数耗尽后，surface 扣留的错误消息</li>
+    </ol>
+
+    <div class="highlight-box green">
+      <div class="title">设计哲学</div>
+      <p>整个查询引擎的设计遵循"<strong>fail-open with graceful degradation</strong>"原则。每一层恢复机制都有明确的退出条件，避免无限循环。布尔守卫（如 <code>hasAttemptedReactiveCompact</code>）确保每种恢复策略只尝试一次。transition 字段让测试可以验证恢复路径是否按预期触发，无需深入检查消息内容。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Footer ==================== -->
+<footer>
+  <div class="container">
+    <p>Claude Code Query Engine 源码研究报告 -- 基于 claude-code 源码分析</p>
+    <p>核心文件：QueryEngine.ts, query.ts, StreamingToolExecutor.ts, withRetry.ts, speculation.ts, tokens.ts, claude.ts</p>
+  </div>
+</footer>
+
+<!-- ==================== JS ==================== -->
+<script>
+// 主题切换
+function toggleTheme() {
+  const html = document.documentElement;
+  html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+}
+
+// 滚动进度条
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+});
+
+// 侧边导航
+(function() {
+  const nav = document.getElementById('sideNav');
+  const sections = document.querySelectorAll('section[id]');
+  sections.forEach(s => {
+    const a = document.createElement('a');
+    a.href = '#' + s.id;
+    a.title = s.querySelector('h2')?.textContent || '';
+    nav.appendChild(a);
+  });
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      const a = nav.querySelector(`a[href="#${e.target.id}"]`);
+      if (a) a.classList.toggle('active', e.isIntersecting);
+    });
+  }, { threshold: 0.3 });
+  sections.forEach(s => observer.observe(s));
+})();
+
+// Scroll Reveal
+(function() {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+})();
+</script>
+</body>
+</html>

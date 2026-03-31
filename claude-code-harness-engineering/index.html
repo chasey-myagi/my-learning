@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Harness Engineering：AI 驾驭框架的顶层设计</title>
+<style>
+/* ─── CSS Variables ─── */
+:root{--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03);--shadow:0 1px 3px rgba(0,0,0,0.06);--shadow-lg:0 8px 32px rgba(0,0,0,0.08)}
+[data-theme="dark"]{--bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;--fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;--accent:#fb923c;--accent-2:#fdba74;--green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);--border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);--quote-bg:rgba(255,255,255,0.03);--shadow:0 1px 3px rgba(0,0,0,0.3);--shadow-lg:0 8px 32px rgba(0,0,0,0.4)}
+
+/* ─── Reset & Base ─── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--fg);line-height:1.75;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+/* ─── Progress Bar ─── */
+.progress-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent-2));z-index:1000;transition:width 0.15s ease-out;will-change:width}
+
+/* ─── Theme Toggle ─── */
+.theme-toggle{position:fixed;top:1rem;right:1rem;z-index:999;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--bg-alt);color:var(--fg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all 0.2s;box-shadow:var(--shadow)}
+.theme-toggle:hover{transform:scale(1.1);box-shadow:var(--shadow-lg)}
+
+/* ─── Navigation ─── */
+.nav{position:fixed;left:0;top:0;width:260px;height:100vh;background:var(--bg-alt);border-right:1px solid var(--border);padding:4.5rem 1rem 2rem;overflow-y:auto;z-index:100;transform:translateX(-100%);transition:transform 0.3s ease}
+.nav.open{transform:translateX(0)}
+.nav-toggle{position:fixed;top:1rem;left:1rem;z-index:999;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--bg-alt);color:var(--fg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:all 0.2s;box-shadow:var(--shadow)}
+.nav-toggle:hover{transform:scale(1.1)}
+.nav a{display:block;padding:0.4rem 0.75rem;margin:0.15rem 0;color:var(--fg-2);text-decoration:none;font-size:0.82rem;border-radius:6px;transition:all 0.15s;line-height:1.4}
+.nav a:hover,.nav a.active{background:var(--tag-bg);color:var(--accent)}
+.nav a.active{font-weight:600}
+.nav-section{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);padding:0.75rem 0.75rem 0.25rem;font-weight:600}
+
+@media(min-width:1200px){
+  .nav{transform:translateX(0)}
+  .nav-toggle{display:none}
+  .main{margin-left:260px}
+}
+
+/* ─── Main Content ─── */
+.main{max-width:820px;margin:0 auto;padding:2rem 1.5rem 6rem}
+@media(min-width:1200px){.main{margin-left:calc(260px + max(0px,(100vw - 260px - 820px)/2));margin-right:auto;padding:2rem 2rem 6rem}}
+
+/* ─── Header ─── */
+.header{padding:4rem 0 3rem;text-align:center;border-bottom:1px solid var(--border);margin-bottom:3rem}
+.header-tag{display:inline-block;padding:0.25rem 0.75rem;background:var(--tag-bg);color:var(--tag-fg);border-radius:20px;font-size:0.75rem;font-weight:600;letter-spacing:0.03em;margin-bottom:1rem}
+.header h1{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;line-height:1.2;margin-bottom:0.75rem;letter-spacing:-0.02em}
+.header .subtitle{font-size:1rem;color:var(--fg-2);max-width:600px;margin:0 auto;line-height:1.6}
+.header .meta{margin-top:1.5rem;display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap;font-size:0.8rem;color:var(--fg-3)}
+.header .meta span{display:flex;align-items:center;gap:0.35rem}
+
+/* ─── Sections ─── */
+section{margin-bottom:3.5rem}
+section.reveal{opacity:0;transform:translateY(20px);transition:opacity 0.5s ease,transform 0.5s ease}
+section.reveal.visible{opacity:1;transform:translateY(0)}
+@media(prefers-reduced-motion:reduce){section.reveal{opacity:1;transform:none}}
+
+h2{font-size:1.5rem;font-weight:700;margin-bottom:1.25rem;padding-bottom:0.5rem;border-bottom:2px solid var(--accent);letter-spacing:-0.01em;display:flex;align-items:center;gap:0.5rem}
+h2 .num{font-size:0.85rem;background:var(--accent);color:#fff;width:1.75rem;height:1.75rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+h3{font-size:1.15rem;font-weight:600;margin:1.5rem 0 0.75rem;color:var(--fg)}
+h4{font-size:1rem;font-weight:600;margin:1rem 0 0.5rem;color:var(--fg-2)}
+p{margin-bottom:0.9rem;color:var(--fg-2)}
+ul,ol{margin-bottom:1rem;padding-left:1.5rem}
+li{margin-bottom:0.35rem;color:var(--fg-2)}
+li::marker{color:var(--accent)}
+
+/* ─── Code ─── */
+code{font-family:"SF Mono",Monaco,"Cascadia Code",Consolas,monospace;font-size:0.85em;background:var(--tag-bg);color:var(--tag-fg);padding:0.1em 0.35em;border-radius:4px}
+pre{background:var(--bg-code);color:#e7e5e4;padding:1.25rem;border-radius:10px;overflow-x:auto;margin:1rem 0 1.25rem;font-size:0.82rem;line-height:1.6;border:1px solid var(--border)}
+pre code{background:none;color:inherit;padding:0;font-size:inherit}
+.code-label{display:inline-block;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3);margin-bottom:0.35rem}
+
+/* ─── Callout ─── */
+.callout{background:var(--quote-bg);border-left:3px solid var(--accent);padding:1rem 1.25rem;border-radius:0 8px 8px 0;margin:1.25rem 0;font-size:0.9rem}
+.callout.green{border-left-color:var(--green);background:var(--green-bg)}
+.callout.red{border-left-color:#ef4444;background:var(--red-bg)}
+.callout-title{font-weight:700;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.3rem;color:var(--accent)}
+.callout.green .callout-title{color:var(--green)}
+
+/* ─── Tags ─── */
+.tag{display:inline-block;padding:0.15rem 0.5rem;background:var(--tag-bg);color:var(--tag-fg);border-radius:4px;font-size:0.75rem;font-weight:500;margin:0.15rem 0.15rem}
+
+/* ─── Cards ─── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin:1.25rem 0}
+.card{background:var(--bg-alt);border:1px solid var(--border);border-radius:10px;padding:1.1rem;transition:transform 0.2s,box-shadow 0.2s}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card-title{font-weight:700;font-size:0.95rem;margin-bottom:0.4rem;color:var(--fg)}
+.card-desc{font-size:0.82rem;color:var(--fg-2);line-height:1.5}
+.card-path{font-size:0.72rem;color:var(--fg-3);font-family:monospace;margin-top:0.5rem}
+
+/* ─── Table ─── */
+.table-wrap{overflow-x:auto;margin:1rem 0 1.25rem;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:0.85rem}
+th{background:var(--bg-alt);font-weight:600;text-align:left;padding:0.65rem 0.9rem;border-bottom:2px solid var(--border);color:var(--fg);white-space:nowrap}
+td{padding:0.55rem 0.9rem;border-bottom:1px solid var(--border);color:var(--fg-2)}
+tr:last-child td{border-bottom:none}
+
+/* ─── Flow Diagram ─── */
+.flow{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin:1.25rem 0;padding:1rem;background:var(--bg-alt);border-radius:10px;border:1px solid var(--border)}
+.flow-step{background:var(--tag-bg);color:var(--tag-fg);padding:0.4rem 0.85rem;border-radius:6px;font-size:0.8rem;font-weight:600;white-space:nowrap}
+.flow-arrow{color:var(--fg-3);font-size:0.9rem}
+.flow-label{font-size:0.7rem;color:var(--fg-3);width:100%;text-align:center;margin-top:0.25rem}
+
+/* ─── Architecture Diagram ─── */
+.arch{background:var(--bg-alt);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin:1.5rem 0;font-family:monospace;font-size:0.78rem;line-height:1.7;overflow-x:auto;white-space:pre;color:var(--fg-2)}
+.arch .hl{color:var(--accent);font-weight:700}
+.arch .g{color:var(--green)}
+.arch .d{color:var(--fg-3)}
+
+/* ─── Stats ─── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin:1.25rem 0}
+.stat{text-align:center;padding:1rem;background:var(--bg-alt);border-radius:10px;border:1px solid var(--border)}
+.stat-value{font-size:1.8rem;font-weight:800;color:var(--accent);line-height:1.1}
+.stat-label{font-size:0.72rem;color:var(--fg-3);margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.04em}
+
+/* ─── Footer ─── */
+.footer{text-align:center;padding:3rem 0 2rem;border-top:1px solid var(--border);margin-top:3rem;color:var(--fg-3);font-size:0.8rem}
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+  <span id="themeIcon">&#9790;</span>
+</button>
+
+<button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">&#9776;</button>
+<nav class="nav" id="nav">
+  <div class="nav-section">Overview</div>
+  <a href="#architecture">Architecture Overview</a>
+  <div class="nav-section">Core Systems</div>
+  <a href="#entry">CLI 入口架构</a>
+  <a href="#bridge">Bridge 双向通信</a>
+  <a href="#hooks">Hook 生命周期系统</a>
+  <a href="#coordinator">多代理协调器</a>
+  <div class="nav-section">Infrastructure</div>
+  <a href="#auth">认证与安全链路</a>
+  <a href="#feature-flags">Feature Flag 动态控制</a>
+  <a href="#session">会话持久化与恢复</a>
+  <a href="#remote">远程/服务器模式</a>
+  <a href="#migrations">配置迁移策略</a>
+  <div class="nav-section">Insights</div>
+  <a href="#insights">工程启示</a>
+</nav>
+
+<div class="main">
+  <header class="header">
+    <div class="header-tag">Deep Dive / Source Analysis</div>
+    <h1>Claude Code Harness Engineering</h1>
+    <p class="subtitle">AI 驾驭框架的顶层设计 -- 深入 4683 行入口文件与周边系统，解构一个工业级 AI CLI 框架的全栈架构</p>
+    <div class="meta">
+      <span>Source: claude-code/src</span>
+      <span>4683 行 main.tsx</span>
+      <span>31 个 Bridge 模块</span>
+      <span>25+ Hook 事件</span>
+      <span>2026-03-31</span>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="architecture">
+    <h2><span class="num">0</span>Architecture Overview</h2>
+    <p>Claude Code 不是一个简单的 CLI wrapper。它是一个完整的 <strong>AI Agent 运行时环境</strong>，具备多种运行模式（CLI 交互/SDK headless/远程桥接/服务器模式），将用户、AI 模型、IDE、权限系统、插件和外部服务编织成一个可控、可扩展、可观测的统一框架。</p>
+
+    <div class="arch"><span class="d">┌─────────────────────────────────────────────────────────────────┐</span>
+<span class="d">│</span>                     <span class="hl">Claude Code Harness Architecture</span>                <span class="d">│</span>
+<span class="d">├─────────────────────────────────────────────────────────────────┤</span>
+<span class="d">│</span>  <span class="hl">Entrypoints</span>                                                    <span class="d">│</span>
+<span class="d">│</span>    main.tsx ─── CLI (Commander.js + React/Ink)                   <span class="d">│</span>
+<span class="d">│</span>    print.ts ─── Headless (-p/--print, SDK)                       <span class="d">│</span>
+<span class="d">│</span>    sdk/    ─── TypeScript/Python SDK entrypoints                 <span class="d">│</span>
+<span class="d">│</span>    mcp/    ─── MCP server mode                                  <span class="d">│</span>
+<span class="d">├─────────────────────────────────────────────────────────────────┤</span>
+<span class="d">│</span>  <span class="g">Startup Pipeline</span>                                               <span class="d">│</span>
+<span class="d">│</span>    profileCheckpoint ─&gt; eagerLoadSettings ─&gt; init()              <span class="d">│</span>
+<span class="d">│</span>    ─&gt; runMigrations ─&gt; setup() ─&gt; showSetupScreens              <span class="d">│</span>
+<span class="d">│</span>    ─&gt; processSessionStartHooks ─&gt; launchRepl                    <span class="d">│</span>
+<span class="d">├─────────────────────────────────────────────────────────────────┤</span>
+<span class="d">│</span>  <span class="hl">Runtime Systems</span>                                                <span class="d">│</span>
+<span class="d">│</span>    Bridge ────── IDE/Web 双向通信 (WebSocket/SSE)                <span class="d">│</span>
+<span class="d">│</span>    Hooks ─────── 25+ 生命周期事件 (command/prompt/http/agent)     <span class="d">│</span>
+<span class="d">│</span>    Coordinator ─ 多代理编排模式 (Worker fan-out)                  <span class="d">│</span>
+<span class="d">│</span>    MCP ────────── 工具/资源/命令扩展协议                          <span class="d">│</span>
+<span class="d">│</span>    Plugins ────── 版本化插件系统                                 <span class="d">│</span>
+<span class="d">├─────────────────────────────────────────────────────────────────┤</span>
+<span class="d">│</span>  <span class="g">Control Plane</span>                                                  <span class="d">│</span>
+<span class="d">│</span>    OAuth 2.0 + PKCE ── 认证                                     <span class="d">│</span>
+<span class="d">│</span>    GrowthBook ──────── Feature Flags                             <span class="d">│</span>
+<span class="d">│</span>    Policy Limits ───── 企业策略限制                               <span class="d">│</span>
+<span class="d">│</span>    Remote Managed ──── 远程配置管理                               <span class="d">│</span>
+<span class="d">│</span>    Zod Schemas ─────── 配置验证                                  <span class="d">│</span>
+<span class="d">│</span>    Migrations ──────── 版本化配置迁移                             <span class="d">│</span>
+<span class="d">└─────────────────────────────────────────────────────────────────┘</span></div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-value">4683</div><div class="stat-label">main.tsx 行数</div></div>
+      <div class="stat"><div class="stat-value">31</div><div class="stat-label">Bridge 模块</div></div>
+      <div class="stat"><div class="stat-value">25+</div><div class="stat-label">Hook 事件类型</div></div>
+      <div class="stat"><div class="stat-value">11</div><div class="stat-label">配置迁移版本</div></div>
+      <div class="stat"><div class="stat-value">4</div><div class="stat-label">Hook 执行类型</div></div>
+      <div class="stat"><div class="stat-value">6</div><div class="stat-label">客户端类型</div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="entry">
+    <h2><span class="num">1</span>CLI 入口架构：4683 行的启动引擎</h2>
+
+    <p><code>src/main.tsx</code> 是整个 Claude Code 的心脏。它不是一个简单的命令行解析器，而是一个精心编排的<strong>启动流水线</strong>，将性能优化、安全检查、特性开关、会话恢复、多模式入口融合在一起。</p>
+
+    <h3>Side-Effect-First 启动模式</h3>
+    <p>文件的前 20 行就展示了 Claude Code 的性能哲学 -- 在 import 还没完成时就启动异步工作：</p>
+
+    <pre><code>// Line 1-20: 三个并行 side-effect 在 import 阶段启动
+profileCheckpoint('main_tsx_entry');       // 性能计时起点
+startMdmRawRead();                         // MDM 子进程(plutil/reg)并行启动
+startKeychainPrefetch();                   // macOS Keychain 双读并行(~65ms 优化)</code></pre>
+
+    <div class="callout green">
+      <div class="callout-title">性能洞察</div>
+      <p>Keychain prefetch 将两次串行的同步 spawn 操作（OAuth token + legacy API key）变成并行异步，节省约 65ms 的 macOS 启动时间。这种"import 阶段就开始干活"的策略，在后续 100+ 行的 import 完成时，子进程已经跑完了。</p>
+    </div>
+
+    <h3>Commander.js 命令架构</h3>
+    <p>main.tsx 使用 <code>@commander-js/extra-typings</code>（类型安全增强版 Commander）构建 CLI，通过 <code>preAction</code> hook 实现延迟初始化：</p>
+
+    <pre><code>// Line 907: preAction hook -- 只在真正执行命令时初始化，help 展示时跳过
+program.hook('preAction', async thisCommand => {
+  await Promise.all([ensureMdmSettingsLoaded(), ensureKeychainPrefetchCompleted()]);
+  await init();                          // 核心初始化(configs, env vars, telemetry)
+  runMigrations();                       // 版本化配置迁移
+  void loadRemoteManagedSettings();      // 企业远程配置(非阻塞)
+  void loadPolicyLimits();               // 组织策略限制(非阻塞)
+});</code></pre>
+
+    <h3>多入口模式识别</h3>
+    <p>Claude Code 通过解析 <code>clientType</code> 识别 6+ 种运行环境，每种环境有不同的行为路径：</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Client Type</th><th>触发条件</th><th>行为特征</th></tr>
+        <tr><td><code>cli</code></td><td>默认交互终端</td><td>完整 TUI (React/Ink)，信任对话框</td></tr>
+        <tr><td><code>sdk-cli</code></td><td><code>-p/--print</code> 或非 TTY</td><td>Headless，跳过信任对话框</td></tr>
+        <tr><td><code>sdk-typescript</code></td><td><code>CLAUDE_CODE_ENTRYPOINT=sdk-ts</code></td><td>TypeScript SDK 子进程</td></tr>
+        <tr><td><code>remote</code></td><td>Session ingress token 存在</td><td>CCR 远程会话</td></tr>
+        <tr><td><code>claude-vscode</code></td><td>VS Code 插件启动</td><td>IDE 集成模式</td></tr>
+        <tr><td><code>local-agent</code></td><td>本地 Agent 模式启动器</td><td>后台 Agent 运行</td></tr>
+        <tr><td><code>claude-desktop</code></td><td>Desktop 应用</td><td>桌面端集成</td></tr>
+      </table>
+    </div>
+
+    <h3>启动流水线</h3>
+    <div class="flow">
+      <span class="flow-step">Side Effects</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Imports (135ms)</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">preAction Hook</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">init()</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Migrations</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">setup()</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Trust Dialog</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">SessionStart Hooks</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">launchRepl()</span>
+      <div class="flow-label">关键优化：setup() 与 commands/agents 加载并行，MCP 连接在 Hook 执行期间并发启动</div>
+    </div>
+
+    <h3>Dead Code Elimination 与 Feature Gates</h3>
+    <p>通过 Bun 的 <code>feature()</code> API 实现编译期特性开关：</p>
+    <pre><code>// 编译期消除：只有 COORDINATOR_MODE feature flag 开启时才引入 coordinator 模块
+const coordinatorModeModule = feature('COORDINATOR_MODE')
+  ? require('./coordinator/coordinatorMode.js')
+  : null;
+
+// KAIROS (Assistant Mode) -- 同样模式
+const assistantModule = feature('KAIROS')
+  ? require('./assistant/index.js')
+  : null;</code></pre>
+    <p>这种模式确保未启用的特性<strong>完全不进入打包产物</strong>，不增加任何运行时开销。目前已知的 feature flags 包括：<code>COORDINATOR_MODE</code>、<code>KAIROS</code>、<code>DIRECT_CONNECT</code>、<code>SSH_REMOTE</code>、<code>LODESTONE</code>、<code>UDS_INBOX</code>、<code>BG_SESSIONS</code>、<code>TRANSCRIPT_CLASSIFIER</code>、<code>UPLOAD_USER_SETTINGS</code>。</p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="bridge">
+    <h2><span class="num">2</span>Bridge 双向通信系统</h2>
+
+    <p><code>src/bridge/</code> 是 Claude Code 最复杂的子系统之一（31 个文件），负责将本地 CLI 实例与远程 Web 界面（claude.ai）和 IDE 连接起来。它实现了一个完整的<strong>会话中继架构</strong>。</p>
+
+    <h3>核心架构：Environment-Session 模型</h3>
+
+    <div class="arch"><span class="hl">Bridge Architecture (remote-control mode)</span>
+
+<span class="d">┌──────────────┐    pollForWork    ┌──────────────┐    WebSocket     ┌──────────┐</span>
+<span class="d">│</span>  <span class="hl">bridgeMain</span>   <span class="d">│◄─────────────────│</span>  <span class="g">Anthropic</span>    <span class="d">│◄────────────────│</span> <span class="g">claude.ai</span> <span class="d">│</span>
+<span class="d">│</span>  (poll loop)  <span class="d">│─────────────────&gt;│</span>  <span class="g">API Server</span>   <span class="d">│─────────────────&gt;│</span> <span class="g">(Web UI)</span>  <span class="d">│</span>
+<span class="d">└──────┬───────┘</span>   ack/heartbeat   <span class="d">└──────────────┘</span>                  <span class="d">└──────────┘</span>
+       <span class="d">│</span>
+       <span class="d">│</span> spawn child CLI
+       <span class="d">▼</span>
+<span class="d">┌──────────────┐</span>
+<span class="d">│</span> <span class="hl">sessionRunner</span> <span class="d">│</span>  child CLI process per session
+<span class="d">│</span>  --sdk-url    <span class="d">│</span>  stdin/stdout JSON stream
+<span class="d">│</span>  --session-id <span class="d">│</span>  permission requests bubble up
+<span class="d">└──────────────┘</span></div>
+
+    <h3>Bridge 核心模块</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">bridgeMain.ts</div>
+        <div class="card-desc">Bridge 主循环。注册 Environment，轮询 Work，管理多个 active sessions（最多 32 个并行），处理 heartbeat、session timeout、worktree 隔离。</div>
+        <div class="card-path">runBridgeLoop() - 核心 poll 循环</div>
+      </div>
+      <div class="card">
+        <div class="card-title">bridgeMessaging.ts</div>
+        <div class="card-desc">传输层消息处理。SDKMessage 类型守卫、ingress 路由解析、echo 去重（BoundedUUIDSet）、control_request/response 分发。</div>
+        <div class="card-path">handleIngressMessage() - 消息路由</div>
+      </div>
+      <div class="card">
+        <div class="card-title">replBridge.ts</div>
+        <div class="card-desc">REPL 模式 Bridge。当用户在交互式会话中启用 remote-control 时，将本地 REPL 连接到 API。支持 V1/V2 传输和 HybridTransport。</div>
+        <div class="card-path">initBridgeCore() - REPL 桥接初始化</div>
+      </div>
+      <div class="card">
+        <div class="card-title">jwtUtils.ts</div>
+        <div class="card-desc">JWT Token 刷新调度器。解码 JWT 过期时间，在过期前 5 分钟主动刷新，支持 generation 计数防止 stale 刷新，最多 3 次失败重试。</div>
+        <div class="card-path">createTokenRefreshScheduler()</div>
+      </div>
+      <div class="card">
+        <div class="card-title">sessionRunner.ts</div>
+        <div class="card-desc">子进程管理。为每个远程会话 spawn 独立 CLI 进程，通过 stdin/stdout JSON 流通信，解析 tool_start/text/result 活动，权限请求冒泡到 Bridge。</div>
+        <div class="card-path">createSessionSpawner()</div>
+      </div>
+      <div class="card">
+        <div class="card-title">workSecret.ts</div>
+        <div class="card-desc">Work Secret 解码。base64url 编码的 JSON 负载包含 session_ingress_token、api_base_url、git_info、auth tokens、MCP 配置。支持 CCR v2 兼容层。</div>
+        <div class="card-path">decodeWorkSecret() / buildSdkUrl()</div>
+      </div>
+    </div>
+
+    <h3>WorkSecret 数据结构</h3>
+    <p>服务端下发的 WorkSecret 是整个 Bridge 通信的密钥载荷：</p>
+    <pre><code>type WorkSecret = {
+  version: 1,
+  session_ingress_token: string,    // JWT - 会话入口凭证
+  api_base_url: string,             // API 基础 URL
+  sources: Array&lt;{                  // 代码源配置
+    type: string,
+    git_info?: { type: string, repo: string, ref?: string, token?: string }
+  }&gt;,
+  auth: Array&lt;{ type: string, token: string }&gt;,  // 认证令牌
+  claude_code_args?: Record&lt;string, string&gt;,       // CLI 参数覆盖
+  mcp_config?: unknown,                             // MCP 服务器配置
+  environment_variables?: Record&lt;string, string&gt;,   // 环境变量注入
+  use_code_sessions?: boolean,                       // CCR v2 选择器
+}</code></pre>
+
+    <h3>Spawn Mode 架构</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>模式</th><th>工作目录</th><th>并发</th><th>用途</th></tr>
+        <tr><td><code>single-session</code></td><td>当前 cwd</td><td>1 个会话</td><td>单次使用，Bridge 随会话结束关闭</td></tr>
+        <tr><td><code>worktree</code></td><td>每会话独立 git worktree</td><td>最多 32 个</td><td>持久服务，文件完全隔离</td></tr>
+        <tr><td><code>same-dir</code></td><td>共享 cwd</td><td>最多 32 个</td><td>持久服务，但可能文件冲突</td></tr>
+      </table>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">Backoff 策略</div>
+      <p>Bridge 使用双层退避策略：连接退避（2s-120s cap，10min give-up）和通用错误退避（500ms-30s cap，10min give-up）。还有 sleep detection（超过 2x connCapMs = 240s 的轮询间隔被判定为系统睡眠恢复）。</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="hooks">
+    <h2><span class="num">3</span>Hook 生命周期系统</h2>
+
+    <p>Claude Code 的 Hook 系统是整个 Harness 可编程性的核心。它不是简单的 pre/post 钩子，而是一个<strong>完整的事件驱动扩展框架</strong>，支持 4 种执行类型、25+ 种生命周期事件，以及从 shell 命令到 AI Agent 的多种执行模式。</p>
+
+    <h3>Hook 事件全景</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>事件类型</th><th>触发时机</th><th>典型用途</th></tr>
+        <tr><td><code>Setup</code></td><td>init/maintenance 触发</td><td>环境准备、依赖检查</td></tr>
+        <tr><td><code>SessionStart</code></td><td>startup/resume/clear/compact</td><td>上下文注入、日志初始化</td></tr>
+        <tr><td><code>SessionEnd</code></td><td>会话关闭/清理</td><td>资源清理（1.5s 超时）</td></tr>
+        <tr><td><code>PreToolUse</code></td><td>工具执行前</td><td>权限拦截、参数验证</td></tr>
+        <tr><td><code>PostToolUse</code></td><td>工具执行后</td><td>输出审查、MCP 工具输出修改</td></tr>
+        <tr><td><code>PostToolUseFailure</code></td><td>工具执行失败后</td><td>错误处理、重试策略</td></tr>
+        <tr><td><code>UserPromptSubmit</code></td><td>用户提交 prompt</td><td>输入过滤、审计</td></tr>
+        <tr><td><code>Stop</code></td><td>模型停止输出</td><td>后处理触发</td></tr>
+        <tr><td><code>StopFailure</code></td><td>停止失败</td><td>异常恢复</td></tr>
+        <tr><td><code>SubagentStart/Stop</code></td><td>子代理生命周期</td><td>Agent 监控</td></tr>
+        <tr><td><code>PreCompact/PostCompact</code></td><td>上下文压缩前后</td><td>上下文管理</td></tr>
+        <tr><td><code>PermissionRequest/Denied</code></td><td>权限请求/拒绝</td><td>安全审计</td></tr>
+        <tr><td><code>Notification</code></td><td>通知事件</td><td>用户通知</td></tr>
+        <tr><td><code>TeammateIdle</code></td><td>Teammate 空闲</td><td>Swarm 调度</td></tr>
+        <tr><td><code>TaskCreated/Completed</code></td><td>任务生命周期</td><td>任务追踪</td></tr>
+        <tr><td><code>Elicitation/ElicitationResult</code></td><td>MCP elicitation</td><td>交互式输入</td></tr>
+        <tr><td><code>ConfigChange</code></td><td>配置变更</td><td>热重载响应</td></tr>
+        <tr><td><code>CwdChanged</code></td><td>工作目录变更</td><td>上下文刷新</td></tr>
+        <tr><td><code>FileChanged</code></td><td>文件变更</td><td>文件监控响应</td></tr>
+        <tr><td><code>InstructionsLoaded</code></td><td>CLAUDE.md 加载</td><td>指令感知</td></tr>
+      </table>
+    </div>
+
+    <h3>4 种 Hook 执行类型</h3>
+    <p>通过 Zod discriminated union 定义，每种类型有独立的 schema 验证：</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">command (Shell)</div>
+        <div class="card-desc">执行 shell 命令。支持 bash/zsh/sh/powershell，可设置超时、自定义 spinner 消息、once（一次性）、async（后台）、asyncRewake（后台+exit code 2 唤醒模型）。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">prompt (LLM)</div>
+        <div class="card-desc">用 LLM 评估 prompt。<code>$ARGUMENTS</code> 占位符注入 hook input JSON。可指定模型（默认小型快速模型）。适合做内容审查、分类判断。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">http (Webhook)</div>
+        <div class="card-desc">POST hook input JSON 到指定 URL。支持自定义 headers，header 值可引用环境变量（需通过 <code>allowedEnvVars</code> 白名单）。适合外部系统集成。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">agent (AI Verifier)</div>
+        <div class="card-desc">启动 AI Agent 验证器。给定 prompt 描述验证目标，Agent 自主执行验证。默认使用 Haiku 模型，60s 超时。适合自动化质量检查。</div>
+      </div>
+    </div>
+
+    <h3>Hook 配置 Schema（Zod 验证）</h3>
+    <pre><code>// src/schemas/hooks.ts - Hook 配置 schema
+const HooksSchema = z.partialRecord(
+  z.enum(HOOK_EVENTS),           // 25+ 事件类型作为 key
+  z.array(HookMatcherSchema())   // 每个事件可有多个 matcher
+);
+
+// Matcher 支持工具名匹配
+const HookMatcherSchema = z.object({
+  matcher: z.string().optional(),    // e.g. "Write", "Bash(git *)"
+  hooks: z.array(HookCommandSchema())  // 匹配时执行的 hook 列表
+});
+
+// Hook 命令是 discriminated union
+const HookCommandSchema = z.discriminatedUnion('type', [
+  BashCommandHookSchema,   // type: 'command'
+  PromptHookSchema,        // type: 'prompt'
+  AgentHookSchema,         // type: 'agent'
+  HttpHookSchema,          // type: 'http'
+]);</code></pre>
+
+    <h3>Hook 执行管线</h3>
+    <div class="flow">
+      <span class="flow-step">Event 触发</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">if 条件过滤</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Matcher 匹配</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">执行 Hook</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">JSON 输出解析</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">决策分发</span>
+      <div class="flow-label">Hook 输出可控制：block（阻断）、additionalContext（注入上下文）、preventContinuation（停止后续）、updatedMCPToolOutput（修改输出）</div>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">if 条件过滤</div>
+      <p><code>if</code> 字段使用权限规则语法（如 <code>"Bash(git *)"</code>），在 spawn hook 进程之前就过滤掉不匹配的调用。这避免了为每个 Bash 调用都启动 hook 子进程的开销。</p>
+    </div>
+
+    <h3>Hook 来源优先级</h3>
+    <p>Hook 可从多个来源注册，策略层面可控制哪些来源被允许：</p>
+    <ul>
+      <li><strong>settings.json</strong> -- 用户/项目级配置</li>
+      <li><strong>Plugin hooks</strong> -- 已安装插件注册的 hooks（可被 <code>allowManagedHooksOnly</code> 策略禁止）</li>
+      <li><strong>Session hooks</strong> -- 运行时动态注册（function hooks, SDK callback hooks）</li>
+      <li><strong>Managed hooks</strong> -- 企业管理的 hooks（策略设置优先级最高）</li>
+    </ul>
+    <p><code>shouldDisableAllHooksIncludingManaged</code> 是全局 kill switch，<code>--bare</code> 模式跳过所有 hooks。</p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="coordinator">
+    <h2><span class="num">4</span>多代理协调器模式</h2>
+
+    <p><code>src/coordinator/coordinatorMode.ts</code> 实现了一种全新的 AI 编排范式：<strong>Coordinator-Worker 架构</strong>。Coordinator 是一个只负责编排的 "管理者" Agent，通过 <code>AgentTool</code> 和 <code>SendMessageTool</code> 指挥多个 Worker Agent 并行工作。</p>
+
+    <h3>模式激活</h3>
+    <pre><code>// 通过 bun:bundle feature flag + 环境变量双重控制
+export function isCoordinatorMode(): boolean {
+  if (feature('COORDINATOR_MODE')) {
+    return isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE);
+  }
+  return false;
+}</code></pre>
+
+    <h3>Coordinator System Prompt 设计</h3>
+    <p>Coordinator 的 system prompt 是一份精心设计的约 350 行指令，核心原则：</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">明确角色分离</div>
+        <div class="card-desc">Coordinator 只有 3 个工具：AgentTool（spawn worker）、SendMessageTool（continue worker）、TaskStopTool（stop worker）。不直接写代码。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Phase-based 工作流</div>
+        <div class="card-desc">Research &rarr; Synthesis &rarr; Implementation &rarr; Verification。Coordinator 在 Synthesis 阶段必须理解研究结果，不能 lazy delegation。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">并行是超能力</div>
+        <div class="card-desc">"Parallelism is your superpower" -- 独立任务必须并行启动。读操作自由并行，写操作按文件域串行。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Worker Prompt 自包含</div>
+        <div class="card-desc">"Workers can't see your conversation" -- 每个 prompt 必须包含完整的文件路径、行号、具体变更描述。禁止 "based on your findings" 这种 lazy 委托。</div>
+      </div>
+    </div>
+
+    <h3>Continue vs Spawn 决策矩阵</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>场景</th><th>机制</th><th>原因</th></tr>
+        <tr><td>研究了要编辑的文件</td><td><strong>Continue</strong> (SendMessage)</td><td>Worker 已有文件上下文</td></tr>
+        <tr><td>研究广泛但实现聚焦</td><td><strong>Spawn fresh</strong> (Agent)</td><td>避免探索噪声拖累</td></tr>
+        <tr><td>纠正失败或扩展工作</td><td><strong>Continue</strong></td><td>Worker 有错误上下文</td></tr>
+        <tr><td>验证其他 worker 的代码</td><td><strong>Spawn fresh</strong></td><td>验证者需要新鲜眼光</td></tr>
+        <tr><td>第一次尝试方向完全错误</td><td><strong>Spawn fresh</strong></td><td>清除锚定效应</td></tr>
+      </table>
+    </div>
+
+    <h3>Session Mode 恢复</h3>
+    <pre><code>// 恢复会话时自动匹配 coordinator/normal 模式
+export function matchSessionMode(
+  sessionMode: 'coordinator' | 'normal' | undefined
+): string | undefined {
+  // 如果不匹配，动态翻转环境变量
+  if (sessionIsCoordinator) {
+    process.env.CLAUDE_CODE_COORDINATOR_MODE = '1';
+  } else {
+    delete process.env.CLAUDE_CODE_COORDINATOR_MODE;
+  }
+}</code></pre>
+
+    <div class="callout green">
+      <div class="callout-title">Scratchpad 目录</div>
+      <p>Coordinator 模式下，如果 <code>tengu_scratch</code> gate 开启，会提供一个 scratchpad 目录供 Workers 跨上下文共享知识："Workers can read and write here without permission prompts. Use this for durable cross-worker knowledge."</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="auth">
+    <h2><span class="num">5</span>认证与安全链路</h2>
+
+    <p>Claude Code 实现了一个完整的 <strong>OAuth 2.0 + PKCE 认证流</strong>，同时支持 API Key、Bedrock、Vertex、Foundry 等多种认证方式。安全不仅仅是登录 -- 它贯穿了从启动到运行的每一个环节。</p>
+
+    <h3>OAuth 2.0 Authorization Code Flow with PKCE</h3>
+    <div class="flow">
+      <span class="flow-step">generateCodeVerifier()</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">buildAuthUrl(PKCE)</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">AuthCodeListener (localhost)</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Browser redirect</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">exchangeCodeForTokens()</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">fetchProfileInfo()</span>
+    </div>
+
+    <p><code>OAuthService</code> 支持两种授权码获取方式：</p>
+    <ul>
+      <li><strong>自动流</strong>：打开浏览器，重定向到 localhost 监听器自动捕获 code</li>
+      <li><strong>手动流</strong>：用户复制粘贴 code（非浏览器环境）</li>
+      <li><strong>SDK 模式</strong>：<code>skipBrowserOpen</code> 选项，由 SDK 客户端控制显示</li>
+    </ul>
+
+    <h3>Token 刷新链</h3>
+    <pre><code>// jwtUtils.ts - 主动式 Token 刷新调度器
+createTokenRefreshScheduler({
+  getAccessToken,    // OAuth access token 获取函数
+  onRefresh,         // 刷新回调（写入子进程 stdin / WS reconnect）
+  label: 'bridge',
+  refreshBufferMs: 5 * 60 * 1000,  // 过期前 5 分钟刷新
+});
+// Generation 计数防止并发刷新冲突
+// 最多 3 次失败后放弃（MAX_REFRESH_FAILURES）
+// Retry delay 60s</code></pre>
+
+    <h3>信任模型</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>阶段</th><th>安全控制</th><th>源码位置</th></tr>
+        <tr><td>启动</td><td>Anti-debugging 检测（阻止 inspect/debug 模式）</td><td>main.tsx:266</td></tr>
+        <tr><td>初始化</td><td><code>applySafeConfigEnvironmentVariables()</code> -- 仅安全变量</td><td>init.ts:74</td></tr>
+        <tr><td>信任前</td><td>不执行 git 命令（防止 core.fsmonitor 代码注入）</td><td>main.tsx:358</td></tr>
+        <tr><td>信任后</td><td><code>applyConfigEnvironmentVariables()</code> -- 完整变量</td><td>main.tsx:2593</td></tr>
+        <tr><td>运行时</td><td>Sandbox (SandboxManager)，权限模式系统</td><td>utils/sandbox/</td></tr>
+        <tr><td>Windows</td><td><code>NoDefaultCurrentDirectoryInExePath=1</code> 防 PATH 劫持</td><td>main.tsx:589</td></tr>
+      </table>
+    </div>
+
+    <div class="callout red">
+      <div class="callout-title">安全关键设计</div>
+      <p>Assistant 模式（Kairos）的信任门控特别严格：<code>.claude/settings.json</code> 在不信任的 clone 中是攻击者可控的。系统在 Trust Dialog 之前拒绝激活 Assistant 模式，即使 settings.json 配置了 <code>assistant: true</code>。</p>
+    </div>
+
+    <h3>Session Ingress JWT</h3>
+    <p>远程会话使用 <code>sk-ant-si-</code> 前缀的 JWT token，包含 <code>exp</code> 声明。Bridge 解码 payload（不验证签名 -- 服务端验证）来计算刷新时间。Token 通过 WorkSecret 下发，存储在 <code>sessionIngressTokens</code> Map 中。</p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="feature-flags">
+    <h2><span class="num">6</span>Feature Flag 动态控制</h2>
+
+    <p>Claude Code 使用 <strong>GrowthBook</strong> 作为 Feature Flag 和 A/B 实验平台，实现了一套带本地缓存、远程评估、热刷新的特性开关系统。</p>
+
+    <h3>双层 Feature Flag 架构</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>层级</th><th>机制</th><th>时机</th><th>示例</th></tr>
+        <tr><td><strong>编译期</strong></td><td>Bun <code>feature()</code></td><td>打包时</td><td><code>COORDINATOR_MODE</code>, <code>KAIROS</code>, <code>SSH_REMOTE</code></td></tr>
+        <tr><td><strong>运行时</strong></td><td>GrowthBook gates/features</td><td>会话期间</td><td><code>tengu_ccr_bridge_multi_session</code>, <code>tengu_scratch</code></td></tr>
+      </table>
+    </div>
+
+    <h3>GrowthBook 用户属性</h3>
+    <pre><code>type GrowthBookUserAttributes = {
+  id: string,              // 用户 ID
+  sessionId: string,       // 会话 ID
+  deviceID: string,        // 设备 ID
+  platform: 'win32' | 'darwin' | 'linux',
+  organizationUUID?: string,
+  accountUUID?: string,
+  userType?: string,        // e.g. 'ant', 'external'
+  subscriptionType?: string, // Pro, Max, Team, Enterprise
+  rateLimitTier?: string,
+  appVersion?: string,
+  email?: string,
+  github?: GitHubActionsMetadata,
+}</code></pre>
+
+    <h3>缓存与刷新策略</h3>
+    <ul>
+      <li><strong>磁盘缓存</strong>：Feature values 持久化到本地，下次启动直接使用</li>
+      <li><strong>Remote Eval</strong>：服务端评估复杂规则（SDK 不可靠时的 workaround）</li>
+      <li><strong>onGrowthBookRefresh</strong> 信号：当 feature values 刷新时通知订阅者（如 1P event logger 重建 provider）</li>
+      <li><strong>Exposure 去重</strong>：<code>loggedExposures</code> Set 防止热路径（如 render loop 中的 isAutoMemoryEnabled）重复发送曝光事件</li>
+      <li><strong>re-initialization guard</strong>：auth 变更时 GrowthBook 重新初始化，安全 gate check 等待 init 完成避免返回 stale 值</li>
+    </ul>
+
+    <h3>Gate 检查模式</h3>
+    <pre><code>// 非阻塞：使用缓存值（可能 stale）
+checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_scratch')
+
+// 阻塞：缓存命中立即返回，否则等待服务端响应
+checkGate_CACHED_OR_BLOCKING('tengu_ccr_bridge_multi_session')
+
+// 带默认值的 feature value
+getFeatureValue_CACHED_MAY_BE_STALE('tengu_some_config', defaultValue)</code></pre>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="session">
+    <h2><span class="num">7</span>会话持久化与恢复</h2>
+
+    <p>Claude Code 的会话不是一次性的 -- 它支持 <code>--resume</code>、<code>--continue</code>、<code>--fork-session</code> 等多种恢复模式，以及 teleport（跨机器迁移会话）能力。</p>
+
+    <h3>会话恢复矩阵</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>模式</th><th>CLI Flag</th><th>行为</th></tr>
+        <tr><td>Continue</td><td><code>-c / --continue</code></td><td>恢复当前目录最近的会话</td></tr>
+        <tr><td>Resume</td><td><code>-r / --resume [id]</code></td><td>按 session ID 恢复，或交互式选择</td></tr>
+        <tr><td>Fork</td><td><code>--fork-session</code></td><td>创建新 session ID 但继承历史</td></tr>
+        <tr><td>Resume at</td><td><code>--resume-session-at &lt;msg-id&gt;</code></td><td>恢复到指定消息（时间旅行）</td></tr>
+        <tr><td>Rewind</td><td><code>--rewind-files &lt;msg-id&gt;</code></td><td>恢复文件到指定消息时的状态</td></tr>
+        <tr><td>From PR</td><td><code>--from-pr [number]</code></td><td>恢复与 PR 关联的会话</td></tr>
+        <tr><td>Teleport</td><td><code>--teleport</code></td><td>迁移远程会话到本地</td></tr>
+      </table>
+    </div>
+
+    <h3>会话存储</h3>
+    <ul>
+      <li><strong>Transcript 文件</strong>：JSON 格式的完整消息历史</li>
+      <li><strong>Session ID</strong>：UUID v4，可通过 <code>--session-id</code> 指定</li>
+      <li><strong>PID 文件</strong>：<code>~/.claude/sessions/</code> 下注册，用于并发会话检测</li>
+      <li><strong>Session Title</strong>：可缓存，支持自定义 <code>-n/--name</code></li>
+      <li><strong>Agent Settings</strong>：保存 agent/mode/advisor 等设置</li>
+      <li><strong>Worktree State</strong>：当使用 git worktree 时保存 worktree 路径和分支</li>
+    </ul>
+
+    <h3>SessionStart Hook 触发矩阵</h3>
+    <p>不同恢复方式触发不同的 hook source：</p>
+    <pre><code>processSessionStartHooks('startup')  // 新会话启动
+processSessionStartHooks('resume')   // --resume/--continue 恢复
+processSessionStartHooks('clear')    // /clear 命令
+processSessionStartHooks('compact')  // 上下文压缩后</code></pre>
+    <p>关键细节：resume/continue 模式<strong>跳过</strong> main.tsx 中的 startup hooks（由 conversationRecovery.ts 触发 'resume' 源），防止 hooks 执行两次（gh-30825）。</p>
+
+    <h3>Session Persistence 控制</h3>
+    <p><code>--no-session-persistence</code> 禁用会话保存。仅在 <code>--print</code> 模式下有效，适用于不需要留痕的一次性任务。</p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="remote">
+    <h2><span class="num">8</span>远程/服务器模式</h2>
+
+    <p>Claude Code 支持三种远程运行架构，满足从个人到企业的不同部署场景。</p>
+
+    <h3>Remote Session (CCR)</h3>
+    <p><code>src/remote/RemoteSessionManager.ts</code> 管理与 Claude Code Remote (CCR) 的连接。本地 CLI 通过 WebSocket 订阅远程会话消息流：</p>
+
+    <pre><code>// WebSocket 连接 CCR 会话
+class SessionsWebSocket {
+  // wss://api.anthropic.com/v1/sessions/ws/{sessionId}/subscribe
+  // Auth: { type: 'auth', credential: { type: 'oauth', token: '...' } }
+  // 支持 5 次重连，30s ping 间隔
+  // 4001 (session not found) 特殊处理：3 次重试（compaction 期间可能暂时找不到）
+  // 4003 (unauthorized) 永久关闭
+}</code></pre>
+
+    <h3>Direct Connect (Server Mode)</h3>
+    <p><code>src/server/</code> 实现了 <code>cc://</code> 协议的服务器端：</p>
+
+    <pre><code>// POST ${serverUrl}/sessions 创建会话
+async function createDirectConnectSession({
+  serverUrl,   // 服务器地址
+  authToken,   // Bearer token
+  cwd,         // 工作目录
+  dangerouslySkipPermissions,
+}): Promise&lt;{ config: DirectConnectConfig, workDir?: string }&gt;
+
+// DirectConnectConfig:
+// { serverUrl, sessionId, wsUrl, authToken }
+
+// WebSocket 双向通信：
+// 入站：SDKMessage (user/assistant), control_request (permission)
+// 出站：user messages, control_response (permission decision)</code></pre>
+
+    <h3>SSH Remote</h3>
+    <p><code>claude ssh &lt;host&gt; [dir]</code> 将 Claude Code 部署到远程 SSH 主机：</p>
+    <ul>
+      <li>本地 REPL 驱动远程 CLI（中断、权限提示在本地处理）</li>
+      <li>支持 <code>--permission-mode</code>、<code>--continue</code>、<code>--resume</code>、<code>--model</code> 透传</li>
+      <li>Headless (-p) 模式不支持 SSH（需要本地 REPL 驱动）</li>
+      <li><code>--local</code> 标志跳过 SSH，直接 spawn 子进程（e2e 测试模式）</li>
+    </ul>
+
+    <h3>运行模式总结</h3>
+    <div class="arch"><span class="hl">Claude Code 运行模式拓扑</span>
+
+<span class="g">Interactive CLI</span>  ──── React/Ink TUI, 完整信任流程
+       <span class="d">│</span>
+       <span class="d">├──</span> <span class="g">+ Bridge</span>  ──── remote-control, 连接 claude.ai Web
+       <span class="d">│</span>
+       <span class="d">├──</span> <span class="g">+ SSH</span>  ────── 远程主机上的 Claude Code
+       <span class="d">│</span>
+       <span class="d">└──</span> <span class="g">+ Direct</span>  ── cc:// 协议连接自建服务器
+
+<span class="g">Headless (-p)</span>  ────── SDK 模式, stream-json I/O, 跳过信任
+       <span class="d">│</span>
+       <span class="d">├──</span> <span class="g">+ --sdk-url</span>  ── Bridge 子进程模式
+       <span class="d">│</span>
+       <span class="d">└──</span> <span class="g">+ CCR</span>  ─────── 远程会话 (session_ingress_token)
+
+<span class="g">MCP Server</span>  ───────── claude mcp serve
+<span class="g">Assistant</span>  ────────── Kairos 模式 (后台 Agent)</span></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="migrations">
+    <h2><span class="num">9</span>配置迁移与 Schema 验证</h2>
+
+    <p>Claude Code 维护一个<strong>版本化配置迁移系统</strong>，确保用户升级时配置无缝衔接。当前迁移版本为 <strong>11</strong>。</p>
+
+    <h3>迁移版本追踪</h3>
+    <pre><code>// main.tsx:325 - 版本化迁移
+const CURRENT_MIGRATION_VERSION = 11;
+
+function runMigrations(): void {
+  if (getGlobalConfig().migrationVersion !== CURRENT_MIGRATION_VERSION) {
+    migrateAutoUpdatesToSettings();
+    migrateBypassPermissionsAcceptedToSettings();
+    migrateEnableAllProjectMcpServersToSettings();
+    resetProToOpusDefault();
+    migrateSonnet1mToSonnet45();
+    migrateLegacyOpusToCurrent();
+    migrateSonnet45ToSonnet46();
+    migrateOpusToOpus1m();
+    migrateReplBridgeEnabledToRemoteControlAtStartup();
+    if (feature('TRANSCRIPT_CLASSIFIER')) {
+      resetAutoModeOptInForDefaultOffer();
+    }
+    saveGlobalConfig(prev => ({
+      ...prev,
+      migrationVersion: CURRENT_MIGRATION_VERSION
+    }));
+  }
+}</code></pre>
+
+    <h3>迁移案例分析</h3>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">migrateOpusToOpus1m</div>
+        <div class="card-desc">将 userSettings 中 model='opus' 迁移到 'opus[1m]'。仅对 Max/Team Premium 用户生效，Pro 用户保留独立选项，3P 用户跳过（使用完整 model ID）。幂等：仅在值恰好为 'opus' 时写入。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">migrateSonnet45ToSonnet46</div>
+        <div class="card-desc">随模型发布自动迁移模型字符串。注释标记 <code>@[MODEL LAUNCH]</code> 提醒开发者在新模型发布时添加迁移。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">migrateReplBridgeEnabled</div>
+        <div class="card-desc">将旧的 replBridgeEnabled 设置迁移到新的 remoteControlAtStartup，配合 Bridge 系统重命名。</div>
+      </div>
+      <div class="card">
+        <div class="card-title">resetAutoModeOptInForDefaultOffer</div>
+        <div class="card-desc">重置 auto mode opt-in 状态，配合 TRANSCRIPT_CLASSIFIER feature flag，为新的默认权限模式提供 re-opt-in 体验。</div>
+      </div>
+    </div>
+
+    <h3>远程配置管理</h3>
+    <p><code>src/services/remoteManagedSettings/</code> 为企业客户提供远程配置推送：</p>
+    <ul>
+      <li><strong>资格判断</strong>：Console 用户全部有资格；OAuth 用户仅 Enterprise/C4E 和 Team 订阅者</li>
+      <li><strong>ETag 缓存</strong>：checksum-based 验证减少网络流量</li>
+      <li><strong>Fail-open</strong>：API 失败不阻塞，继续使用本地设置</li>
+      <li><strong>后台轮询</strong>：1 小时间隔刷新</li>
+      <li><strong>Loading Promise</strong>：30s 超时保护，防止 deadlock</li>
+      <li><strong>热重载</strong>：通过 <code>settingsChangeDetector</code> 检测变更并应用</li>
+    </ul>
+
+    <h3>Policy Limits</h3>
+    <p><code>src/services/policyLimits/</code> 获取组织级策略限制（如禁用特定工具、限制模型选择），遵循与 remoteManagedSettings 完全相同的模式（fail-open、ETag、1h 轮询、30s timeout、background polling）。</p>
+
+    <h3>Zod Schema 验证</h3>
+    <p>所有配置通过 <code>zod/v4</code> 验证。Hooks schema 使用 <code>lazySchema()</code> 包装器实现延迟求值，打破 import 循环。discriminatedUnion 确保 hook type 字段的类型安全。</p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="reveal" id="insights">
+    <h2><span class="num">10</span>工程启示：Harness 设计的核心模式</h2>
+
+    <p>深入 Claude Code 源码后，可以提炼出以下 AI Harness 工程化的核心设计模式：</p>
+
+    <h3>1. 启动性能：每毫秒都是战场</h3>
+    <div class="callout green">
+      <div class="callout-title">Pattern: Parallel Prefetch</div>
+      <p>在 import 阶段就启动子进程（MDM plutil、Keychain 读取），让 I/O 与 135ms 的 module evaluation 并行。<code>startDeferredPrefetches()</code> 在首次渲染后才启动非关键工作（user context、git status、tips），避免与 critical path 竞争事件循环。</p>
+    </div>
+
+    <h3>2. 安全：分层信任模型</h3>
+    <p>安全不是一个开关，而是一个渐进式信任链：</p>
+    <ul>
+      <li><strong>Boot 层</strong>：anti-debugging、Windows PATH 防护</li>
+      <li><strong>Config 层</strong>：safe env vars &rarr; trust dialog &rarr; full env vars</li>
+      <li><strong>Runtime 层</strong>：Sandbox、Permission modes（plan/auto/bypassPermissions）、per-tool 权限规则</li>
+      <li><strong>Hook 层</strong>：<code>if</code> 条件过滤、managedHooksOnly 策略、async hook 限制</li>
+    </ul>
+
+    <h3>3. 可扩展性：事件驱动 + 四种执行器</h3>
+    <p>Hook 系统的 <code>command/prompt/http/agent</code> 四种类型覆盖了从本地脚本到远程 Webhook 再到 AI 自主验证的全部扩展场景。<code>if</code> 条件过滤和 <code>matcher</code> 模式匹配确保 hooks 只在必要时执行。</p>
+
+    <h3>4. 弹性：Fail-Open 哲学</h3>
+    <p>远程配置、策略限制、GrowthBook feature flags -- 所有外部依赖都遵循 fail-open 原则。网络故障时 CLI 继续工作（只是可能没有最新的企业策略）。这对一个开发者工具来说至关重要 -- 宁可用旧配置，不可阻塞开发流程。</p>
+
+    <h3>5. 迁移：Versionized + Idempotent</h3>
+    <p>每次迁移都是幂等的（检查当前值再决定是否写入），通过 <code>CURRENT_MIGRATION_VERSION</code> 全局版本号批量管理。新模型发布时只需添加一个迁移函数并 bump 版本号。<code>@[MODEL LAUNCH]</code> 注释标记提醒开发者需要关注的位置。</p>
+
+    <h3>6. 多模态运行时：一套代码，N 种形态</h3>
+    <p>通过 <code>clientType</code> + <code>feature()</code> + <code>isNonInteractiveSession</code> 三维判断，同一个 main.tsx 入口支撑了 CLI、SDK、MCP、Bridge、SSH、Direct Connect、Assistant 等所有运行模式。代码通过条件分支而非独立入口文件实现，保证了行为一致性。</p>
+
+    <h3>7. 编排抽象：Coordinator 不写代码</h3>
+    <p>Coordinator 模式的核心洞察是<strong>理解与执行分离</strong>。Coordinator 必须理解 Worker 的研究结果（Synthesis），然后写出自包含的 Worker prompt。这不是 delegation -- 是 comprehension-based orchestration。</p>
+
+    <div class="callout">
+      <div class="callout-title">总结</div>
+      <p>Claude Code 的 Harness Engineering 展示了一个成熟的 AI Agent 运行时应该长什么样：<strong>极致的启动性能</strong>（parallel prefetch + deferred work），<strong>分层的安全模型</strong>（从 boot 到 runtime 的渐进信任），<strong>可编程的生命周期</strong>（25+ hook 事件 x 4 种执行器），<strong>弹性的外部集成</strong>（fail-open 远程配置），以及<strong>统一的多模态入口</strong>（一个 main.tsx 支撑所有运行形态）。这不仅仅是一个 CLI 工具 -- 它是一个完整的 AI Agent 操作系统。</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Generated from claude-code source analysis. Based on src/main.tsx (4683 lines), src/bridge/ (31 modules), src/coordinator/, src/hooks/, src/schemas/, src/services/, src/remote/, src/server/, src/migrations/.</p>
+    <p style="margin-top:0.5rem">2026-03-31</p>
+  </footer>
+</div>
+
+<script>
+// ─── Theme Toggle ───
+const html = document.documentElement;
+const toggle = document.getElementById('themeToggle');
+const icon = document.getElementById('themeIcon');
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+let theme = localStorage.getItem('theme') || (prefersDark ? 'dark' : 'light');
+html.setAttribute('data-theme', theme);
+icon.textContent = theme === 'dark' ? '\u2600' : '\u263E';
+toggle.addEventListener('click', () => {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', theme);
+  icon.textContent = theme === 'dark' ? '\u2600' : '\u263E';
+  localStorage.setItem('theme', theme);
+});
+
+// ─── Progress Bar ───
+const bar = document.getElementById('progressBar');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  bar.style.width = h > 0 ? (window.scrollY / h * 100) + '%' : '0%';
+});
+
+// ─── Nav Toggle ───
+const nav = document.getElementById('nav');
+const navToggle = document.getElementById('navToggle');
+navToggle.addEventListener('click', () => nav.classList.toggle('open'));
+document.addEventListener('click', (e) => {
+  if (!nav.contains(e.target) && e.target !== navToggle) nav.classList.remove('open');
+});
+
+// ─── Active Nav Link ───
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav a');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.nav a[href="#${entry.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+
+// ─── Scroll Reveal ───
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+} else {
+  document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
+}
+
+// ─── Nav link click closes mobile nav ───
+navLinks.forEach(link => {
+  link.addEventListener('click', () => nav.classList.remove('open'));
+});
+</script>
+</body>
+</html>

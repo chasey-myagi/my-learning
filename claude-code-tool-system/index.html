@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 工具系统：45+ 工具的统一接口与执行引擎</title>
+<style>
+:root{--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03)}
+[data-theme="dark"]{--bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;--fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;--accent:#fb923c;--accent-2:#fdba74;--green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);--border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);--quote-bg:rgba(255,255,255,0.03)}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color:var(--fg);line-height:1.75;min-height:100vh}
+
+/* Theme toggle */
+.theme-toggle{position:fixed;top:1.25rem;right:1.25rem;z-index:100;background:var(--bg-alt);border:1px solid var(--border);border-radius:999px;width:2.5rem;height:2.5rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-size:1.1rem}
+.theme-toggle:hover{border-color:var(--accent);transform:scale(1.1)}
+
+/* Header */
+.hero{max-width:72rem;margin:0 auto;padding:4rem 2rem 3rem}
+.hero-label{display:inline-flex;align-items:center;gap:.5rem;background:var(--tag-bg);color:var(--tag-fg);font-size:.8rem;font-weight:600;padding:.35rem .85rem;border-radius:999px;letter-spacing:.03em;margin-bottom:1.5rem}
+.hero h1{font-size:2.5rem;font-weight:800;line-height:1.2;letter-spacing:-.03em;margin-bottom:1rem}
+@media(max-width:640px){.hero h1{font-size:1.75rem}}
+.hero h1 .hl{color:var(--accent)}
+.hero-sub{font-size:1.1rem;color:var(--fg-2);max-width:48rem;margin-bottom:2rem}
+.hero-meta{display:flex;flex-wrap:wrap;gap:.75rem;font-size:.8rem;color:var(--fg-3)}
+.hero-meta span{display:inline-flex;align-items:center;gap:.35rem;background:var(--bg-alt);padding:.3rem .75rem;border-radius:999px;border:1px solid var(--border)}
+
+/* TOC */
+.toc-wrap{max-width:72rem;margin:0 auto 3rem;padding:0 2rem}
+.toc{background:var(--bg-alt);border:1px solid var(--border);border-radius:1rem;padding:2rem 2.5rem}
+.toc h2{font-size:1rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-3);margin-bottom:1.25rem}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.6rem}
+.toc a{display:flex;align-items:baseline;gap:.5rem;text-decoration:none;color:var(--fg-2);font-size:.92rem;padding:.3rem .5rem;border-radius:.5rem;transition:all .15s}
+.toc a:hover{color:var(--accent);background:var(--tag-bg)}
+.toc a .num{font-weight:700;color:var(--accent);font-size:.8rem;min-width:1.5rem}
+
+/* Sections */
+.content{max-width:72rem;margin:0 auto;padding:0 2rem 4rem}
+section{margin-bottom:4rem;scroll-margin-top:2rem}
+.section-label{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:600;color:var(--accent);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.75rem}
+section h2{font-size:1.75rem;font-weight:800;letter-spacing:-.02em;margin-bottom:1.25rem}
+section h3{font-size:1.15rem;font-weight:700;margin:1.5rem 0 .75rem;color:var(--fg)}
+section p{color:var(--fg-2);margin-bottom:1rem;max-width:56rem}
+section ul,section ol{color:var(--fg-2);padding-left:1.5rem;margin-bottom:1rem;max-width:56rem}
+section li{margin-bottom:.4rem}
+section li strong{color:var(--fg)}
+
+/* Code */
+code{font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:.85em;background:var(--bg-alt);padding:.15em .4em;border-radius:.35rem;border:1px solid var(--border)}
+pre{background:var(--bg-code);color:#e7e5e4;border-radius:.75rem;padding:1.5rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.85rem;line-height:1.65;border:1px solid rgba(255,255,255,.06)}
+pre code{background:none;border:none;padding:0;font-size:inherit}
+
+/* Tables */
+.table-wrap{overflow-x:auto;margin:1rem 0 1.5rem;border-radius:.75rem;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:var(--bg-alt);text-align:left;padding:.75rem 1rem;font-weight:700;color:var(--fg);white-space:nowrap;border-bottom:2px solid var(--border)}
+td{padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--fg-2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--quote-bg)}
+
+/* Callout */
+.callout{background:var(--quote-bg);border-left:3px solid var(--accent);padding:1rem 1.25rem;border-radius:0 .5rem .5rem 0;margin:1rem 0 1.5rem;font-size:.92rem;color:var(--fg-2)}
+.callout strong{color:var(--fg)}
+.callout.green{border-left-color:var(--green);background:var(--green-bg)}
+.callout.red{border-left-color:#ef4444;background:var(--red-bg)}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;gap:.25rem;background:var(--tag-bg);color:var(--tag-fg);font-size:.75rem;font-weight:600;padding:.2rem .6rem;border-radius:999px;white-space:nowrap}
+.tag.green{background:var(--green-bg);color:var(--green)}
+.tag.grey{background:var(--bg-alt);color:var(--fg-3)}
+
+/* Diagram boxes */
+.diagram{display:grid;gap:1rem;margin:1.5rem 0;font-size:.85rem}
+.diagram-row{display:flex;flex-wrap:wrap;gap:.75rem;align-items:stretch}
+.dbox{flex:1;min-width:180px;background:var(--bg-alt);border:1px solid var(--border);border-radius:.75rem;padding:1rem 1.15rem}
+.dbox-title{font-weight:700;font-size:.82rem;color:var(--accent);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em}
+.dbox ul{padding-left:1rem;margin:0;color:var(--fg-2);font-size:.82rem}
+.dbox ul li{margin-bottom:.15rem}
+.dbox.highlight{border-color:var(--accent);background:var(--tag-bg)}
+
+/* Flowchart */
+.flow{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin:1.5rem 0;font-size:.82rem}
+.flow-step{background:var(--bg-alt);border:1px solid var(--border);padding:.5rem 1rem;border-radius:.5rem;font-weight:600;white-space:nowrap}
+.flow-step.active{background:var(--tag-bg);border-color:var(--accent);color:var(--accent)}
+.flow-arrow{color:var(--fg-3);font-size:1rem}
+
+/* Grid cards */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin:1.5rem 0}
+.card{background:var(--bg-alt);border:1px solid var(--border);border-radius:.75rem;padding:1.25rem}
+.card-name{font-weight:700;font-size:.95rem;margin-bottom:.35rem;color:var(--fg)}
+.card-desc{font-size:.82rem;color:var(--fg-3);line-height:1.5}
+.card-tags{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.6rem}
+
+/* Footer */
+footer{max-width:72rem;margin:0 auto;padding:0 2rem 3rem;text-align:center;font-size:.8rem;color:var(--fg-3);border-top:1px solid var(--border);padding-top:2rem}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="切换主题" aria-label="切换主题">
+  <span id="theme-icon">&#9728;</span>
+</button>
+
+<!-- ===== HERO ===== -->
+<header class="hero">
+  <div class="hero-label">&#128270; 源码深度研究</div>
+  <h1>Claude Code <span class="hl">工具系统</span>：<br>45+ 工具的统一接口与执行引擎</h1>
+  <p class="hero-sub">
+    从 <code>Tool</code> 接口到 <code>StreamingToolExecutor</code> 流式并行引擎，从 Zod schema 验证到磁盘结果持久化，
+    一份报告带你看清 Claude Code 如何管理它最核心的能力层 -- 工具系统。
+  </p>
+  <div class="hero-meta">
+    <span>&#128197; 2026-03-31</span>
+    <span>&#128194; 源码版本: claude-code/src</span>
+    <span>&#128295; 40+ buildTool() 工具定义</span>
+    <span>&#128640; TypeScript + Zod + React (Ink)</span>
+  </div>
+</header>
+
+<!-- ===== TOC ===== -->
+<div class="toc-wrap">
+  <nav class="toc">
+    <h2>&#128218; 目录</h2>
+    <div class="toc-grid">
+      <a href="#ch1"><span class="num">01</span> Tool 接口：统一的工具契约</a>
+      <a href="#ch2"><span class="num">02</span> buildTool() 工厂与类型安全</a>
+      <a href="#ch3"><span class="num">03</span> 工具池组装与去重</a>
+      <a href="#ch4"><span class="num">04</span> 内置工具全景图</a>
+      <a href="#ch5"><span class="num">05</span> 流式并行执行引擎</a>
+      <a href="#ch6"><span class="num">06</span> Deferred Tools 延迟加载</a>
+      <a href="#ch7"><span class="num">07</span> 工具验证与错误处理</a>
+      <a href="#ch8"><span class="num">08</span> 工具结果存储与截断</a>
+      <a href="#ch9"><span class="num">09</span> MCP 工具集成</a>
+      <a href="#ch10"><span class="num">10</span> 权限与安全模型</a>
+    </div>
+  </nav>
+</div>
+
+<!-- ===== CONTENT ===== -->
+<main class="content">
+
+<!-- CH1 -->
+<section id="ch1">
+  <div class="section-label">第一章</div>
+  <h2>Tool 接口：统一的工具契约</h2>
+  <p>
+    所有工具（内置、MCP、Agent、Skill）共享同一个 <code>Tool&lt;Input, Output, P&gt;</code> 泛型接口，
+    定义在 <code>src/Tool.ts</code>。这是整个工具系统的基石 -- 约 700 行的类型定义文件，
+    涵盖了工具的生命周期、渲染、权限和执行语义。
+  </p>
+
+  <h3>核心泛型参数</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>泛型参数</th><th>约束</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td><code>Input</code></td><td><code>extends AnyObject</code> (Zod schema)</td><td>工具输入的 Zod schema，编译时类型安全</td></tr>
+        <tr><td><code>Output</code></td><td><code>= unknown</code></td><td>工具返回值类型</td></tr>
+        <tr><td><code>P</code></td><td><code>extends ToolProgressData</code></td><td>进度数据类型（Bash/MCP/Agent/Skill 各有自己的 Progress 类型）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>关键方法一览</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>方法</th><th>职责</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td><code>call()</code></td><td>执行工具逻辑，返回 <code>ToolResult&lt;Output&gt;</code></td><td>核心执行入口</td></tr>
+        <tr><td><code>inputSchema</code></td><td>Zod schema，用于输入验证</td><td>readonly，编译时类型推断</td></tr>
+        <tr><td><code>validateInput()</code></td><td>工具级业务验证（Zod 之后的二次检查）</td><td>可选，返回 ValidationResult</td></tr>
+        <tr><td><code>checkPermissions()</code></td><td>工具级权限判断</td><td>在通用权限系统之后执行</td></tr>
+        <tr><td><code>isConcurrencySafe()</code></td><td>是否可与其他工具并行执行</td><td>默认 false（保守策略）</td></tr>
+        <tr><td><code>isReadOnly()</code></td><td>是否只读</td><td>影响权限判断</td></tr>
+        <tr><td><code>isDestructive()</code></td><td>是否不可逆（删除/覆盖/发送）</td><td>影响安全分类器</td></tr>
+        <tr><td><code>prompt()</code></td><td>生成工具的系统提示词</td><td>模型看到的工具描述</td></tr>
+        <tr><td><code>description()</code></td><td>生成描述（可能根据上下文动态变化）</td><td>用于 ToolSearch 匹配</td></tr>
+        <tr><td><code>maxResultSizeChars</code></td><td>结果超限后持久化到磁盘的阈值</td><td>Infinity 表示永不持久化</td></tr>
+        <tr><td><code>shouldDefer</code></td><td>是否需要 ToolSearch 延迟加载</td><td>readonly</td></tr>
+        <tr><td><code>interruptBehavior()</code></td><td>用户中断时 cancel / block</td><td>默认 block</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>渲染方法族</h3>
+  <p>Tool 接口定义了丰富的 React (Ink) 渲染钩子，用于终端 UI 展示：</p>
+  <ul>
+    <li><code>renderToolUseMessage</code> -- 工具调用时的展示（流式输入阶段）</li>
+    <li><code>renderToolResultMessage</code> -- 工具结果展示</li>
+    <li><code>renderToolUseProgressMessage</code> -- 执行中的进度展示</li>
+    <li><code>renderToolUseRejectedMessage</code> -- 权限拒绝时展示</li>
+    <li><code>renderToolUseErrorMessage</code> -- 错误展示</li>
+    <li><code>renderGroupedToolUse</code> -- 并行工具批量渲染</li>
+    <li><code>isResultTruncated</code> -- 控制非 verbose 模式下是否显示「展开」按钮</li>
+  </ul>
+
+  <div class="callout">
+    <strong>设计亮点：</strong><code>ToolResult&lt;T&gt;</code> 返回值不仅包含 <code>data</code>，还支持注入 <code>newMessages</code>（附加消息）
+    和 <code>contextModifier</code>（修改执行上下文），这使得工具可以在执行过程中改变后续工具的执行环境。
+  </div>
+</section>
+
+<!-- CH2 -->
+<section id="ch2">
+  <div class="section-label">第二章</div>
+  <h2>buildTool() 工厂与类型安全</h2>
+  <p>
+    所有 40+ 工具都通过 <code>buildTool(def)</code> 工厂函数创建，它接收一个 <code>ToolDef</code>（允许省略可默认方法），
+    返回完整的 <code>Tool</code> 对象。这是 <strong>fail-closed</strong> 设计的核心。
+  </p>
+
+  <h3>默认值策略</h3>
+  <pre><code>const TOOL_DEFAULTS = {
+  isEnabled:          () => true,
+  isConcurrencySafe:  () => false,   // 假设不安全
+  isReadOnly:         () => false,   // 假设有写操作
+  isDestructive:      () => false,
+  checkPermissions:   () => ({ behavior: 'allow', updatedInput }),
+  toAutoClassifierInput: () => '',   // 跳过安全分类器
+  userFacingName:     () => '',
+}</code></pre>
+
+  <div class="callout green">
+    <strong>安全优先：</strong>默认 <code>isConcurrencySafe: false</code> 意味着新工具在未显式声明安全之前，
+    会独占执行——不会与其他工具并行运行。这避免了意外的竞态条件。
+  </div>
+
+  <h3>类型推断链</h3>
+  <p>
+    <code>BuiltTool&lt;D&gt;</code> 类型通过 <code>Omit + 条件映射</code> 精确模拟了运行时 <code>{...TOOL_DEFAULTS, ...def}</code>
+    的语义。当定义中提供了某个方法，返回类型使用定义的签名；否则使用默认签名。
+    整个 60+ 工具的类型检查无一报错，证明了这套类型设计的健壮性。
+  </p>
+
+  <h3>lazySchema 模式</h3>
+  <p>
+    Zod schema 通过 <code>lazySchema()</code> 延迟初始化，避免模块加载时的循环依赖。
+    <code>inputSchema</code> 属性使用 getter：
+  </p>
+  <pre><code>get inputSchema(): InputSchema {
+  return inputSchema()  // lazySchema 返回的 thunk
+}</code></pre>
+</section>
+
+<!-- CH3 -->
+<section id="ch3">
+  <div class="section-label">第三章</div>
+  <h2>工具池组装与去重</h2>
+  <p>
+    <code>src/tools.ts</code> 是工具池的唯一出口。它管理了 3 个层次的工具列表组装，
+    确保内置工具 + MCP 工具 + 条件工具的正确合并与去重。
+  </p>
+
+  <h3>组装流程</h3>
+  <div class="flow">
+    <span class="flow-step active">getAllBaseTools()</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step">getTools(permCtx)</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step">assembleToolPool(permCtx, mcpTools)</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step active">最终工具池</span>
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-row">
+      <div class="dbox">
+        <div class="dbox-title">getAllBaseTools()</div>
+        <ul>
+          <li>返回所有可能的内置工具</li>
+          <li>含条件工具（feature flag 控制）</li>
+          <li>~45 个工具项</li>
+        </ul>
+      </div>
+      <div class="dbox">
+        <div class="dbox-title">getTools(permCtx)</div>
+        <ul>
+          <li>过滤 deny rules（blanket deny）</li>
+          <li>REPL 模式下隐藏原始工具</li>
+          <li>SIMPLE 模式只留 Bash+Read+Edit</li>
+          <li>调用 isEnabled() 最终过滤</li>
+        </ul>
+      </div>
+      <div class="dbox highlight">
+        <div class="dbox-title">assembleToolPool()</div>
+        <ul>
+          <li>合并内置 + MCP 工具</li>
+          <li>按名称排序（缓存稳定性）</li>
+          <li>uniqBy('name') 去重</li>
+          <li>内置工具优先，MCP 工具同名被覆盖</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>条件工具加载</h3>
+  <p>
+    工具并非全部静态导入。大量工具使用 <code>feature('FLAG')</code>（Bun 的死代码消除机制）
+    或 <code>process.env</code> 条件加载：
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>工具</th><th>条件</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>REPLTool</td><td><code>USER_TYPE === 'ant'</code></td><td>Anthropic 内部 REPL 模式</td></tr>
+        <tr><td>SleepTool</td><td><code>PROACTIVE || KAIROS</code></td><td>主动式 Agent 休眠</td></tr>
+        <tr><td>CronCreateTool 等</td><td><code>AGENT_TRIGGERS</code></td><td>定时触发器</td></tr>
+        <tr><td>WebBrowserTool</td><td><code>WEB_BROWSER_TOOL</code></td><td>浏览器自动化</td></tr>
+        <tr><td>SnipTool</td><td><code>HISTORY_SNIP</code></td><td>历史裁剪</td></tr>
+        <tr><td>WorkflowTool</td><td><code>WORKFLOW_SCRIPTS</code></td><td>工作流脚本</td></tr>
+        <tr><td>TeamCreate/DeleteTool</td><td><code>isAgentSwarmsEnabled()</code></td><td>Agent 集群协作</td></tr>
+        <tr><td>EnterWorktreeTool</td><td><code>isWorktreeModeEnabled()</code></td><td>Git worktree 隔离</td></tr>
+        <tr><td>GlobTool, GrepTool</td><td><code>!hasEmbeddedSearchTools()</code></td><td>Ant 内部有嵌入式搜索时不需要</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>排序与缓存稳定性</h3>
+  <div class="callout">
+    <strong>设计细节：</strong><code>assembleToolPool</code> 内置工具和 MCP 工具分别排序后拼接，
+    而非混合排序。这保证了 API 服务器的 <code>claude_code_system_cache_policy</code> 缓存断点（placed after last built-in tool）不会因 MCP 工具插入而失效。
+  </div>
+</section>
+
+<!-- CH4 -->
+<section id="ch4">
+  <div class="section-label">第四章</div>
+  <h2>内置工具全景图</h2>
+  <p>
+    Claude Code 内置了 40+ 工具，覆盖文件操作、代码搜索、Shell 执行、Agent 编排、MCP 资源等多个领域。
+    以下按功能分类列出核心工具。
+  </p>
+
+  <h3>核心工具（始终加载）</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-name">BashTool</div>
+      <div class="card-desc">Shell 命令执行，支持沙箱、超时、sed 模拟编辑、图片输出</div>
+      <div class="card-tags">
+        <span class="tag">maxResult: 30K</span>
+        <span class="tag green">concurrent: conditional</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-name">FileReadTool</div>
+      <div class="card-desc">读文件/图片/PDF/Notebook，带行号、分页、token 限制</div>
+      <div class="card-tags">
+        <span class="tag">maxResult: Infinity</span>
+        <span class="tag green">readOnly</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-name">FileEditTool</div>
+      <div class="card-desc">精确字符串替换编辑，带冲突检测和 diff 预览</div>
+      <div class="card-tags">
+        <span class="tag">maxResult: 100K</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-name">FileWriteTool</div>
+      <div class="card-desc">创建/完整重写文件</div>
+      <div class="card-tags">
+        <span class="tag">maxResult: 100K</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-name">GlobTool</div>
+      <div class="card-desc">快速文件模式匹配，按修改时间排序</div>
+      <div class="card-tags">
+        <span class="tag">maxResult: 100K</span>
+        <span class="tag green">readOnly</span>
+        <span class="tag green">concurrent</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-name">GrepTool</div>
+      <div class="card-desc">基于 ripgrep 的内容搜索，支持正则和多种输出模式</div>
+      <div class="card-tags">
+        <span class="tag">maxResult: 20K</span>
+        <span class="tag green">readOnly</span>
+        <span class="tag green">concurrent</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-name">AgentTool</div>
+      <div class="card-desc">创建子 Agent（sub-agent），递归工具调用</div>
+      <div class="card-tags">
+        <span class="tag">maxResult: 100K</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-name">SkillTool</div>
+      <div class="card-desc">加载和执行 Skill（技能包/插件系统）</div>
+      <div class="card-tags">
+        <span class="tag">maxResult: 100K</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>延迟加载的工具（shouldDefer: true）</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-name">WebFetchTool</div>
+      <div class="card-desc">HTTP 请求获取网页内容</div>
+      <div class="card-tags"><span class="tag grey">deferred</span></div>
+    </div>
+    <div class="card">
+      <div class="card-name">WebSearchTool</div>
+      <div class="card-desc">网页搜索引擎</div>
+      <div class="card-tags"><span class="tag grey">deferred</span></div>
+    </div>
+    <div class="card">
+      <div class="card-name">NotebookEditTool</div>
+      <div class="card-desc">Jupyter notebook 编辑</div>
+      <div class="card-tags"><span class="tag grey">deferred</span></div>
+    </div>
+    <div class="card">
+      <div class="card-name">TodoWriteTool</div>
+      <div class="card-desc">任务面板写入</div>
+      <div class="card-tags"><span class="tag grey">deferred</span></div>
+    </div>
+    <div class="card">
+      <div class="card-name">AskUserQuestionTool</div>
+      <div class="card-desc">向用户提问（交互工具）</div>
+      <div class="card-tags"><span class="tag grey">deferred</span></div>
+    </div>
+    <div class="card">
+      <div class="card-name">EnterPlanModeTool</div>
+      <div class="card-desc">进入计划模式</div>
+      <div class="card-tags"><span class="tag grey">deferred</span></div>
+    </div>
+    <div class="card">
+      <div class="card-name">TaskCreate/Get/Update/List/Stop</div>
+      <div class="card-desc">异步任务管理 CRUD</div>
+      <div class="card-tags"><span class="tag grey">deferred</span></div>
+    </div>
+    <div class="card">
+      <div class="card-name">LSPTool</div>
+      <div class="card-desc">Language Server Protocol 操作</div>
+      <div class="card-tags"><span class="tag grey">deferred</span><span class="tag grey">env-gated</span></div>
+    </div>
+  </div>
+
+  <h3>maxResultSizeChars 分布</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>阈值</th><th>工具</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>Infinity</code></td><td>FileReadTool</td><td>读文件结果永不持久化（避免 Read -> file -> Read 循环）</td></tr>
+        <tr><td><code>20,000</code></td><td>GrepTool</td><td>搜索结果压缩激进</td></tr>
+        <tr><td><code>30,000</code></td><td>BashTool, PowerShellTool</td><td>Shell 输出中等限制</td></tr>
+        <tr><td><code>10,000</code></td><td>McpAuthTool</td><td>认证信息最小化</td></tr>
+        <tr><td><code>100,000</code></td><td>其他所有工具</td><td>默认值（受全局 50K cap 约束）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- CH5 -->
+<section id="ch5">
+  <div class="section-label">第五章</div>
+  <h2>流式并行执行引擎</h2>
+  <p>
+    <code>StreamingToolExecutor</code> 是工具执行的核心调度器，位于 <code>src/services/tools/StreamingToolExecutor.ts</code>。
+    它实现了一个精巧的并发控制模型：工具随流式 API 响应到达即可开始执行，无需等待完整 response。
+  </p>
+
+  <h3>执行模型</h3>
+  <div class="diagram">
+    <div class="diagram-row">
+      <div class="dbox highlight">
+        <div class="dbox-title">并发安全工具</div>
+        <ul>
+          <li>GlobTool, GrepTool 等</li>
+          <li>可与其他并发安全工具并行</li>
+          <li>独立结果，无竞态风险</li>
+        </ul>
+      </div>
+      <div class="dbox">
+        <div class="dbox-title">非并发安全工具</div>
+        <ul>
+          <li>BashTool, FileEditTool 等</li>
+          <li>必须独占执行</li>
+          <li>可通过 contextModifier 修改上下文</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>并发控制规则</h3>
+  <pre><code>private canExecuteTool(isConcurrencySafe: boolean): boolean {
+  const executingTools = this.tools.filter(t => t.status === 'executing')
+  return (
+    executingTools.length === 0 ||
+    (isConcurrencySafe && executingTools.every(t => t.isConcurrencySafe))
+  )
+}</code></pre>
+  <p>规则简洁但完备：</p>
+  <ul>
+    <li>无工具执行中 -- 任何工具都可开始</li>
+    <li>有工具在执行 -- 仅当自身和所有执行中工具都是 <code>concurrencySafe</code> 时才能并行</li>
+    <li>非并发安全工具在队列中会阻塞后续工具，维持顺序</li>
+  </ul>
+
+  <h3>错误级联机制</h3>
+  <p>
+    当 <strong>Bash 工具</strong>出错时，<code>siblingAbortController</code> 会取消所有并行工具。
+    这是因为 Bash 命令常有隐式依赖链（如 mkdir 失败后续操作无意义）。
+    但 <strong>Read/WebFetch</strong> 等工具出错不会取消兄弟工具 -- 它们本质上是独立的。
+  </p>
+  <pre><code>if (tool.block.name === BASH_TOOL_NAME) {
+  this.hasErrored = true
+  this.siblingAbortController.abort('sibling_error')
+}</code></pre>
+
+  <h3>工具状态机</h3>
+  <div class="flow">
+    <span class="flow-step">queued</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step active">executing</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step">completed</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step">yielded</span>
+  </div>
+  <ul>
+    <li><strong>queued</strong> -- 等待并发条件满足</li>
+    <li><strong>executing</strong> -- 正在运行（含权限检查 + 实际调用）</li>
+    <li><strong>completed</strong> -- 结果已收集，等待按序 yield</li>
+    <li><strong>yielded</strong> -- 结果已返回给调用者</li>
+  </ul>
+
+  <h3>进度消息的即时传递</h3>
+  <p>
+    进度消息（progress）不参与排序缓冲，直接通过 <code>pendingProgress</code> 队列即时传递。
+    执行器维护一个 <code>progressAvailableResolve</code> promise 来唤醒等待中的消费者，
+    确保终端 UI 实时更新工具执行状态。
+  </p>
+
+  <h3>中断行为</h3>
+  <p>当用户提交新消息（interrupt），工具有两种响应策略：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>行为</th><th>含义</th><th>默认</th></tr></thead>
+      <tbody>
+        <tr><td><code>'cancel'</code></td><td>停止工具并丢弃结果</td><td>--</td></tr>
+        <tr><td><code>'block'</code></td><td>继续运行，新消息排队等待</td><td>默认值</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- CH6 -->
+<section id="ch6">
+  <div class="section-label">第六章</div>
+  <h2>Deferred Tools 延迟加载</h2>
+  <p>
+    当工具数量庞大（尤其是大量 MCP 工具），将所有 schema 塞入 system prompt 会严重浪费 token。
+    <code>ToolSearchTool</code> + deferred tools 机制解决了这个问题。
+  </p>
+
+  <h3>延迟加载判定</h3>
+  <pre><code>function isDeferredTool(tool: Tool): boolean {
+  if (tool.alwaysLoad === true) return false  // 强制前加载
+  if (tool.isMcp === true) return true         // MCP 工具始终延迟
+  if (tool.name === TOOL_SEARCH_TOOL_NAME) return false  // 自身不延迟
+  return tool.shouldDefer === true             // 显式标记
+}</code></pre>
+
+  <p>约 28 个内置工具标记了 <code>shouldDefer: true</code>，加上所有 MCP 工具。
+  只有核心工具（Bash、FileRead、FileEdit、FileWrite、Glob、Grep、Agent、Skill）始终前加载。</p>
+
+  <h3>三种工具搜索模式</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模式</th><th>ENABLE_TOOL_SEARCH</th><th>行为</th></tr></thead>
+      <tbody>
+        <tr><td><code>tst</code></td><td><code>true</code> / unset</td><td>始终延迟 MCP + shouldDefer 工具</td></tr>
+        <tr><td><code>tst-auto</code></td><td><code>auto</code> / <code>auto:N</code></td><td>工具 token 占比超阈值时才延迟（默认 10%）</td></tr>
+        <tr><td><code>standard</code></td><td><code>false</code></td><td>所有工具内联（不延迟）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>搜索机制</h3>
+  <p><code>ToolSearchTool</code> 支持两种查询方式：</p>
+  <ul>
+    <li><strong>精确选择：</strong><code>select:Read,Edit,Grep</code> -- 直接按名称加载</li>
+    <li><strong>关键词搜索：</strong><code>notebook jupyter</code> -- 基于工具名、描述、searchHint 的评分匹配</li>
+    <li><strong>必选前缀：</strong><code>+slack send</code> -- 名称中必须包含 "slack"</li>
+  </ul>
+
+  <h3>tool_reference 协议</h3>
+  <p>
+    ToolSearch 返回的不是 JSON 描述，而是 <code>tool_reference</code> 内容块 --
+    API 服务端会自动将其展开为完整的工具 schema，注入到模型的 context 中。
+    这是一个 beta API 特性，目前 Haiku 模型不支持。
+  </p>
+  <pre><code>// ToolSearchTool.mapToolResultToToolResultBlockParam
+return {
+  type: 'tool_result',
+  tool_use_id: toolUseID,
+  content: content.matches.map(name => ({
+    type: 'tool_reference',
+    tool_name: name,
+  })),
+}</code></pre>
+
+  <h3>Deferred Tools Delta 增量通知</h3>
+  <p>
+    当 MCP 服务器连接/断开导致可用工具变化时，<code>getDeferredToolsDelta()</code>
+    计算差异并通过 <code>deferred_tools_delta</code> attachment 通知模型哪些工具新增/移除。
+    这确保模型对可用工具的认知始终最新。
+  </p>
+
+  <div class="callout">
+    <strong>性能数据：</strong>auto 模式下，当延迟工具的 token 占比不到上下文窗口的 10%（约 20K tokens / 200K 窗口），
+    所有工具内联。超过阈值后切换到延迟加载，模型需一次 ToolSearch 往返才能使用延迟工具。
+  </div>
+</section>
+
+<!-- CH7 -->
+<section id="ch7">
+  <div class="section-label">第七章</div>
+  <h2>工具验证与错误处理</h2>
+  <p>
+    工具调用经过多层验证：Zod schema 解析 -> 工具级 validateInput -> 权限检查 -> 实际执行。
+    <code>toolExecution.ts</code> 的 <code>checkPermissionsAndCallTool()</code> 函数编排了完整流程。
+  </p>
+
+  <h3>验证流水线</h3>
+  <div class="flow">
+    <span class="flow-step">Zod safeParse</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step">validateInput()</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step">Pre-tool hooks</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step active">checkPermissions()</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step">canUseTool()</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step active">tool.call()</span>
+    <span class="flow-arrow">&#10132;</span>
+    <span class="flow-step">Post-tool hooks</span>
+  </div>
+
+  <h3>Zod Schema 验证</h3>
+  <pre><code>const parsedInput = tool.inputSchema.safeParse(input)
+if (!parsedInput.success) {
+  let errorContent = formatZodValidationError(tool.name, parsedInput.error)
+  // 如果是延迟工具且 schema 未发送，提示模型先 ToolSearch
+  const schemaHint = buildSchemaNotSentHint(tool, messages, tools)
+  if (schemaHint) errorContent += schemaHint
+}</code></pre>
+  <p>
+    <code>buildSchemaNotSentHint</code> 是一个精巧的防御机制：当延迟工具被调用但其 schema
+    从未通过 ToolSearch 加载时，模型发送的参数类型可能错误（如数组变字符串）。
+    此时错误消息会提示模型先执行 <code>ToolSearch("select:工具名")</code> 再重试。
+  </p>
+
+  <h3>工具级验证</h3>
+  <p>
+    <code>validateInput()</code> 在 Zod 之后执行，检查业务逻辑约束。例如 BashTool 的 <code>checkReadOnlyConstraints</code>
+    在只读模式下阻止写命令，FileEditTool 检查文件是否在允许编辑的目录中。
+    返回 <code>ValidationResult</code>：
+  </p>
+  <pre><code>type ValidationResult =
+  | { result: true }
+  | { result: false; message: string; errorCode: number }</code></pre>
+
+  <h3>错误格式</h3>
+  <p>所有工具错误统一包裹在 <code>&lt;tool_use_error&gt;</code> XML 标签中返回给模型：</p>
+  <pre><code>&lt;tool_use_error&gt;InputValidationError: expected string, got number at path .file_path&lt;/tool_use_error&gt;</code></pre>
+  <p>这让模型能明确识别错误并重试，而非将错误输出误解为正常结果。</p>
+
+  <h3>错误分类 (Telemetry)</h3>
+  <pre><code>function classifyToolError(error: unknown): string {
+  // TelemetrySafeError -> 使用 telemetryMessage
+  // Node.js fs -> 使用 error code (ENOENT, EACCES)
+  // ShellError 等 -> 使用 error.name
+  // 兜底 -> "Error"（避免暴露 minified 的类名）
+}</code></pre>
+</section>
+
+<!-- CH8 -->
+<section id="ch8">
+  <div class="section-label">第八章</div>
+  <h2>工具结果存储与截断</h2>
+  <p>
+    <code>src/utils/toolResultStorage.ts</code> 实现了大结果的磁盘持久化系统。
+    当工具输出超过阈值，完整内容写入文件，模型只看到预览 + 文件路径引用。
+  </p>
+
+  <h3>持久化阈值体系</h3>
+  <div class="diagram">
+    <div class="diagram-row">
+      <div class="dbox">
+        <div class="dbox-title">单工具阈值</div>
+        <ul>
+          <li>每工具声明 maxResultSizeChars</li>
+          <li>GrowthBook 可覆盖（tengu_satin_quoll）</li>
+          <li>全局 cap: 50,000 chars</li>
+          <li>Infinity = 永不持久化</li>
+        </ul>
+      </div>
+      <div class="dbox">
+        <div class="dbox-title">消息级聚合预算</div>
+        <ul>
+          <li>单条消息所有 tool_result 合计限制</li>
+          <li>默认 200,000 chars</li>
+          <li>防止 N 个并行工具总输出爆炸</li>
+          <li>GrowthBook 可调（tengu_hawthorn_window）</li>
+        </ul>
+      </div>
+      <div class="dbox">
+        <div class="dbox-title">全局 token 限制</div>
+        <ul>
+          <li>MAX_TOOL_RESULT_TOKENS = 100,000</li>
+          <li>BYTES_PER_TOKEN = 4</li>
+          <li>MAX_TOOL_RESULT_BYTES = 400KB</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>持久化流程</h3>
+  <pre><code>async function maybePersistLargeToolResult(
+  toolResultBlock, toolName, persistenceThreshold
+) {
+  // 1. 空结果注入占位符（防止模型 stop_sequence bug）
+  if (isToolResultContentEmpty(content)) {
+    return { ...block, content: `(${toolName} completed with no output)` }
+  }
+  // 2. 跳过图片（需原样发送）
+  if (hasImageBlock(content)) return block
+  // 3. 计算大小
+  const size = contentSize(content)
+  if (size <= threshold) return block  // 未超限
+  // 4. 写入磁盘
+  const result = await persistToolResult(content, toolUseId)
+  // 5. 返回预览
+  return { ...block, content: buildLargeToolResultMessage(result) }
+}</code></pre>
+
+  <h3>预览格式</h3>
+  <pre><code>&lt;persisted-output&gt;
+Output too large (245.3 KB). Full output saved to:
+  /project/.claude/sessions/abc123/tool-results/toolu_01XYZ.txt
+
+Preview (first 2.0 KB):
+[前 2000 字节内容，在换行符处截断]
+...
+&lt;/persisted-output&gt;</code></pre>
+
+  <h3>ContentReplacementState：缓存一致性</h3>
+  <p>
+    为了保持 prompt cache 稳定，持久化决策是<strong>不可变的</strong>。一旦某个 tool_use_id 的结果被决定
+    持久化（或不持久化），这个决策在整个会话中冻结。<code>ContentReplacementState</code> 通过
+    <code>seenIds</code> + <code>replacements</code> Map 追踪所有决策：
+  </p>
+  <ul>
+    <li><strong>seenIds</strong> -- 已通过预算检查的 tool_use_id 集合</li>
+    <li><strong>replacements</strong> -- 被替换为预览的结果，存储完整的替换字符串</li>
+    <li>fork 子 Agent 克隆父状态，确保 cache-sharing 语义一致</li>
+    <li>resume 时从 transcript 重建状态</li>
+  </ul>
+
+  <div class="callout red">
+    <strong>Edge Case：</strong>空 tool_result 会导致某些模型（如 capybara）错误识别 turn boundary
+    并提前结束。<code>isToolResultContentEmpty</code> 检测并注入占位符 <code>"(toolName completed with no output)"</code>
+    解决了这个问题（inc-4586）。
+  </div>
+</section>
+
+<!-- CH9 -->
+<section id="ch9">
+  <div class="section-label">第九章</div>
+  <h2>MCP 工具集成</h2>
+  <p>
+    MCP（Model Context Protocol）工具通过 <code>MCPTool</code> 模板和 <code>src/services/mcp/client.ts</code>
+    的动态工具生成机制集成。每个 MCP 服务器连接后，其暴露的工具被包装为标准 <code>Tool</code> 接口。
+  </p>
+
+  <h3>工具名称规范</h3>
+  <p>MCP 工具名遵循 <code>mcp__&lt;serverName&gt;__&lt;toolName&gt;</code> 三段命名：</p>
+  <pre><code>mcp__claude_ai_Slack__send_message
+mcp__github__create_issue
+mcp__computer_use__screenshot</code></pre>
+  <p>
+    <code>normalizeNameForMCP()</code> 处理服务器名中的特殊字符（空格、点等）。
+    <code>mcpInfoFromString()</code> 支持反向解析。
+  </p>
+
+  <h3>MCPTool 模板</h3>
+  <p>
+    <code>MCPTool</code> 定义了 MCP 工具的通用骨架，其核心方法（call, description, prompt, userFacingName）
+    都标注为 "Overridden in mcpClient.ts"。<code>client.ts</code> 在连接 MCP 服务器后，
+    为每个工具创建 <code>MCPTool</code> 的克隆并注入实际逻辑：
+  </p>
+  <ul>
+    <li><code>inputSchema</code> -- 从 MCP ListTools 响应转为 Zod <code>z.object({}).passthrough()</code></li>
+    <li><code>inputJSONSchema</code> -- 直接传递原始 JSON Schema（跳过 Zod 转换）</li>
+    <li><code>call()</code> -- 通过 MCP SDK client 调用远程工具</li>
+    <li><code>checkPermissions()</code> -- 默认 <code>passthrough</code>（需权限系统介入）</li>
+  </ul>
+
+  <h3>传输层支持</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>类型</th><th>协议</th><th>场景</th></tr></thead>
+      <tbody>
+        <tr><td>stdio</td><td>标准输入/输出</td><td>本地命令行工具</td></tr>
+        <tr><td>sse</td><td>Server-Sent Events</td><td>HTTP 长连接</td></tr>
+        <tr><td>http</td><td>Streamable HTTP</td><td>标准 HTTP 端点</td></tr>
+        <tr><td>ws</td><td>WebSocket</td><td>双向实时通信</td></tr>
+        <tr><td>sdk</td><td>SDK Control Transport</td><td>IDE 集成（VSCode）</td></tr>
+        <tr><td>claudeai-proxy</td><td>Claude.ai OAuth</td><td>第一方集成服务</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>MCP 工具始终延迟</h3>
+  <p>
+    <code>isDeferredTool</code> 对 MCP 工具返回 true（除非设置了 <code>alwaysLoad</code>）。
+    这意味着 MCP 工具的 schema 不占初始 prompt token，模型通过 ToolSearch 按需加载。
+    <code>_meta['anthropic/alwaysLoad']</code> 让关键 MCP 工具可以 opt-out 延迟加载。
+  </p>
+
+  <h3>错误处理特殊化</h3>
+  <ul>
+    <li><code>McpAuthError</code> -- OAuth token 过期，触发重新认证流程</li>
+    <li><code>McpSessionExpiredError</code> -- 会话失效（HTTP 404 + JSON-RPC -32001），自动重连</li>
+    <li><code>McpToolCallError</code> -- 工具返回 <code>isError: true</code>，保留 <code>_meta</code> 元数据</li>
+    <li>Elicitation (错误码 -32042) -- MCP 服务器请求用户交互（如 OAuth 授权 URL）</li>
+  </ul>
+</section>
+
+<!-- CH10 -->
+<section id="ch10">
+  <div class="section-label">第十章</div>
+  <h2>权限与安全模型</h2>
+  <p>
+    工具系统内置了多层权限控制，平衡安全性与可用性。
+    <code>ToolPermissionContext</code> 贯穿整个工具调用链。
+  </p>
+
+  <h3>权限模式</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模式</th><th>行为</th><th>场景</th></tr></thead>
+      <tbody>
+        <tr><td><code>default</code></td><td>按规则匹配，未匹配则提示用户</td><td>正常交互</td></tr>
+        <tr><td><code>plan</code></td><td>只允许只读操作</td><td>计划模式</td></tr>
+        <tr><td><code>bypassPermissions</code></td><td>自动批准（跳过提示）</td><td>--dangerously-skip-permissions</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>权限规则来源</h3>
+  <p><code>ToolPermissionRulesBySource</code> 按来源分层管理规则：</p>
+  <ul>
+    <li><strong>session</strong> -- 本次会话的临时授权</li>
+    <li><strong>localSettings</strong> -- .claude/settings.local.json</li>
+    <li><strong>userSettings</strong> -- ~/.claude/settings.json</li>
+    <li><strong>projectSettings</strong> -- .claude/settings.json</li>
+    <li><strong>policySettings</strong> -- 企业策略</li>
+    <li><strong>cliArg</strong> -- 命令行参数</li>
+  </ul>
+
+  <h3>工具过滤管道</h3>
+  <pre><code>function filterToolsByDenyRules(tools, permissionContext) {
+  // Blanket deny（无 ruleContent 的 deny 规则）在模型看到工具列表前就过滤
+  // MCP 服务器前缀匹配：deny "mcp__server" 移除该服务器所有工具
+  return tools.filter(tool => !getDenyRuleForTool(permissionContext, tool))
+}</code></pre>
+
+  <h3>Bash 特殊安全</h3>
+  <p>BashTool 有额外的安全机制：</p>
+  <ul>
+    <li><strong>投机性分类器</strong> -- 在权限检查期间，并行启动 <code>startSpeculativeClassifierCheck</code>，用 AI 判断命令是否安全</li>
+    <li><strong>Sed 编辑模拟</strong> -- <code>parseSedEditCommand</code> 将 sed 编辑命令解析为文件编辑语义，复用 FileEdit 的权限逻辑</li>
+    <li><strong>沙箱</strong> -- <code>SandboxManager</code> 在受限环境中执行危险命令</li>
+    <li><strong>_simulatedSedEdit 清理</strong> -- 防御性地从模型输入中剥离内部字段，防止注入</li>
+  </ul>
+
+  <h3>backfillObservableInput</h3>
+  <p>
+    工具可以定义 <code>backfillObservableInput()</code> 来为 hook/权限检查注入额外字段，
+    但这些字段<strong>不会传入 <code>tool.call()</code></strong>。这种分离确保：
+  </p>
+  <ul>
+    <li>hook 看到的 input 可以包含派生字段（如 expandPath 后的路径）</li>
+    <li>tool.call() 看到的 input 是原始的（不影响结果序列化和 VCR 录制）</li>
+    <li>两者互不干扰</li>
+  </ul>
+
+  <div class="callout green">
+    <strong>设计哲学：</strong>整个权限系统遵循 <strong>fail-closed</strong> 原则。
+    <code>buildTool</code> 默认 <code>isConcurrencySafe: false</code>、<code>isReadOnly: false</code>，
+    新工具必须显式声明安全属性才能获得更宽松的权限。
+    这与大多数框架的 "默认允许" 形成鲜明对比。
+  </div>
+</section>
+
+</main>
+
+<footer>
+  基于 Claude Code 源码分析生成 &middot; 工具系统核心文件：Tool.ts, tools.ts, StreamingToolExecutor.ts, toolExecution.ts, toolResultStorage.ts, ToolSearchTool.ts
+</footer>
+
+<script>
+function toggleTheme(){
+  const html=document.documentElement;
+  const current=html.getAttribute('data-theme');
+  const next=current==='dark'?'light':'dark';
+  html.setAttribute('data-theme',next);
+  document.getElementById('theme-icon').textContent=next==='dark'?'\u2600':'\u263E';
+}
+</script>
+</body>
+</html>

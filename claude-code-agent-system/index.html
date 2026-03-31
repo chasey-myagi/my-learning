@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Agent 系统：多代理协作架构深度解析</title>
+<style>
+/* ========== CSS 变量系统 ========== */
+:root{--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03)}
+[data-theme="dark"]{--bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;--fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;--accent:#fb923c;--accent-2:#fdba74;--green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);--border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);--quote-bg:rgba(255,255,255,0.03)}
+
+/* ========== 基础重置 ========== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--fg);line-height:1.75;transition:background .3s,color .3s}
+
+/* ========== 滚动进度条 ========== */
+#progress-bar{position:fixed;top:0;left:0;width:0;height:3px;background:var(--accent);z-index:9999;transition:width 80ms linear}
+
+/* ========== 主题切换 ========== */
+.theme-toggle{position:fixed;top:16px;right:16px;z-index:9998;background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--fg-2);font-size:14px;transition:all .2s}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ========== 导航侧栏 ========== */
+.side-nav{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:9997;display:flex;flex-direction:column;gap:4px;padding:8px}
+.side-nav a{display:block;width:8px;height:8px;border-radius:50%;background:var(--fg-3);opacity:.4;transition:all .2s;text-decoration:none}
+.side-nav a:hover,.side-nav a.active{opacity:1;background:var(--accent);transform:scale(1.4)}
+@media(max-width:768px){.side-nav{display:none}}
+
+/* ========== 内容布局 ========== */
+.container{max-width:960px;margin:0 auto;padding:0 24px}
+.body-text{max-width:65ch;margin:0 auto}
+
+/* ========== Hero ========== */
+.hero{padding:80px 0 60px;text-align:center}
+.hero h1{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-0.02em;line-height:1.2;margin-bottom:16px}
+.hero h1 span{color:var(--accent)}
+.hero .subtitle{font-size:1.1rem;color:var(--fg-2);max-width:50ch;margin:0 auto 32px}
+.hero .meta{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.hero .tag{display:inline-block;padding:4px 12px;border-radius:20px;background:var(--tag-bg);color:var(--tag-fg);font-size:13px;font-weight:500}
+
+/* ========== 章节 ========== */
+section{padding:60px 0}
+section:nth-child(odd){background:var(--bg)}
+section:nth-child(even){background:var(--bg-alt)}
+section h2{font-size:1.6rem;font-weight:700;margin-bottom:8px;color:var(--fg);letter-spacing:-0.01em}
+section h2 .num{color:var(--accent);margin-right:8px;font-weight:800}
+section h3{font-size:1.15rem;font-weight:600;margin:32px 0 12px;color:var(--fg)}
+section p{color:var(--fg-2);margin-bottom:16px}
+section .lead{font-size:1.05rem;color:var(--fg-3);margin-bottom:32px;border-left:3px solid var(--accent);padding-left:16px}
+
+/* ========== 代码块 ========== */
+pre{background:var(--bg-code);color:#e7e5e4;padding:20px 24px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;margin:16px 0 24px;border:1px solid var(--border)}
+code{font-family:"SF Mono",SFMono-Regular,ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;font-size:.9em}
+p code,li code,td code{background:var(--tag-bg);color:var(--tag-fg);padding:2px 6px;border-radius:4px}
+
+/* ========== 表格 ========== */
+table{width:100%;border-collapse:collapse;margin:16px 0 24px;font-size:14px}
+th{text-align:left;padding:10px 12px;background:var(--bg-alt);border-bottom:2px solid var(--border);font-weight:600;color:var(--fg);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--fg-2);vertical-align:top}
+tr:hover td{background:var(--quote-bg)}
+
+/* ========== ASCII 图 ========== */
+.ascii-diagram{background:var(--bg-code);color:#4ade80;padding:24px;border-radius:8px;font-family:"SF Mono",SFMono-Regular,ui-monospace,monospace;font-size:12.5px;line-height:1.5;overflow-x:auto;margin:20px 0 28px;border:1px solid var(--border);white-space:pre}
+
+/* ========== 统计卡片 ========== */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0}
+.stat-card{background:var(--bg-alt);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;transition:transform .2s,border-color .2s}
+.stat-card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.stat-card .value{font-size:2rem;font-weight:800;color:var(--accent);display:block}
+.stat-card .label{font-size:13px;color:var(--fg-3);margin-top:4px}
+
+/* ========== 引用块 ========== */
+blockquote{background:var(--quote-bg);border-left:3px solid var(--accent);padding:16px 20px;margin:16px 0 24px;border-radius:0 8px 8px 0;color:var(--fg-2);font-style:italic}
+
+/* ========== 列表 ========== */
+ul,ol{padding-left:24px;margin-bottom:16px;color:var(--fg-2)}
+li{margin-bottom:6px}
+li strong{color:var(--fg)}
+
+/* ========== 特殊高亮块 ========== */
+.highlight-box{border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin:20px 0;background:var(--quote-bg)}
+.highlight-box.green{border-color:var(--green);background:var(--green-bg)}
+.highlight-box.red{background:var(--red-bg);border-color:#ef4444}
+.highlight-box .title{font-weight:600;color:var(--fg);margin-bottom:8px;font-size:14px;text-transform:uppercase;letter-spacing:.04em}
+
+/* ========== 文件路径标签 ========== */
+.filepath{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-family:monospace;background:var(--tag-bg);color:var(--tag-fg);margin:2px 0}
+
+/* ========== 页脚 ========== */
+footer{padding:40px 0;text-align:center;color:var(--fg-3);font-size:13px;border-top:1px solid var(--border)}
+
+/* ========== Scroll Reveal 动画 ========== */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ========== Reduced Motion ========== */
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  html{scroll-behavior:auto}
+  #progress-bar{transition:none}
+  .stat-card{transition:none}
+  .theme-toggle{transition:none}
+}
+
+/* ========== 自动主题检测 ========== */
+@media(prefers-color-scheme:light){
+  html:not([data-theme="dark"]){--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03)}
+}
+
+/* ========== 目录列表 ========== */
+.toc{list-style:none;padding:0;margin:24px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.toc li a{display:block;padding:10px 16px;border-radius:8px;background:var(--quote-bg);border:1px solid var(--border);text-decoration:none;color:var(--fg);font-size:14px;transition:all .2s}
+.toc li a:hover{border-color:var(--accent);color:var(--accent);transform:translateX(4px)}
+.toc li a .toc-num{color:var(--accent);font-weight:700;margin-right:8px}
+
+/* ========== 流程图容器 ========== */
+.flow-container{overflow-x:auto;margin:20px 0 28px}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+<button class="theme-toggle" id="themeToggle" aria-label="切换主题">切换主题</button>
+
+<nav class="side-nav" id="sideNav"></nav>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+  <div class="container">
+    <h1>Claude Code <span>Agent</span> 系统<br>多代理协作架构深度解析</h1>
+    <p class="subtitle">基于 claude-code 源码的完整逆向工程分析，覆盖 SubAgent 生成、Fork 机制、团队协作、上下文隔离、DreamTask 等核心子系统</p>
+    <div class="meta">
+      <span class="tag">TypeScript / React (Ink)</span>
+      <span class="tag">~233K 行核心 AgentTool</span>
+      <span class="tag">7 种 Task 类型</span>
+      <span class="tag">6 种内置 Agent</span>
+    </div>
+  </div>
+</header>
+
+<!-- ==================== 目录 ==================== -->
+<section id="toc-section">
+  <div class="container body-text">
+    <h2>目录</h2>
+    <ul class="toc">
+      <li><a href="#ch1"><span class="toc-num">01</span>架构总览与核心概念</a></li>
+      <li><a href="#ch2"><span class="toc-num">02</span>Agent 类型分类体系</a></li>
+      <li><a href="#ch3"><span class="toc-num">03</span>SubAgent 生成与执行流程</a></li>
+      <li><a href="#ch4"><span class="toc-num">04</span>Fork 子代理机制</a></li>
+      <li><a href="#ch5"><span class="toc-num">05</span>团队协作与 Swarm 系统</a></li>
+      <li><a href="#ch6"><span class="toc-num">06</span>消息传递与代理间通信</a></li>
+      <li><a href="#ch7"><span class="toc-num">07</span>上下文隔离与工具权限</a></li>
+      <li><a href="#ch8"><span class="toc-num">08</span>Coordinator 模式</a></li>
+      <li><a href="#ch9"><span class="toc-num">09</span>DreamTask 异步记忆整合</a></li>
+      <li><a href="#ch10"><span class="toc-num">10</span>Task 注册与生命周期管理</a></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ==================== 第1章 ==================== -->
+<section id="ch1">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">01</span>架构总览与核心概念</h2>
+      <p class="lead">Claude Code 的多代理系统围绕一个核心思想构建：主代理通过 <code>Agent</code> 工具派生子进程，子进程通过独立的 query 循环完成任务后，将结果以 <code>&lt;task-notification&gt;</code> XML 格式回传。</p>
+    </div>
+
+    <div class="reveal">
+      <div class="ascii-diagram">
+                              Claude Code Agent 系统架构
+
+    +------------------------------------------------------------------+
+    |                        Main Session (Leader)                      |
+    |  src/tasks/LocalMainSessionTask.ts                               |
+    |                                                                  |
+    |  +------------------+  +------------------+  +----------------+  |
+    |  |   AgentTool      |  |  SendMessageTool |  | TeamCreateTool |  |
+    |  |  (Agent工具)     |  |  (消息路由)      |  | (团队管理)     |  |
+    |  +--------+---------+  +--------+---------+  +-------+--------+  |
+    +-----------|---------------------|----------------------|----------+
+                |                     |                      |
+    +-----------v-----------+   +-----v------+   +-----------v---------+
+    |  LocalAgentTask       |   | Mailbox    |   | TeamFile (config)   |
+    |  (本地异步子代理)     |   | 文件系统   |   | ~/.claude/teams/    |
+    |  - 前台 / 后台        |   | 消息队列   |   +---------------------+
+    |  - Worktree 隔离      |   +------------+
+    +--------+--------------+
+             |
+    +--------v--------------+   +-----------------------------+
+    |  RemoteAgentTask      |   |  InProcessTeammateTask      |
+    |  (远程 CCR 环境)      |   |  (同进程 AsyncLocalStorage) |
+    +--------+--------------+   +-----------------------------+
+             |
+    +--------v--------------+
+    |  DreamTask            |
+    |  (后台记忆整合)       |
+    +-----------------------+
+      </div>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>核心源码文件地图</h3>
+    </div>
+    <div class="reveal">
+      <table>
+        <thead>
+          <tr><th>模块</th><th>路径</th><th>职责</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>AgentTool</strong></td><td><span class="filepath">src/tools/AgentTool/AgentTool.tsx</span></td><td>Agent 工具入口，233K 行，处理所有 spawn 逻辑</td></tr>
+          <tr><td><strong>runAgent</strong></td><td><span class="filepath">src/tools/AgentTool/runAgent.ts</span></td><td>子代理 query 循环核心引擎</td></tr>
+          <tr><td><strong>forkSubagent</strong></td><td><span class="filepath">src/tools/AgentTool/forkSubagent.ts</span></td><td>Fork 上下文继承机制</td></tr>
+          <tr><td><strong>SendMessageTool</strong></td><td><span class="filepath">src/tools/SendMessageTool/SendMessageTool.ts</span></td><td>代理间通信路由</td></tr>
+          <tr><td><strong>coordinatorMode</strong></td><td><span class="filepath">src/coordinator/coordinatorMode.ts</span></td><td>协调器模式系统提示</td></tr>
+          <tr><td><strong>LocalAgentTask</strong></td><td><span class="filepath">src/tasks/LocalAgentTask/LocalAgentTask.tsx</span></td><td>本地异步任务状态管理</td></tr>
+          <tr><td><strong>DreamTask</strong></td><td><span class="filepath">src/tasks/DreamTask/DreamTask.ts</span></td><td>后台记忆整合任务</td></tr>
+          <tr><td><strong>InProcessTeammateTask</strong></td><td><span class="filepath">src/tasks/InProcessTeammateTask/</span></td><td>同进程 Teammate 生命周期</td></tr>
+          <tr><td><strong>RemoteAgentTask</strong></td><td><span class="filepath">src/tasks/RemoteAgentTask/RemoteAgentTask.tsx</span></td><td>远程 CCR 代理任务管理</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stats-grid reveal">
+      <div class="stat-card"><span class="value">7</span><span class="label">Task 类型 (local_agent / remote_agent / in_process_teammate / dream / shell / workflow / monitor_mcp)</span></div>
+      <div class="stat-card"><span class="value">6</span><span class="label">内置 Agent (general-purpose / Explore / Plan / verification / statusline-setup / claude-code-guide)</span></div>
+      <div class="stat-card"><span class="value">3</span><span class="label">隔离级别 (同进程 / Worktree / Remote)</span></div>
+      <div class="stat-card"><span class="value">3</span><span class="label">Agent 记忆范围 (user / project / local)</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第2章 ==================== -->
+<section id="ch2">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">02</span>Agent 类型分类体系</h2>
+      <p class="lead">内置 Agent 在 <code>builtInAgents.ts</code> 中注册，通过 <code>getBuiltInAgents()</code> 函数按条件组装。自定义 Agent 则通过 <code>.claude/agents/</code> 目录下的 Markdown 文件定义。</p>
+    </div>
+
+    <div class="reveal">
+      <h3>内置 Agent 详解</h3>
+      <table>
+        <thead>
+          <tr><th>Agent 类型</th><th>模型</th><th>工具权限</th><th>用途</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>general-purpose</strong></td>
+            <td>默认 subagent model</td>
+            <td><code>['*']</code> 全部工具</td>
+            <td>通用搜索、多步任务执行。SubAgent 未指定类型时的默认选择</td>
+          </tr>
+          <tr>
+            <td><strong>Explore</strong></td>
+            <td>haiku (外部) / inherit (内部)</td>
+            <td>只读：禁用 Agent / Edit / Write / NotebookEdit</td>
+            <td>快速代码搜索与探索，<code>omitClaudeMd: true</code> 节省 token</td>
+          </tr>
+          <tr>
+            <td><strong>Plan</strong></td>
+            <td>inherit</td>
+            <td>只读，与 Explore 相同</td>
+            <td>架构规划、实现方案设计，<code>omitClaudeMd: true</code></td>
+          </tr>
+          <tr>
+            <td><strong>verification</strong></td>
+            <td>inherit</td>
+            <td>只读 + Bash(tmp写入)，<code>background: true</code></td>
+            <td>独立验证实现，运行构建/测试/lint，输出 VERDICT</td>
+          </tr>
+          <tr>
+            <td><strong>statusline-setup</strong></td>
+            <td>sonnet</td>
+            <td><code>['Read', 'Edit']</code></td>
+            <td>配置用户的 Claude Code 状态栏</td>
+          </tr>
+          <tr>
+            <td><strong>claude-code-guide</strong></td>
+            <td>haiku</td>
+            <td>Glob/Grep/Read/WebFetch/WebSearch</td>
+            <td>回答 Claude Code / Agent SDK / API 使用问题</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>ONE_SHOT_BUILTIN_AGENT_TYPES</h3>
+      <p>在 <code>constants.ts</code> 中定义了一次性 Agent 集合：</p>
+<pre><code>// src/tools/AgentTool/constants.ts
+export const ONE_SHOT_BUILTIN_AGENT_TYPES: ReadonlySet&lt;string&gt; = new Set([
+  'Explore',
+  'Plan',
+])</code></pre>
+      <p>这些 Agent 执行完后不再通过 <code>SendMessage</code> 续接，因此跳过结果中的 agentId/SendMessage/usage 尾部信息，节省约 135 字符 x 3400 万次/周的 token 开销。</p>
+
+      <h3>自定义 Agent 定义</h3>
+      <p>自定义 Agent 通过 <code>.claude/agents/*.md</code> 文件定义，支持丰富的 frontmatter 配置：</p>
+<pre><code>// src/tools/AgentTool/loadAgentsDir.ts - AgentJsonSchema
+z.object({
+  description: z.string(),        // 何时使用此 Agent
+  tools: z.array(z.string()),     // 工具白名单
+  disallowedTools: z.array(...),  // 工具黑名单
+  prompt: z.string(),             // 系统提示词
+  model: z.string(),              // 模型覆盖 (inherit/sonnet/opus/haiku)
+  effort: z.union([...]),         // 推理努力等级
+  permissionMode: z.enum(PERMISSION_MODES),
+  mcpServers: z.array(...),       // MCP 服务器声明
+  hooks: HooksSchema(),           // 自定义钩子
+  maxTurns: z.number(),           // 最大轮次
+  skills: z.array(z.string()),    // 技能注入
+  memory: z.enum(['user','project','local']),
+  background: z.boolean(),        // 是否默认后台运行
+  isolation: z.enum(['worktree','remote']),
+})</code></pre>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Agent 来源优先级</h3>
+      <p><code>agentDisplay.ts</code> 定义了 Agent 来源的显示和覆盖顺序：</p>
+<pre><code>// src/tools/AgentTool/agentDisplay.ts
+export const AGENT_SOURCE_GROUPS: AgentSourceGroup[] = [
+  { label: 'User agents',    source: 'userSettings' },    // 最高
+  { label: 'Project agents', source: 'projectSettings' },
+  { label: 'Local agents',   source: 'localSettings' },
+  { label: 'Managed agents', source: 'policySettings' },
+  { label: 'Plugin agents',  source: 'plugin' },
+  { label: 'CLI arg agents', source: 'flagSettings' },
+  { label: 'Built-in agents',source: 'built-in' },        // 最低
+]</code></pre>
+      <p>当同名 Agent 从不同来源加载时，高优先级来源覆盖低优先级来源。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第3章 ==================== -->
+<section id="ch3">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">03</span>SubAgent 生成与执行流程</h2>
+      <p class="lead"><code>AgentTool.call()</code> 是所有子代理生成的入口点。它处理三条主要路径：Teammate 生成、Fork 子代理、标准 SubAgent。核心执行引擎是 <code>runAgent()</code> 生成器函数。</p>
+    </div>
+
+    <div class="reveal">
+      <div class="ascii-diagram">
+  AgentTool.call() 路由决策树
+  ==============================
+
+  输入: { prompt, subagent_type, description, name, team_name, isolation, ... }
+         |
+         v
+  team_name && name ?  ----YES----> spawnTeammate()
+         |                          返回 teammate_spawned
+         NO
+         |
+         v
+  subagent_type 为空 ?
+         |
+    +----+----+
+    |         |
+   YES       NO
+    |         |
+    v         v
+  isForkSubagentEnabled() ?     selectedAgent = agents.find(subagent_type)
+    |         |
+   YES       NO
+    |         |
+    v         v
+  FORK_AGENT    GENERAL_PURPOSE_AGENT
+    |                    |
+    +------+-------------+
+           |
+           v
+  isolation === 'remote' ? ---YES---> teleportToRemote()
+           |                         返回 remote_launched
+           NO
+           |
+           v
+  isolation === 'worktree' ? ---YES---> createAgentWorktree()
+           |
+           v
+  run_in_background / forceAsync ?
+    |         |
+   YES       NO
+    |         |
+    v         v
+  异步路径:               同步路径:
+  registerAsyncAgent()    for await (msg of runAgent())
+  runAsyncAgentLifecycle()  收集消息直到完成
+  返回 async_launched     返回 completed + result
+      </div>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>runAgent() 核心引擎</h3>
+      <p>位于 <span class="filepath">src/tools/AgentTool/runAgent.ts</span>，这是一个 <code>AsyncGenerator</code> 函数，驱动子代理的完整生命周期：</p>
+<pre><code>export async function* runAgent({
+  agentDefinition,     // Agent 定义（系统提示词、工具、权限等）
+  promptMessages,      // 用户 prompt 转为消息
+  toolUseContext,      // 父级上下文（AppState、工具池等）
+  forkContextMessages, // Fork 路径：继承父级对话历史
+  querySource,         // 查询来源标识
+  override,            // 系统提示词/上下文覆盖
+  model,               // 模型覆盖
+  maxTurns,            // 最大轮次限制
+  availableTools,      // 预组装的工具池
+  useExactTools,       // Fork: 使用精确工具集（缓存命中）
+  worktreePath,        // Worktree 隔离路径
+  ...
+}): AsyncGenerator&lt;Message, void&gt; {
+  // 1. 初始化 Agent MCP 服务器
+  // 2. 创建子代理上下文 (createSubagentContext)
+  // 3. 组装系统提示词
+  // 4. 进入 query() 循环
+  // 5. yield 每条消息给调用方
+  // 6. 清理资源
+}</code></pre>
+
+      <h3>关键机制：MCP 服务器初始化</h3>
+      <p>每个 Agent 可以通过 frontmatter 声明自己的 MCP 服务器。<code>initializeAgentMcpServers()</code> 函数：</p>
+      <ul>
+        <li><strong>字符串引用</strong>：引用父级已连接的 MCP 服务器（共享连接，不做清理）</li>
+        <li><strong>内联定义</strong>：<code>{ name: config }</code> 对象创建新连接（Agent 结束时清理）</li>
+        <li><strong>plugin-only 策略</strong>：当 <code>strictPluginOnlyCustomization</code> 锁定 MCP 时，跳过用户自定义 Agent 的 frontmatter MCP</li>
+      </ul>
+
+      <h3>上下文创建：createSubagentContext()</h3>
+      <p>位于 <span class="filepath">src/utils/forkedAgent.ts</span>，这是保证子代理状态隔离的核心函数。它创建一组与父级隔离的参数集（<code>CacheSafeParams</code>），确保：</p>
+      <ul>
+        <li>系统提示词、工具定义、模型在 fork 场景下字节相同（最大化 prompt cache 命中）</li>
+        <li>文件状态缓存独立（fork 克隆父级的，新 SubAgent 从空开始）</li>
+        <li>content replacement state 隔离</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第4章 ==================== -->
+<section id="ch4">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">04</span>Fork 子代理机制</h2>
+      <p class="lead">Fork 是 Claude Code 最精巧的代理派生方式。与普通 SubAgent 从零上下文开始不同，Fork 子代理<strong>继承父级的完整对话历史和系统提示词</strong>，实现 prompt cache 共享。</p>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Fork 的设计哲学</h3>
+      <blockquote>Fork yourself (omit subagent_type) when the intermediate tool output isn't worth keeping in your context. The criterion is qualitative -- "will I need this output again" -- not task size.</blockquote>
+      <p>Fork 的核心思想是：当你需要执行一项工作但不需要在主对话中保留其过程输出时，fork 一个自己的副本去完成。</p>
+
+      <h3>FORK_AGENT 定义</h3>
+<pre><code>// src/tools/AgentTool/forkSubagent.ts
+export const FORK_AGENT = {
+  agentType: FORK_SUBAGENT_TYPE,     // 'fork'
+  tools: ['*'],                       // 继承父级全部工具
+  maxTurns: 200,
+  model: 'inherit',                   // 继承父级模型（缓存命中关键）
+  permissionMode: 'bubble',           // 权限提示冒泡到父级终端
+  source: 'built-in',
+  getSystemPrompt: () => '',          // 不使用，直接传入父级渲染后的字节
+} satisfies BuiltInAgentDefinition</code></pre>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Fork 消息构建流程</h3>
+      <p><code>buildForkedMessages()</code> 函数是 prompt cache 共享的关键。它确保所有 fork 子进程产生字节相同的 API 请求前缀：</p>
+
+      <div class="highlight-box green">
+        <div class="title">Cache 共享策略</div>
+        <p>1. 保留父级 assistant 消息的完整内容（所有 tool_use、thinking、text block）<br>
+        2. 为每个 tool_use 生成相同占位符的 tool_result：<code>"Fork started -- processing in background"</code><br>
+        3. 在最后追加一个 per-child 唯一的 directive text block<br>
+        4. 结果：[...history, assistant(all_tool_uses), user(placeholder_results..., directive)]<br>
+        5. 只有最后一个 text block 不同 -- 最大化 cache hit</p>
+      </div>
+
+      <h3>Fork 子进程的指令格式</h3>
+<pre><code>// buildChildMessage() 输出的消息结构
+&lt;fork-boilerplate&gt;
+STOP. READ THIS FIRST.
+You are a forked worker process. You are NOT the main agent.
+
+RULES (non-negotiable):
+1. Do NOT spawn sub-agents; execute directly.
+2. Do NOT converse, ask questions, or suggest next steps
+3. USE your tools directly: Bash, Read, Write, etc.
+4. If you modify files, commit your changes before reporting.
+5. Keep your report under 500 words.
+6. Your response MUST begin with "Scope:".
+
+Output format:
+  Scope: &lt;assigned scope&gt;
+  Result: &lt;findings&gt;
+  Key files: &lt;paths&gt;
+  Files changed: &lt;list with commit hash&gt;
+  Issues: &lt;if any&gt;
+&lt;/fork-boilerplate&gt;
+
+&lt;fork-directive&gt;{具体指令}&lt;/fork-directive&gt;</code></pre>
+
+      <h3>递归 Fork 防护</h3>
+<pre><code>// isInForkChild() 通过检测消息中的 boilerplate 标签防止递归
+export function isInForkChild(messages: MessageType[]): boolean {
+  return messages.some(m =&gt; {
+    if (m.type !== 'user') return false
+    return content.some(
+      block =&gt; block.type === 'text' &&
+        block.text.includes('&lt;fork-boilerplate&gt;'),
+    )
+  })
+}</code></pre>
+      <p>双重防护：先检查 <code>querySource</code>（compaction-resistant），再做消息扫描 fallback。</p>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Fork vs SubAgent 对比</h3>
+    </div>
+    <div class="reveal">
+      <table>
+        <thead>
+          <tr><th>特性</th><th>Fork 子代理</th><th>标准 SubAgent</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>上下文</td><td>继承父级完整对话历史</td><td>从零开始，只有 prompt</td></tr>
+          <tr><td>系统提示词</td><td>父级渲染后的字节直传</td><td>Agent 定义的独立提示词</td></tr>
+          <tr><td>Prompt Cache</td><td>共享父级缓存链</td><td>独立缓存链</td></tr>
+          <tr><td>触发方式</td><td>省略 <code>subagent_type</code></td><td>指定 <code>subagent_type</code></td></tr>
+          <tr><td>模型</td><td>必须 inherit（不同模型无法共享缓存）</td><td>可自定义</td></tr>
+          <tr><td>工具池</td><td>精确继承父级 (<code>useExactTools: true</code>)</td><td>按 Agent 定义过滤</td></tr>
+          <tr><td>执行模式</td><td>强制后台异步</td><td>可前台/后台</td></tr>
+          <tr><td>与 Coordinator 关系</td><td>互斥（Coordinator 有自己的委派模型）</td><td>共存</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第5章 ==================== -->
+<section id="ch5">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">05</span>团队协作与 Swarm 系统</h2>
+      <p class="lead">Agent Swarm 是 Claude Code 的多代理团队协作框架。通过 <code>TeamCreateTool</code> 创建团队，<code>AgentTool</code> 生成 Teammate，<code>SendMessageTool</code> 实现代理间通信。</p>
+    </div>
+
+    <div class="reveal">
+      <div class="ascii-diagram">
+  Team 协作架构
+  ==============
+
+  +---------------------------+
+  |   Team Lead (Leader)      |
+  |   team-lead@my-project    |
+  +----+---+---+--------------+
+       |   |   |
+       |   |   +--- SendMessage(to: "researcher", ...)
+       |   |
+       |   +------- SendMessage(to: "*", ...) --- 广播
+       |
+  +----v--------------+  +--------v---------+  +--------v---------+
+  | Teammate:          |  | Teammate:         |  | Teammate:         |
+  | researcher         |  | implementer       |  | tester            |
+  | @my-project        |  | @my-project       |  | @my-project       |
+  +--------------------+  +-------------------+  +-------------------+
+       |                        |                       |
+       v                        v                       v
+  Mailbox (文件系统)       Mailbox              Mailbox
+  ~/.claude/teams/         消息自动投递          消息自动投递
+  my-project/config.json   到接收方
+      </div>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>TeamCreateTool</h3>
+      <p>位于 <span class="filepath">src/tools/TeamCreateTool/TeamCreateTool.ts</span>。创建团队时：</p>
+      <ol>
+        <li>检查 leader 是否已管理团队（1:1 限制）</li>
+        <li>生成唯一团队名 <code>generateUniqueTeamName()</code></li>
+        <li>创建 team lead 的 agentId：<code>formatAgentId(TEAM_LEAD_NAME, teamName)</code></li>
+        <li>写入团队配置文件：<code>~/.claude/teams/{team-name}/config.json</code></li>
+        <li>创建对应的任务目录：<code>~/.claude/tasks/{team-name}/</code></li>
+        <li>更新 AppState 中的 <code>teamContext</code></li>
+      </ol>
+
+      <h3>Teammate 生成方式</h3>
+      <p><code>spawnTeammate()</code> 在 <span class="filepath">src/tools/shared/spawnMultiAgent.ts</span> 中实现，支持三种后端：</p>
+    </div>
+
+    <div class="reveal">
+      <table>
+        <thead>
+          <tr><th>后端</th><th>隔离方式</th><th>实现</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>tmux</strong></td>
+            <td>独立进程 + tmux pane</td>
+            <td>通过 <code>sendCommandToPane()</code> 在 tmux 中启动新 claude 进程</td>
+          </tr>
+          <tr>
+            <td><strong>iTerm2</strong></td>
+            <td>独立进程 + iTerm2 split pane</td>
+            <td>利用 iTerm2 AppleScript API 创建分屏</td>
+          </tr>
+          <tr>
+            <td><strong>in-process</strong></td>
+            <td>AsyncLocalStorage 上下文隔离</td>
+            <td><code>spawnInProcessTeammate()</code>，同一 Node.js 进程内</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>In-Process Teammate 详解</h3>
+      <p>同进程 Teammate 是最轻量的方式，通过 <code>AsyncLocalStorage</code> 实现上下文隔离：</p>
+<pre><code>// src/tasks/InProcessTeammateTask/types.ts
+export type TeammateIdentity = {
+  agentId: string       // e.g., "researcher@my-team"
+  agentName: string     // e.g., "researcher"
+  teamName: string
+  color?: string
+  planModeRequired: boolean
+  parentSessionId: string
+}
+
+export type InProcessTeammateTaskState = TaskStateBase & {
+  type: 'in_process_teammate'
+  identity: TeammateIdentity
+  prompt: string
+  permissionMode: PermissionMode
+  awaitingPlanApproval: boolean
+  messages?: Message[]           // UI 用，上限 50 条
+  pendingUserMessages: string[]  // 用户注入消息队列
+  isIdle: boolean
+  shutdownRequested: boolean
+}</code></pre>
+
+      <div class="highlight-box">
+        <div class="title">内存管理</div>
+        <p><code>TEAMMATE_MESSAGES_UI_CAP = 50</code> 限制了 AppState 中保存的消息数量。BQ 分析显示某个 whale session 在 2 分钟内启动了 292 个 Agent，达到 36.8GB 内存占用，主要原因就是消息数组持有完整副本。</p>
+      </div>
+
+      <h3>TeamDeleteTool</h3>
+      <p>位于 <span class="filepath">src/tools/TeamDeleteTool/TeamDeleteTool.ts</span>。清理前必须确保没有活跃成员：</p>
+<pre><code>// 只检查真正活跃的成员（排除 idle/crashed）
+const activeMembers = nonLeadMembers.filter(m =&gt; m.isActive !== false)
+if (activeMembers.length &gt; 0) {
+  throw new Error(`Cannot cleanup team with active member(s): ...`)
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第6章 ==================== -->
+<section id="ch6">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">06</span>消息传递与代理间通信</h2>
+      <p class="lead"><code>SendMessageTool</code> 是代理间通信的唯一通道。它支持点对点消息、广播、结构化协议消息，以及跨会话通信。</p>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>SendMessage 输入格式</h3>
+<pre><code>// src/tools/SendMessageTool/SendMessageTool.ts
+const inputSchema = z.object({
+  to: z.string(),      // 接收方：name / "*" / "uds:path" / "bridge:session"
+  summary: z.string(), // 5-10 词 UI 预览
+  message: z.union([
+    z.string(),        // 纯文本消息
+    StructuredMessage() // 结构化协议消息
+  ]),
+})</code></pre>
+
+      <h3>消息路由机制</h3>
+    </div>
+
+    <div class="reveal">
+      <div class="ascii-diagram">
+  SendMessage 路由决策
+  =====================
+
+  to 参数
+    |
+    +---> "*"           ---> handleBroadcast()
+    |                        遍历 teamFile.members
+    |                        为每人调用 writeToMailbox()
+    |
+    +---> "name"        ---> handleMessage()
+    |                        writeToMailbox(name, ...)
+    |
+    +---> "uds:path"    ---> UDS 跨会话 (本地 socket)
+    |
+    +---> "bridge:id"   ---> Remote Control 跨机器
+    |
+    +---> {type:        ---> 结构化协议处理:
+    |      "shutdown_     - handleShutdownRequest()
+    |       request"}     - handleShutdownApproval()
+    |                     - handleShutdownRejection()
+    |                     - handlePlanApproval()
+    +---> agentId       ---> queuePendingMessage()
+                             续接已存在的 SubAgent
+      </div>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Mailbox 文件系统通信</h3>
+      <p>Teammate 之间的消息通过 <code>writeToMailbox()</code> 写入文件系统，接收方在下一轮工具调用时自动读取。消息格式：</p>
+<pre><code>{
+  from: "researcher",
+  text: "Found the auth bug in validate.ts:42",
+  summary: "Auth bug found",
+  timestamp: "2026-03-31T10:00:00Z",
+  color: "#fb923c"
+}</code></pre>
+
+      <h3>SubAgent 续接 (SendMessage to agentId)</h3>
+      <p>当 <code>to</code> 字段指向一个已有的 agent ID 时，消息被排入 <code>pendingMessages</code> 队列，在 agent 的下一个 tool-round 边界被消费。这是 Coordinator 模式中续用 worker 的核心机制。</p>
+<pre><code>// 从 prompt.ts 中的使用示例
+SendMessage({ to: "agent-a1b", message: "Fix the null pointer..." })</code></pre>
+
+      <h3>结构化协议：Shutdown 流程</h3>
+      <ol>
+        <li>Leader 发送 <code>{ type: "shutdown_request" }</code></li>
+        <li>Teammate 收到后决定是否批准</li>
+        <li>批准：发回 <code>{ type: "shutdown_response", approve: true }</code></li>
+        <li>In-process teammate 直接 abort controller</li>
+        <li>tmux/iTerm2 teammate 调用 <code>gracefulShutdown()</code></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第7章 ==================== -->
+<section id="ch7">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">07</span>上下文隔离与工具权限</h2>
+      <p class="lead">Claude Code 通过多层机制确保子代理的安全隔离：工具过滤、权限模式、Worktree 文件系统隔离、以及 CLAUDE.md 优化剥离。</p>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>工具过滤链</h3>
+      <p><code>filterToolsForAgent()</code> 在 <span class="filepath">agentToolUtils.ts</span> 中实现了多级工具过滤：</p>
+<pre><code>// 1. MCP 工具 - 始终允许
+if (tool.name.startsWith('mcp__')) return true
+
+// 2. ExitPlanMode - plan 模式下允许
+if (toolMatchesName(tool, EXIT_PLAN_MODE_V2_TOOL_NAME)
+    && permissionMode === 'plan') return true
+
+// 3. ALL_AGENT_DISALLOWED_TOOLS - 全局禁止集合
+if (ALL_AGENT_DISALLOWED_TOOLS.has(tool.name)) return false
+
+// 4. CUSTOM_AGENT_DISALLOWED_TOOLS - 非内置 Agent 额外禁止
+if (!isBuiltIn && CUSTOM_AGENT_DISALLOWED_TOOLS.has(tool.name)) return false
+
+// 5. ASYNC_AGENT_ALLOWED_TOOLS - 异步 Agent 白名单
+if (isAsync && !ASYNC_AGENT_ALLOWED_TOOLS.has(tool.name)) return false</code></pre>
+
+      <h3>resolveAgentTools() 工具解析</h3>
+      <p>将 Agent 定义的工具列表（白名单/黑名单/通配符）解析为最终工具集：</p>
+      <ul>
+        <li><code>['*']</code> 或 <code>undefined</code>：使用全部可用工具（过滤后）</li>
+        <li>显式列表：只保留列出的工具</li>
+        <li><code>disallowedTools</code>：从可用集合中排除</li>
+        <li><code>Agent(worker, researcher)</code> 语法：限制子 Agent 可派生的类型</li>
+      </ul>
+
+      <h3>权限模式（PermissionMode）</h3>
+    </div>
+
+    <div class="reveal">
+      <table>
+        <thead>
+          <tr><th>模式</th><th>行为</th><th>使用场景</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>bubble</code></td><td>权限提示冒泡到父级终端</td><td>Fork 子代理（共享父级终端）</td></tr>
+          <tr><td><code>dontAsk</code></td><td>不弹出权限提示</td><td>claude-code-guide（只读操作）</td></tr>
+          <tr><td><code>plan</code></td><td>执行前需提交计划获批准</td><td>In-process teammate 的可选模式</td></tr>
+          <tr><td><code>auto</code></td><td>自动决策（结合 YOLO classifier）</td><td>Coordinator 的 worker</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Worktree 文件系统隔离</h3>
+      <p>当 <code>isolation: "worktree"</code> 时，<code>createAgentWorktree()</code> 创建一个 Git worktree 副本：</p>
+<pre><code>// src/tools/AgentTool/forkSubagent.ts - buildWorktreeNotice()
+export function buildWorktreeNotice(
+  parentCwd: string, worktreeCwd: string
+): string {
+  return `You've inherited the conversation context above from a parent
+  agent working in ${parentCwd}. You are operating in an isolated git
+  worktree at ${worktreeCwd} -- same repository, same relative file
+  structure, separate working copy. Paths in the inherited context
+  refer to the parent's working directory; translate them to your
+  worktree root.`
+}</code></pre>
+      <p>Worktree 完成后，如果有变更则保留分支信息返回给父级；无变更则自动清理。</p>
+
+      <h3>CLAUDE.md 优化剥离</h3>
+      <p>只读 Agent（Explore、Plan）设置 <code>omitClaudeMd: true</code>，从上下文中移除 CLAUDE.md 内容：</p>
+<pre><code>// src/tools/AgentTool/runAgent.ts
+const shouldOmitClaudeMd =
+  agentDefinition.omitClaudeMd &&
+  !override?.userContext &&
+  getFeatureValue_CACHED_MAY_BE_STALE('tengu_slim_subagent_claudemd', true)
+
+const { claudeMd: _omittedClaudeMd, ...userContextNoClaudeMd } = baseUserContext
+const resolvedUserContext = shouldOmitClaudeMd
+  ? userContextNoClaudeMd
+  : baseUserContext</code></pre>
+      <p>这为每周 3400 万+ 次 Explore 调用节省了约 5-15 Gtok 的开销。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第8章 ==================== -->
+<section id="ch8">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">08</span>Coordinator 模式</h2>
+      <p class="lead">Coordinator 模式将主 Agent 转变为一个纯调度者：它不直接使用 Bash/Edit/Write 等工具，而是通过 <code>Agent</code> 和 <code>SendMessage</code> 指挥 Worker 完成所有实际工作。</p>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>启用方式</h3>
+<pre><code>// src/coordinator/coordinatorMode.ts
+export function isCoordinatorMode(): boolean {
+  if (feature('COORDINATOR_MODE')) {
+    return isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)
+  }
+  return false
+}</code></pre>
+      <p>通过 <code>CLAUDE_CODE_COORDINATOR_MODE=1</code> 环境变量启用。与 Fork 机制互斥。</p>
+
+      <h3>Coordinator 的专属工具集</h3>
+      <p>Coordinator 只拥有以下工具：</p>
+      <ul>
+        <li><strong>Agent</strong> -- 生成新 Worker</li>
+        <li><strong>SendMessage</strong> -- 续接已有 Worker</li>
+        <li><strong>TaskStop</strong> -- 停止正在运行的 Worker</li>
+        <li><strong>subscribe_pr_activity / unsubscribe_pr_activity</strong> -- GitHub PR 事件订阅</li>
+      </ul>
+
+      <h3>Worker 的任务流</h3>
+    </div>
+
+    <div class="reveal">
+      <div class="ascii-diagram">
+  Coordinator 任务流
+  ===================
+
+  Phase 1: Research (并行)
+  ┌──────────────────────────────────────────────────────┐
+  │  Coordinator: "Let me investigate from two angles."  │
+  │                                                      │
+  │  Agent({ subagent_type: "worker",                    │
+  │          prompt: "Investigate auth bug..." })         │
+  │  Agent({ subagent_type: "worker",                    │
+  │          prompt: "Research auth tests..." })          │
+  └──────────────────────────────────────────────────────┘
+              |                        |
+              v                        v
+  ┌─────────────────────┐  ┌─────────────────────┐
+  │  Worker A: 调查 bug  │  │  Worker B: 调查测试  │
+  │  &lt;task-notification&gt; │  │  &lt;task-notification&gt; │
+  └─────────────────────┘  └─────────────────────┘
+
+  Phase 2: Synthesis (Coordinator 自己做)
+  ┌──────────────────────────────────────────────────────┐
+  │  Coordinator: "Found the bug -- null pointer at      │
+  │  validate.ts:42."                                    │
+  │  (读取 Worker 结果, 综合理解, 写出具体 spec)         │
+  └──────────────────────────────────────────────────────┘
+
+  Phase 3: Implementation (续接 Worker)
+  ┌──────────────────────────────────────────────────────┐
+  │  SendMessage({ to: "agent-a1b",                      │
+  │    message: "Fix the null pointer in validate.ts:42. │
+  │    Add a null check before user.id access..."  })    │
+  └──────────────────────────────────────────────────────┘
+
+  Phase 4: Verification (新 Worker)
+  ┌──────────────────────────────────────────────────────┐
+  │  Agent({ subagent_type: "worker",                    │
+  │    prompt: "Verify the fix at validate.ts:42..." })  │
+  └──────────────────────────────────────────────────────┘
+      </div>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Coordinator 系统提示词关键原则</h3>
+      <div class="highlight-box">
+        <div class="title">核心设计原则（来自源码）</div>
+        <ul>
+          <li><strong>Never delegate understanding</strong> -- 不要写 "based on your findings, fix the bug"，要自己综合理解后写出具体 spec</li>
+          <li><strong>Parallelism is your superpower</strong> -- 独立的 Worker 应并行启动</li>
+          <li><strong>Continue vs Spawn</strong> -- 高上下文重叠用 SendMessage 续接，低重叠用 Agent 新建</li>
+          <li><strong>Task notifications are user-role messages</strong> -- Worker 结果以 <code>&lt;task-notification&gt;</code> XML 到达</li>
+        </ul>
+      </div>
+
+      <h3>Scratchpad 跨 Worker 共享</h3>
+      <p>Coordinator 可以使用一个 Scratchpad 目录让 Worker 之间共享文件。Worker 在此目录下的读写不需要权限提示：</p>
+<pre><code>// getCoordinatorUserContext()
+if (scratchpadDir && isScratchpadGateEnabled()) {
+  content += `\nScratchpad directory: ${scratchpadDir}
+Workers can read and write here without permission prompts.
+Use this for durable cross-worker knowledge.`
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第9章 ==================== -->
+<section id="ch9">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">09</span>DreamTask 异步记忆整合</h2>
+      <p class="lead">DreamTask 是 Claude Code 最独特的 Agent 系统特性之一：一个后台运行的记忆整合子代理，自动回顾历史会话并将知识写入持久化记忆文件。</p>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>触发机制</h3>
+      <p>位于 <span class="filepath">src/services/autoDream/autoDream.ts</span>，通过三层门控按成本递增顺序检查：</p>
+      <ol>
+        <li><strong>时间门控</strong>：距上次整合 >= <code>minHours</code>（默认 24h）</li>
+        <li><strong>会话门控</strong>：自上次整合以来有 >= <code>minSessions</code>（默认 5）个新会话</li>
+        <li><strong>锁门控</strong>：没有其他进程正在执行整合（基于文件锁）</li>
+      </ol>
+
+<pre><code>// src/services/autoDream/autoDream.ts
+const DEFAULTS: AutoDreamConfig = {
+  minHours: 24,      // 至少间隔 24 小时
+  minSessions: 5,    // 至少积累 5 个新会话
+}
+
+// 扫描节流：即使时间门通过，每 10 分钟才做一次会话扫描
+const SESSION_SCAN_INTERVAL_MS = 10 * 60 * 1000</code></pre>
+
+      <h3>DreamTask 状态模型</h3>
+<pre><code>// src/tasks/DreamTask/DreamTask.ts
+export type DreamPhase = 'starting' | 'updating'
+
+export type DreamTaskState = TaskStateBase & {
+  type: 'dream'
+  phase: DreamPhase
+  sessionsReviewing: number
+  filesTouched: string[]     // 不完整 -- 只捕获 Edit/Write 工具调用
+  turns: DreamTurn[]         // 最多保留 30 轮
+  abortController?: AbortController
+  priorMtime: number         // kill 时用于回滚锁
+}</code></pre>
+
+      <h3>Dream Agent 执行流程</h3>
+    </div>
+
+    <div class="reveal">
+      <div class="ascii-diagram">
+  DreamTask 生命周期
+  ===================
+
+  initAutoDream() -- 注册到 postSampling hooks
+         |
+         v
+  每次 API 响应后检查 ---------> isGateOpen() ?
+         |                           |
+         |                      NO: return
+         v                           |
+  readLastConsolidatedAt()           |
+  hoursSince >= minHours ?     NO: return
+         |                           |
+         v                           |
+  listSessionsTouchedSince()         |
+  sessions >= minSessions ?    NO: return (扫描节流)
+         |                           |
+         v                           |
+  tryAcquireConsolidationLock()      |
+  成功获取锁 ?                 NO: return
+         |
+         v
+  registerDreamTask()          ------> 在 UI footer 显示 pill
+         |
+         v
+  runForkedAgent()             ------> 子代理执行整合
+  buildConsolidationPrompt()          4 阶段：orient/gather/consolidate/prune
+         |
+         v
+  addDreamTurn()               ------> 每轮更新 UI
+  监控 Edit/Write 工具调用
+         |
+         v
+  completeDreamTask()          ------> 立即标记 notified:true
+  appendSystemMessage()               在主对话中注入完成消息
+      </div>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Agent 持久化记忆</h3>
+      <p>Dream 的整合结果存储在分层记忆系统中。<span class="filepath">src/tools/AgentTool/agentMemory.ts</span> 定义了三种范围：</p>
+    </div>
+
+    <div class="reveal">
+      <table>
+        <thead>
+          <tr><th>范围</th><th>路径</th><th>用途</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>user</strong></td>
+            <td><code>~/.claude/agent-memory/{agentType}/MEMORY.md</code></td>
+            <td>跨项目通用知识</td>
+          </tr>
+          <tr>
+            <td><strong>project</strong></td>
+            <td><code>{cwd}/.claude/agent-memory/{agentType}/MEMORY.md</code></td>
+            <td>项目级知识，可纳入版本控制</td>
+          </tr>
+          <tr>
+            <td><strong>local</strong></td>
+            <td><code>{cwd}/.claude/agent-memory-local/{agentType}/MEMORY.md</code></td>
+            <td>本地级，不纳入版本控制</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="body-text reveal">
+      <p>Agent 还支持 Memory Snapshot 机制（<span class="filepath">agentMemorySnapshot.ts</span>），允许从项目检入的快照初始化 Agent 记忆。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 第10章 ==================== -->
+<section id="ch10">
+  <div class="container">
+    <div class="body-text reveal">
+      <h2><span class="num">10</span>Task 注册与生命周期管理</h2>
+      <p class="lead">所有异步 Agent 操作都通过统一的 Task 框架管理。<code>src/tasks/types.ts</code> 定义了 7 种 Task 类型的联合类型，每种都有独立的状态机和 UI 表现。</p>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Task 类型联合</h3>
+<pre><code>// src/tasks/types.ts
+export type TaskState =
+  | LocalShellTaskState         // Bash 后台命令
+  | LocalAgentTaskState         // 本地异步 SubAgent
+  | RemoteAgentTaskState        // 远程 CCR 环境
+  | InProcessTeammateTaskState  // 同进程 Teammate
+  | LocalWorkflowTaskState      // 工作流任务
+  | MonitorMcpTaskState         // MCP 监控任务
+  | DreamTaskState              // 记忆整合任务</code></pre>
+
+      <h3>LocalAgentTask 状态</h3>
+<pre><code>// src/tasks/LocalAgentTask/LocalAgentTask.tsx
+export type LocalAgentTaskState = TaskStateBase & {
+  type: 'local_agent'
+  agentId: string
+  prompt: string
+  selectedAgent?: AgentDefinition
+  agentType: string
+  model?: string
+  abortController?: AbortController
+  error?: string
+  result?: AgentToolResult
+  progress?: AgentProgress        // toolUseCount, tokenCount, lastActivity
+  retrieved: boolean              // 结果是否已被父级读取
+  isBackgrounded: boolean         // false = 前台, true = 已后台化
+  pendingMessages: string[]       // SendMessage 排入的消息队列
+  retain: boolean                 // UI 是否正在持有此任务
+  diskLoaded: boolean             // 是否已从磁盘加载 transcript
+  evictAfter?: number             // 面板可见性截止时间
+}</code></pre>
+
+      <h3>进度追踪系统</h3>
+<pre><code>// ProgressTracker 跟踪子代理的运行时指标
+export type ProgressTracker = {
+  toolUseCount: number
+  latestInputTokens: number        // API 累计输入 token
+  cumulativeOutputTokens: number   // 逐轮累加输出 token
+  recentActivities: ToolActivity[] // 最近 5 个工具活动
+}
+
+// 从每条 assistant message 提取进度
+export function updateProgressFromMessage(
+  tracker, message, resolveActivityDescription, tools
+): void {
+  // 更新 token 计数
+  // 统计 tool_use 块（排除 StructuredOutput）
+  // 保持 recentActivities 在 MAX_RECENT_ACTIVITIES(5) 以内
+}</code></pre>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>异步生命周期：runAsyncAgentLifecycle()</h3>
+      <p>这是所有后台 Agent 共用的生命周期管理器，位于 <span class="filepath">agentToolUtils.ts</span>：</p>
+      <ol>
+        <li>创建 ProgressTracker</li>
+        <li>可选启动 Agent 总结器（<code>startAgentSummarization()</code>）</li>
+        <li>遍历 <code>runAgent()</code> 的消息流</li>
+        <li>每条消息：追加到 AppState、更新进度、发送 SDK 事件</li>
+        <li>完成时：<code>completeAsyncAgent()</code> -> <code>classifyHandoffIfNeeded()</code> -> <code>enqueueAgentNotification()</code></li>
+        <li>中止时：<code>killAsyncAgent()</code> -> 发送部分结果通知</li>
+        <li>失败时：<code>failAsyncAgent()</code> -> 发送错误通知</li>
+      </ol>
+
+      <div class="highlight-box green">
+        <div class="title">关键设计：状态转换优先于通知装饰</div>
+        <p>源码注释 <code>gh-20236</code> 记录了一个重要教训：<code>completeAsyncAgent()</code> 必须在 <code>classifyHandoffIfNeeded()</code>（API 调用）和 <code>getWorktreeResult()</code>（git 操作）之前执行。这样 TaskOutput(block=true) 可以立即解除阻塞，不会因通知装饰步骤的延迟而卡住。</p>
+      </div>
+
+      <h3>Transcript Classifier 安全检查</h3>
+      <p><code>classifyHandoffIfNeeded()</code> 在 SubAgent 完成并交回结果时执行安全分类：</p>
+<pre><code>// 当 auto 权限模式下，对子代理的工作进行安全审计
+if (classifierResult.shouldBlock) {
+  return `SECURITY WARNING: This sub-agent performed actions
+  that may violate security policy. Reason: ${classifierResult.reason}.
+  Review the sub-agent's actions carefully.`
+}</code></pre>
+    </div>
+
+    <div class="body-text reveal">
+      <h3>Resume 机制</h3>
+      <p><code>resumeAgentBackground()</code> 在 <span class="filepath">resumeAgent.ts</span> 中实现 SubAgent 的恢复：</p>
+      <ul>
+        <li>从磁盘读取 transcript 和 metadata</li>
+        <li>过滤掉不完整的 tool_use 和空白 assistant 消息</li>
+        <li>重建 content replacement state（缓存稳定性）</li>
+        <li>恢复 worktree 路径（检查是否仍存在）</li>
+        <li>重新注册为异步任务并继续执行</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 页脚 ==================== -->
+<footer>
+  <div class="container">
+    <p>基于 claude-code 源码深度分析生成 | 源码路径：<code>src/tools/AgentTool/</code> <code>src/tasks/</code> <code>src/coordinator/</code></p>
+    <p style="margin-top:8px">2026-03-31</p>
+  </div>
+</footer>
+
+<script>
+// ========== 滚动进度条 ==========
+const progressBar = document.getElementById('progress-bar');
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  progressBar.style.width = progress + '%';
+}
+window.addEventListener('scroll', updateProgress, { passive: true });
+
+// ========== 主题切换 ==========
+const themeToggle = document.getElementById('themeToggle');
+const html = document.documentElement;
+
+// 初始化主题（优先用户偏好，其次系统偏好）
+const stored = localStorage.getItem('theme');
+if (stored) {
+  html.setAttribute('data-theme', stored);
+} else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+  html.setAttribute('data-theme', 'light');
+}
+
+themeToggle.addEventListener('click', () => {
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+});
+
+// ========== 侧栏导航 ==========
+const sideNav = document.getElementById('sideNav');
+const sections = document.querySelectorAll('section[id^="ch"]');
+sections.forEach((sec, i) => {
+  const a = document.createElement('a');
+  a.href = '#' + sec.id;
+  a.title = '第 ' + (i + 1) + ' 章';
+  sideNav.appendChild(a);
+});
+
+// 更新活跃导航点
+function updateNav() {
+  const scrollY = window.scrollY + window.innerHeight / 3;
+  const dots = sideNav.querySelectorAll('a');
+  let activeIdx = 0;
+  sections.forEach((sec, i) => {
+    if (sec.offsetTop <= scrollY) activeIdx = i;
+  });
+  dots.forEach((dot, i) => {
+    dot.classList.toggle('active', i === activeIdx);
+  });
+}
+window.addEventListener('scroll', updateNav, { passive: true });
+updateNav();
+
+// ========== Scroll Reveal ==========
+const revealEls = document.querySelectorAll('.reveal');
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (!prefersReducedMotion) {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  revealEls.forEach(el => observer.observe(el));
+} else {
+  revealEls.forEach(el => el.classList.add('visible'));
+}
+</script>
+</body>
+</html>

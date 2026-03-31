@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 权限系统：四层防护模型与智能分类器</title>
+<style>
+/* ============================================================
+   CSS Variables — Warm Stone palette
+   ============================================================ */
+:root {
+  --bg: #f4f0ec;
+  --bg-alt: #eae4dd;
+  --bg-code: #1e1b18;
+  --fg: #1c1917;
+  --fg-2: #44403c;
+  --fg-3: #78716c;
+  --accent: #dc4a1a;
+  --accent-2: #9a3412;
+  --green: #15803d;
+  --green-bg: #ecfdf5;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --yellow: #ca8a04;
+  --yellow-bg: #fefce8;
+  --blue: #2563eb;
+  --blue-bg: #eff6ff;
+  --border: #d6d0c8;
+  --tag-bg: rgba(220,74,26,0.08);
+  --tag-fg: var(--accent-2);
+  --quote-bg: rgba(28,25,23,0.03);
+  --shadow: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
+  --radius: 10px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+  --bg: #0c0a09;
+  --bg-alt: #1c1917;
+  --bg-code: #0a0908;
+  --fg: #e7e5e4;
+  --fg-2: #a8a29e;
+  --fg-3: #78716c;
+  --accent: #fb923c;
+  --accent-2: #fdba74;
+  --green: #4ade80;
+  --green-bg: rgba(74,222,128,0.08);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,0.08);
+  --yellow: #facc15;
+  --yellow-bg: rgba(250,204,21,0.06);
+  --blue: #60a5fa;
+  --blue-bg: rgba(96,165,250,0.08);
+  --border: #292524;
+  --tag-bg: rgba(251,146,60,0.12);
+  --tag-fg: var(--accent);
+  --quote-bg: rgba(255,255,255,0.03);
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--transition), color var(--transition);
+}
+
+/* ============================================================
+   Progress Bar
+   ============================================================ */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  z-index: 1000;
+  transition: width 0.1s linear;
+  width: 0%;
+}
+
+/* ============================================================
+   Navigation
+   ============================================================ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  transform: translateY(-100%);
+  transition: transform var(--transition);
+}
+
+.nav.visible { transform: translateY(0); }
+
+.nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.65rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.nav-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1;
+  justify-content: center;
+}
+.nav-links::-webkit-scrollbar { display: none; }
+
+.nav-links a {
+  color: var(--fg-3);
+  text-decoration: none;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: all var(--transition);
+  font-weight: 500;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--accent);
+  background: var(--tag-bg);
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  color: var(--fg-2);
+  font-size: 0.85rem;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ============================================================
+   Layout
+   ============================================================ */
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem;
+}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero {
+  padding: 6rem 0 4rem;
+  text-align: center;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 20px;
+  background: var(--tag-bg);
+  color: var(--tag-fg);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  margin-bottom: 1.5rem;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--fg) 0%, var(--fg-2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-sub {
+  font-size: 1.1rem;
+  color: var(--fg-2);
+  max-width: 640px;
+  margin: 0 auto 2rem;
+  line-height: 1.7;
+}
+
+.hero-meta {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  color: var(--fg-3);
+  font-size: 0.82rem;
+}
+
+.hero-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* ============================================================
+   Section Styles
+   ============================================================ */
+.section {
+  padding: 3.5rem 0 1rem;
+}
+
+.section-number {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--tag-bg);
+  padding: 0.15rem 0.55rem;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.8rem;
+}
+
+.section h2 {
+  font-size: 1.65rem;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.6rem;
+  line-height: 1.3;
+}
+
+.section h3 {
+  font-size: 1.15rem;
+  font-weight: 650;
+  margin: 2rem 0 0.8rem;
+  letter-spacing: -0.01em;
+}
+
+.section p {
+  color: var(--fg-2);
+  margin-bottom: 1rem;
+}
+
+/* ============================================================
+   Code Blocks
+   ============================================================ */
+pre {
+  background: var(--bg-code);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  overflow-x: auto;
+  margin: 1.2rem 0;
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+code {
+  font-family: "SF Mono", "Fira Code", "JetBrains Mono", "Cascadia Code", monospace;
+  font-size: 0.88em;
+}
+
+:not(pre) > code {
+  background: var(--tag-bg);
+  color: var(--tag-fg);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+pre code {
+  color: #e7e5e4;
+  background: none;
+  padding: 0;
+}
+
+.code-label {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--fg-3);
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Syntax highlighting */
+.kw { color: #c084fc; } /* keyword */
+.fn { color: #60a5fa; } /* function */
+.str { color: #4ade80; } /* string */
+.cm { color: #78716c; font-style: italic; } /* comment */
+.tp { color: #fb923c; } /* type */
+.num { color: #fbbf24; } /* number */
+.op { color: #a8a29e; } /* operator */
+.prop { color: #67e8f9; } /* property */
+
+/* ============================================================
+   Cards & Boxes
+   ============================================================ */
+.card {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.6rem;
+  margin: 1.2rem 0;
+  box-shadow: var(--shadow);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1.2rem 0;
+}
+
+.card-grid .card {
+  margin: 0;
+}
+
+.card h4 {
+  font-size: 0.95rem;
+  font-weight: 650;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.card p {
+  font-size: 0.88rem;
+  color: var(--fg-2);
+  margin-bottom: 0;
+}
+
+.card.green { border-left: 3px solid var(--green); }
+.card.red { border-left: 3px solid var(--red); }
+.card.yellow { border-left: 3px solid var(--yellow); }
+.card.blue { border-left: 3px solid var(--blue); }
+.card.accent { border-left: 3px solid var(--accent); }
+
+/* ============================================================
+   Tables
+   ============================================================ */
+.table-wrap {
+  overflow-x: auto;
+  margin: 1.2rem 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+thead {
+  background: var(--bg-alt);
+}
+
+th {
+  text-align: left;
+  padding: 0.7rem 1rem;
+  font-weight: 650;
+  color: var(--fg);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-2);
+  vertical-align: top;
+}
+
+tr:last-child td { border-bottom: none; }
+
+tr:hover td { background: var(--quote-bg); }
+
+/* ============================================================
+   Tags / Badges
+   ============================================================ */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.tag.allow { background: var(--green-bg); color: var(--green); }
+.tag.deny { background: var(--red-bg); color: var(--red); }
+.tag.ask { background: var(--yellow-bg); color: var(--yellow); }
+.tag.info { background: var(--blue-bg); color: var(--blue); }
+.tag.accent { background: var(--tag-bg); color: var(--tag-fg); }
+
+/* ============================================================
+   Blockquote / Callout
+   ============================================================ */
+.callout {
+  background: var(--quote-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 1rem 1.4rem;
+  margin: 1.2rem 0;
+  font-size: 0.9rem;
+  color: var(--fg-2);
+}
+.callout strong { color: var(--fg); }
+.callout.green { border-left-color: var(--green); }
+.callout.red { border-left-color: var(--red); }
+.callout.yellow { border-left-color: var(--yellow); }
+
+/* ============================================================
+   Flow Diagram
+   ============================================================ */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+  justify-content: center;
+}
+.flow-step {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+}
+.flow-arrow {
+  color: var(--fg-3);
+  font-size: 0.9rem;
+}
+.flow-step.highlight {
+  border-color: var(--accent);
+  background: var(--tag-bg);
+  color: var(--accent);
+}
+
+/* ============================================================
+   List styles
+   ============================================================ */
+ul, ol {
+  padding-left: 1.5rem;
+  margin: 0.8rem 0;
+  color: var(--fg-2);
+}
+li { margin-bottom: 0.4rem; font-size: 0.92rem; }
+li strong { color: var(--fg); }
+
+/* ============================================================
+   Divider
+   ============================================================ */
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 3rem 0;
+}
+
+/* ============================================================
+   Scroll Reveal
+   ============================================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  html { scroll-behavior: auto; }
+  * { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 768px) {
+  .container { padding: 0 1.2rem 4rem; }
+  .hero { padding: 4rem 0 2.5rem; }
+  .nav-inner { padding: 0.5rem 1rem; }
+  .nav-links { display: none; }
+  pre { font-size: 0.75rem; padding: 1rem; }
+  .card-grid { grid-template-columns: 1fr; }
+  .hero-meta { gap: 1rem; }
+  .flow { gap: 0.35rem; }
+  .flow-step { font-size: 0.72rem; padding: 0.4rem 0.65rem; }
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.footer {
+  text-align: center;
+  padding: 3rem 0;
+  border-top: 1px solid var(--border);
+  color: var(--fg-3);
+  font-size: 0.82rem;
+}
+.footer a { color: var(--accent); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <span class="nav-title">CC Permission System</span>
+    <div class="nav-links" id="navLinks"></div>
+    <button class="theme-toggle" id="themeToggle" aria-label="切换主题">
+      <span id="themeIcon">&#9788;</span>
+    </button>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- ============================================================
+     Hero
+     ============================================================ -->
+<header class="hero reveal">
+  <div class="hero-badge">DEEP DIVE / SOURCE CODE ANALYSIS</div>
+  <h1>Claude Code 权限系统<br>四层防护模型与智能分类器</h1>
+  <p class="hero-sub">
+    从 24+ 源文件中提取的权限架构全景。涵盖六种权限模式、基于 tree-sitter AST 的 Bash 安全解析、
+    AI 分类器自动决策、规则引擎优先级链，以及 40+ 种 Shell 危险模式检测。
+  </p>
+  <div class="hero-meta">
+    <span>2026-03-31</span>
+    <span>源码版本: claude-code (latest)</span>
+    <span>~24 核心文件</span>
+    <span>~7500 行权限代码</span>
+  </div>
+</header>
+
+<!-- ============================================================
+     Section 1 — 权限模式总览
+     ============================================================ -->
+<section class="section reveal" id="s1">
+  <span class="section-number">01</span>
+  <h2>六种权限模式：从只读到全自动</h2>
+  <p>
+    Claude Code 的权限控制核心是 <code>PermissionMode</code> 类型。定义于 <code>src/types/permissions.ts</code>，
+    它包含六种模式，按安全等级从高到低排列。用户通过 <code>Shift+Tab</code> 循环切换，由 <code>getNextPermissionMode()</code> 控制流转顺序。
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>模式</th>
+          <th>符号</th>
+          <th>行为</th>
+          <th>适用场景</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>plan</strong></td>
+          <td><code>&#x23F8;</code></td>
+          <td>只规划不执行，所有工具调用均被阻止</td>
+          <td>复杂任务前的方案评审</td>
+        </tr>
+        <tr>
+          <td><strong>default</strong></td>
+          <td>-</td>
+          <td>读操作自动放行，写操作需用户确认</td>
+          <td>日常开发的默认状态</td>
+        </tr>
+        <tr>
+          <td><strong>acceptEdits</strong></td>
+          <td><code>&#x23F5;&#x23F5;</code></td>
+          <td>文件编辑 + 特定文件系统命令（mkdir/rm/cp/mv/sed/touch）在工作目录内自动放行</td>
+          <td>批量重构、文件整理</td>
+        </tr>
+        <tr>
+          <td><strong>bypassPermissions</strong></td>
+          <td><code>&#x23F5;&#x23F5;</code></td>
+          <td>所有工具调用自动放行，跳过全部权限检查</td>
+          <td>可信环境中的完全信任模式</td>
+        </tr>
+        <tr>
+          <td><strong>auto</strong></td>
+          <td><code>&#x23F5;&#x23F5;</code></td>
+          <td>AI 分类器自动判定是否允许，无需用户交互</td>
+          <td>高效自动化工作流（需 feature gate）</td>
+        </tr>
+        <tr>
+          <td><strong>dontAsk</strong></td>
+          <td><code>&#x23F5;&#x23F5;</code></td>
+          <td>不弹出任何权限提示，所有 ask 转为 deny</td>
+          <td>CI/CD 管道中的静默拒绝</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>模式切换流转图</h3>
+  <p>外部用户通过 <code>Shift+Tab</code> 按以下顺序循环：</p>
+  <div class="flow">
+    <span class="flow-step">default</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">acceptEdits</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">plan</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step highlight">bypassPermissions*</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step highlight">auto*</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">default</span>
+  </div>
+  <p style="font-size:0.82rem;color:var(--fg-3);text-align:center;">
+    * bypassPermissions 需 <code>isBypassPermissionsModeAvailable</code> 为 true；auto 需 feature gate 开启且 model 支持
+  </p>
+
+  <div class="callout yellow">
+    <strong>内部用户差异：</strong> Anthropic 内部用户（<code>USER_TYPE=ant</code>）的循环路径不同 —— 从 default 直接跳到 bypassPermissions（跳过 acceptEdits 和 plan），因为 auto 模式已取代了中间态。
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 2 — 权限决策流水线
+     ============================================================ -->
+<section class="section reveal" id="s2">
+  <span class="section-number">02</span>
+  <h2>权限决策流水线：从工具调用到最终裁决</h2>
+  <p>
+    每次 AI 发起工具调用时，权限系统执行一条严格的决策链。核心入口是 <code>hasPermissionsToUseTool()</code>
+    （<code>src/utils/permissions/permissions.ts</code>），它先调用 <code>hasPermissionsToUseToolInner()</code> 获得初始判定，
+    再叠加模式特有的后处理逻辑。
+  </p>
+
+  <h3>决策链概览</h3>
+  <div class="flow">
+    <span class="flow-step">工具调用</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">模式检查</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Deny 规则</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Allow 规则</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">tool.checkPermissions()</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step highlight">后处理</span>
+  </div>
+
+  <p>后处理阶段根据模式的不同走不同分支：</p>
+  <ul>
+    <li><strong>dontAsk 模式：</strong> ask &rarr; deny（静默拒绝），附带 <code>DONT_ASK_REJECT_MESSAGE</code></li>
+    <li><strong>auto 模式：</strong> ask &rarr; 先尝试 acceptEdits 快速路径 &rarr; 安全工具白名单 &rarr; AI 分类器</li>
+    <li><strong>headless 代理：</strong> 运行 PermissionRequest hooks &rarr; 无 hook 决策则 auto-deny</li>
+    <li><strong>交互模式：</strong> 弹出权限对话框，等待用户操作</li>
+  </ul>
+
+  <h3>三种决策结果</h3>
+  <div class="card-grid">
+    <div class="card green">
+      <h4><span class="tag allow">ALLOW</span> 允许</h4>
+      <p>工具立即执行。可附带 <code>updatedInput</code>（修改后的参数）和 <code>decisionReason</code>（决策原因追踪）。</p>
+    </div>
+    <div class="card red">
+      <h4><span class="tag deny">DENY</span> 拒绝</h4>
+      <p>工具不执行，返回拒绝消息给 AI。包含 <code>message</code> 和 <code>decisionReason</code>。</p>
+    </div>
+    <div class="card yellow">
+      <h4><span class="tag ask">ASK</span> 询问</h4>
+      <p>弹出交互式权限对话框。附带 <code>suggestions</code>（推荐的永久规则）和 <code>pendingClassifierCheck</code>（异步分类器检查）。</p>
+    </div>
+  </div>
+
+  <h3>决策原因类型系统</h3>
+  <p><code>PermissionDecisionReason</code> 是一个判别式联合类型，精确记录每个决策的来源：</p>
+  <pre><code><span class="cm">// src/types/permissions.ts (概括)</span>
+<span class="kw">type</span> <span class="tp">PermissionDecisionReason</span> <span class="op">=</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'rule'</span>; rule: PermissionRule }       <span class="cm">// 匹配了 allow/deny/ask 规则</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'mode'</span>; mode: PermissionMode }       <span class="cm">// 当前模式决定</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'classifier'</span>; classifier: <span class="str">'auto-mode'</span> } <span class="cm">// AI 分类器裁决</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'hook'</span>; hookName: <span class="kw">string</span> }          <span class="cm">// Hook 拦截</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'safetyCheck'</span>; classifierApprovable: <span class="kw">boolean</span> }
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'subcommandResults'</span> }               <span class="cm">// 复合命令中子命令分析</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'asyncAgent'</span> }                       <span class="cm">// 后台代理无法弹窗</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'sandboxOverride'</span> }                  <span class="cm">// 沙箱外运行</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'workingDir'</span> }                       <span class="cm">// 工作目录限制</span>
+  <span class="op">|</span> { <span class="prop">type</span>: <span class="str">'other'</span>; reason: <span class="kw">string</span> }            <span class="cm">// 通用兜底</span></code></pre>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 3 — 权限规则引擎
+     ============================================================ -->
+<section class="section reveal" id="s3">
+  <span class="section-number">03</span>
+  <h2>权限规则引擎：七层来源的优先级体系</h2>
+  <p>
+    权限规则可以来自七种不同的来源，每种来源的优先级和作用域不同。规则引擎在
+    <code>src/utils/permissions/permissionsLoader.ts</code> 中加载，在 <code>permissions.ts</code> 中匹配。
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>来源 (Source)</th>
+          <th>优先级</th>
+          <th>作用域</th>
+          <th>典型配置位置</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>policySettings</code></td>
+          <td><span class="tag deny">最高</span></td>
+          <td>企业级组织策略</td>
+          <td>IT 管理推送</td>
+        </tr>
+        <tr>
+          <td><code>projectSettings</code></td>
+          <td><span class="tag ask">高</span></td>
+          <td>项目级 (git tracked)</td>
+          <td><code>.claude/settings.json</code></td>
+        </tr>
+        <tr>
+          <td><code>localSettings</code></td>
+          <td><span class="tag info">中高</span></td>
+          <td>项目本地 (gitignored)</td>
+          <td><code>.claude/settings.local.json</code></td>
+        </tr>
+        <tr>
+          <td><code>userSettings</code></td>
+          <td><span class="tag info">中</span></td>
+          <td>用户全局</td>
+          <td><code>~/.claude/settings.json</code></td>
+        </tr>
+        <tr>
+          <td><code>flagSettings</code></td>
+          <td><span class="tag accent">中低</span></td>
+          <td>运行时 CLI flag</td>
+          <td><code>--settings path</code></td>
+        </tr>
+        <tr>
+          <td><code>cliArg</code></td>
+          <td><span class="tag accent">低</span></td>
+          <td>运行时参数</td>
+          <td><code>--allowedTools</code></td>
+        </tr>
+        <tr>
+          <td><code>session</code> / <code>command</code></td>
+          <td><span class="tag accent">运行时</span></td>
+          <td>会话内临时</td>
+          <td>用户在权限对话框中选择</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>规则格式详解</h3>
+  <p>每条规则由三部分组成：</p>
+  <pre><code><span class="kw">type</span> <span class="tp">PermissionRule</span> <span class="op">=</span> {
+  <span class="prop">source</span>: <span class="tp">PermissionRuleSource</span>      <span class="cm">// 来自哪个配置层</span>
+  <span class="prop">ruleBehavior</span>: <span class="str">'allow'</span> | <span class="str">'deny'</span> | <span class="str">'ask'</span>  <span class="cm">// 行为</span>
+  <span class="prop">ruleValue</span>: {
+    <span class="prop">toolName</span>: <span class="kw">string</span>               <span class="cm">// 工具名, 如 "Bash"</span>
+    <span class="prop">ruleContent</span>?: <span class="kw">string</span>            <span class="cm">// 可选的细粒度内容</span>
+  }
+}</code></pre>
+
+  <h3>规则值解析</h3>
+  <p><code>permissionRuleParser.ts</code> 负责将字符串规则解析为结构化对象。它支持转义括号以处理复杂命令：</p>
+  <pre><code><span class="cm">// 解析示例</span>
+<span class="str">"Bash"</span>                       <span class="op">&rarr;</span> { toolName: <span class="str">"Bash"</span> }
+<span class="str">"Bash(npm install)"</span>          <span class="op">&rarr;</span> { toolName: <span class="str">"Bash"</span>, ruleContent: <span class="str">"npm install"</span> }
+<span class="str">"Bash(python -c \"print\\(1\\)\")"</span> <span class="op">&rarr;</span> { toolName: <span class="str">"Bash"</span>, ruleContent: <span class="str">'python -c "print(1)"'</span> }
+<span class="str">"mcp__server1"</span>               <span class="op">&rarr;</span> 匹配该 MCP 服务器的所有工具
+<span class="str">"mcp__server1__*"</span>            <span class="op">&rarr;</span> 通配符匹配 server1 的所有工具</code></pre>
+
+  <h3>组织策略控制</h3>
+  <div class="callout red">
+    <strong>allowManagedPermissionRulesOnly：</strong> 当企业通过 <code>policySettings</code> 开启此标志时，
+    只有来自组织策略的权限规则生效。用户自定义的 allow 规则被忽略，权限对话框中的"Always Allow"选项被隐藏。
+    这保证了企业安全策略的绝对执行力。
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 4 — Bash Shell 权限深度
+     ============================================================ -->
+<section class="section reveal" id="s4">
+  <span class="section-number">04</span>
+  <h2>Bash 命令权限：Shell 规则三种匹配模式</h2>
+  <p>
+    Bash 命令的权限检查是整个系统中最复杂的部分。核心逻辑在 <code>src/tools/BashTool/bashPermissions.ts</code>
+    和 <code>src/utils/permissions/shellRuleMatching.ts</code> 中实现。
+  </p>
+
+  <h3>三种匹配模式</h3>
+  <div class="card-grid">
+    <div class="card accent">
+      <h4>精确匹配 (Exact)</h4>
+      <p><code>Bash(npm install)</code> — 只匹配完全相同的命令字符串</p>
+    </div>
+    <div class="card accent">
+      <h4>前缀匹配 (Prefix)</h4>
+      <p><code>Bash(git commit:*)</code> — 匹配以 <code>git commit</code> 开头的所有命令。使用 <code>:*</code> 后缀语法</p>
+    </div>
+    <div class="card accent">
+      <h4>通配符匹配 (Wildcard)</h4>
+      <p><code>Bash(docker * build *)</code> — 支持 <code>*</code> 通配任意字符序列，<code>\*</code> 转义为字面星号</p>
+    </div>
+  </div>
+
+  <h3>命令前处理</h3>
+  <p>在匹配规则之前，命令会经过一系列安全的预处理：</p>
+  <ul>
+    <li><strong>安全环境变量剥离：</strong> <code>SAFE_ENV_VARS</code> 中列出的 30+ 个安全变量（如 <code>NODE_ENV</code>、<code>RUST_LOG</code>、<code>LANG</code>）会被从命令前缀中剥离。这样 <code>NODE_ENV=prod npm run build</code> 可以匹配 <code>npm run:*</code> 规则</li>
+    <li><strong>注释行剥离：</strong> <code>stripCommentLines()</code> 移除纯注释行</li>
+    <li><strong>子命令提取：</strong> <code>getSimpleCommandPrefix()</code> 提取前两个有效 token 作为命令前缀（如 <code>git commit</code>），跳过安全包装器</li>
+  </ul>
+
+  <h3>复合命令处理</h3>
+  <p>
+    当用户运行 <code>npm install && npm test</code> 这样的复合命令时，系统使用 <code>splitCommand_DEPRECATED()</code>
+    拆分为子命令，每个子命令独立检查权限。如果任一子命令需要 ask，则整个命令需要用户确认。
+  </p>
+
+  <div class="callout yellow">
+    <strong>性能保护：</strong> <code>MAX_SUBCOMMANDS_FOR_SECURITY_CHECK = 50</code>。超过 50 个子命令的复合命令直接降级为 ask，
+    防止恶意或意外的超长命令链导致 CPU 饱和。规则建议数也被限制为 <code>MAX_SUGGESTED_RULES_FOR_COMPOUND = 5</code>。
+  </div>
+
+  <h3>裸 Shell 前缀黑名单</h3>
+  <p><code>BARE_SHELL_PREFIXES</code> 集合阻止生成过于宽泛的规则建议：</p>
+  <pre><code><span class="kw">const</span> BARE_SHELL_PREFIXES <span class="op">=</span> <span class="kw">new</span> <span class="fn">Set</span>([
+  <span class="str">'sh'</span>, <span class="str">'bash'</span>, <span class="str">'zsh'</span>, <span class="str">'fish'</span>, <span class="str">'csh'</span>, <span class="str">'tcsh'</span>, <span class="str">'ksh'</span>, <span class="str">'dash'</span>,
+  <span class="str">'cmd'</span>, <span class="str">'powershell'</span>, <span class="str">'pwsh'</span>,
+  <span class="str">'env'</span>, <span class="str">'xargs'</span>,               <span class="cm">// 包装器</span>
+  <span class="str">'nice'</span>, <span class="str">'stdbuf'</span>, <span class="str">'nohup'</span>, <span class="str">'timeout'</span>, <span class="str">'time'</span>,  <span class="cm">// 安全包装器</span>
+  <span class="str">'sudo'</span>, <span class="str">'doas'</span>, <span class="str">'pkexec'</span>,     <span class="cm">// 提权命令</span>
+])</code></pre>
+  <p>这防止了 <code>Bash(bash:*)</code> 或 <code>Bash(sudo:*)</code> 这样等价于 <code>Bash(*)</code> 的危险规则被自动建议。</p>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 5 — Tree-sitter AST 安全解析
+     ============================================================ -->
+<section class="section reveal" id="s5">
+  <span class="section-number">05</span>
+  <h2>Tree-sitter AST 安全解析：Fail-Closed 架构</h2>
+  <p>
+    Bash 命令的安全分析引擎（<code>src/utils/bash/ast.ts</code>）基于 tree-sitter-bash 构建了一套
+    <strong>显式白名单 + 失败关闭</strong>的 AST 解析架构。这是整个权限系统中最核心的安全组件之一。
+  </p>
+
+  <h3>设计哲学</h3>
+  <div class="callout green">
+    <strong>"Any node type not in the allowlist causes the entire command to be classified as 'too-complex'"</strong>
+    — 源码注释。这不是沙箱，不阻止危险命令运行。它只回答一个问题：
+    "能否为这个命令产生可信赖的 argv[] 数组？" 如果能，下游代码可以安全匹配规则；如果不能，就让用户来决定。
+  </div>
+
+  <h3>解析结果类型</h3>
+  <pre><code><span class="kw">type</span> <span class="tp">ParseForSecurityResult</span> <span class="op">=</span>
+  <span class="op">|</span> { <span class="prop">kind</span>: <span class="str">'simple'</span>; commands: <span class="tp">SimpleCommand</span>[] }  <span class="cm">// 成功解析</span>
+  <span class="op">|</span> { <span class="prop">kind</span>: <span class="str">'too-complex'</span>; reason: <span class="kw">string</span> }      <span class="cm">// 超出白名单 → ask</span>
+  <span class="op">|</span> { <span class="prop">kind</span>: <span class="str">'parse-unavailable'</span> }                <span class="cm">// tree-sitter 不可用</span></code></pre>
+
+  <h3>白名单节点类型</h3>
+  <p>AST 中只有以下节点类型被允许通过：</p>
+  <div class="card-grid">
+    <div class="card blue">
+      <h4>结构节点</h4>
+      <p><code>program</code>, <code>list</code>, <code>pipeline</code>, <code>redirected_statement</code> — 用于递归找到叶子 <code>command</code> 节点</p>
+    </div>
+    <div class="card blue">
+      <h4>分隔符</h4>
+      <p><code>&&</code>, <code>||</code>, <code>|</code>, <code>;</code>, <code>&</code>, <code>|&</code>, <code>\n</code> — 命令间无数据的分隔</p>
+    </div>
+    <div class="card blue">
+      <h4>命令组件</h4>
+      <p><code>command</code> 节点下的 <code>word</code>, <code>string</code>, <code>raw_string</code>, <code>variable_assignment</code>, <code>file_redirect</code> 等</p>
+    </div>
+  </div>
+
+  <h3>SimpleCommand 结构</h3>
+  <pre><code><span class="kw">type</span> <span class="tp">SimpleCommand</span> <span class="op">=</span> {
+  <span class="prop">argv</span>: <span class="kw">string</span>[]           <span class="cm">// argv[0] = 命令名, 其余为参数</span>
+  <span class="prop">envVars</span>: { name: <span class="kw">string</span>; value: <span class="kw">string</span> }[]  <span class="cm">// 前置环境变量</span>
+  <span class="prop">redirects</span>: <span class="tp">Redirect</span>[]     <span class="cm">// 重定向操作</span>
+  <span class="prop">text</span>: <span class="kw">string</span>              <span class="cm">// 原始源码文本</span>
+}</code></pre>
+  <p>
+    命令替换 <code>$()</code> 中的命令会被递归提取，外层 argv 中用 <code>__CMDSUB_OUTPUT__</code> 占位符替代。
+    内层命令独立进行权限检查。
+  </p>
+
+  <h3>语义检查 (checkSemantics)</h3>
+  <p>
+    <code>checkSemantics()</code> 在 AST 解析成功后进行进一步的语义分析。它检查安全包装器（nice/stdbuf/nohup/timeout/time）、
+    环境变量赋值等模式，确保规则匹配的准确性。
+  </p>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 6 — Bash 安全检查深度
+     ============================================================ -->
+<section class="section reveal" id="s6">
+  <span class="section-number">06</span>
+  <h2>Bash 安全检查：40+ 种危险模式检测</h2>
+  <p>
+    <code>src/tools/BashTool/bashSecurity.ts</code> 实现了一套基于模式匹配的安全检查层。
+    它维护 23+ 种编号检查 ID 和大量检测模式，覆盖从命令替换到 Unicode 空格的各种注入攻击向量。
+  </p>
+
+  <h3>命令替换检测</h3>
+  <p><code>COMMAND_SUBSTITUTION_PATTERNS</code> 数组检测 12+ 种命令替换/扩展语法：</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>模式</th><th>检测内容</th><th>攻击向量</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>$(...)</code></td><td>命令替换</td><td>注入任意命令执行</td></tr>
+        <tr><td><code>${...}</code></td><td>参数替换</td><td>变量扩展注入</td></tr>
+        <tr><td><code>&lt;(...)</code> / <code>&gt;(...)</code></td><td>进程替换</td><td>绕过管道权限检查</td></tr>
+        <tr><td><code>=cmd</code></td><td>Zsh EQUALS 扩展</td><td><code>=curl evil.com</code> 绕过 deny 规则</td></tr>
+        <tr><td><code>&lt;#</code></td><td>PowerShell 注释语法</td><td>纵深防御：防止未来引入 PS 执行</td></tr>
+        <tr><td><code>} always {</code></td><td>Zsh always block</td><td>try/always 构造中隐藏代码</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Zsh 专项防护</h3>
+  <p>
+    <code>ZSH_DANGEROUS_COMMANDS</code> 集合包含 20+ 个 Zsh 特有的危险命令/内建函数：
+  </p>
+  <pre><code><span class="kw">const</span> ZSH_DANGEROUS_COMMANDS <span class="op">=</span> <span class="kw">new</span> <span class="fn">Set</span>([
+  <span class="str">'zmodload'</span>,    <span class="cm">// 加载危险模块: zsh/mapfile, zsh/system, zsh/zpty, zsh/net/tcp</span>
+  <span class="str">'emulate'</span>,     <span class="cm">// -c 标志是 eval 等价物</span>
+  <span class="str">'sysopen'</span>,     <span class="cm">// 精细控制文件打开 (zsh/system)</span>
+  <span class="str">'sysread'</span>,     <span class="cm">// 读取文件描述符</span>
+  <span class="str">'syswrite'</span>,    <span class="cm">// 写入文件描述符</span>
+  <span class="str">'zpty'</span>,        <span class="cm">// 在伪终端上执行命令</span>
+  <span class="str">'ztcp'</span>,        <span class="cm">// 创建 TCP 连接用于数据外泄</span>
+  <span class="str">'zsocket'</span>,     <span class="cm">// Unix/TCP socket</span>
+  <span class="str">'zf_rm'</span>, <span class="str">'zf_mv'</span>, <span class="str">'zf_ln'</span>, <span class="str">'zf_chmod'</span>, ...  <span class="cm">// zsh/files 内建命令</span>
+])</code></pre>
+
+  <h3>完整的安全检查编号体系</h3>
+  <p><code>BASH_SECURITY_CHECK_IDS</code> 定义了标准化的检查标识符（用于分析日志，避免记录字符串）：</p>
+  <div class="card-grid">
+    <div class="card">
+      <h4>#1-#7</h4>
+      <p>不完整命令 / jq 系统函数 / jq 文件参数 / 混淆标志 / Shell 元字符 / 危险变量 / 换行符</p>
+    </div>
+    <div class="card">
+      <h4>#8-#14</h4>
+      <p>命令替换 / 输入重定向 / 输出重定向 / IFS 注入 / git commit 替换 / /proc/environ 访问 / 格式畸形 token</p>
+    </div>
+    <div class="card">
+      <h4>#15-#23</h4>
+      <p>反斜杠转义空格 / 花括号扩展 / 控制字符 / Unicode 空格 / 词中 Hash / Zsh 危险命令 / 反斜杠转义运算符 / 注释引号不同步 / 引号内换行</p>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 7 — AI 分类器 (Auto Mode)
+     ============================================================ -->
+<section class="section reveal" id="s7">
+  <span class="section-number">07</span>
+  <h2>Auto Mode 智能分类器：AI 守门人</h2>
+  <p>
+    Auto 模式（<code>src/utils/permissions/yoloClassifier.ts</code>）是权限系统中最先进的组件。
+    它使用一个独立的 AI 分类器来自动判定每个工具调用是否安全——无需用户交互。
+  </p>
+
+  <h3>分类器架构</h3>
+  <div class="flow">
+    <span class="flow-step">工具调用 (ask)</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">acceptEdits 快速路径</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">安全白名单</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step highlight">AI 分类器 API</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">allow / block</span>
+  </div>
+
+  <h3>快速路径（Fast Paths）</h3>
+  <p>在调用昂贵的分类器 API 前，系统执行三级快速判断：</p>
+  <ol>
+    <li><strong>acceptEdits 仿真：</strong> 以 <code>acceptEdits</code> 模式重新调用 <code>tool.checkPermissions()</code>。
+        如果该模式下会放行（如工作目录内的文件编辑），直接 allow，跳过分类器。但 Agent 和 REPL 工具被排除。</li>
+    <li><strong>安全白名单：</strong> <code>SAFE_YOLO_ALLOWLISTED_TOOLS</code> 中列出的 20+ 种只读/元数据工具直接放行，
+        包括 FileRead、Grep、Glob、LSP、TodoWrite、Sleep 等。</li>
+    <li><strong>不可分类器审批的安全检查：</strong> <code>safetyCheck</code> 且 <code>classifierApprovable=false</code> 的决策
+        不受分类器影响，必须回退到用户交互。</li>
+  </ol>
+
+  <h3>分类器 API 调用</h3>
+  <pre><code><span class="cm">// 分类器工具 Schema</span>
+<span class="kw">const</span> YOLO_CLASSIFIER_TOOL_SCHEMA <span class="op">=</span> {
+  <span class="prop">name</span>: <span class="str">'classify_result'</span>,
+  <span class="prop">input_schema</span>: {
+    <span class="prop">properties</span>: {
+      <span class="prop">thinking</span>: { type: <span class="str">'string'</span> },        <span class="cm">// 逐步推理过程</span>
+      <span class="prop">shouldBlock</span>: { type: <span class="str">'boolean'</span> },    <span class="cm">// true=阻止, false=放行</span>
+      <span class="prop">reason</span>: { type: <span class="str">'string'</span> },           <span class="cm">// 决策理由</span>
+    }
+  }
+}</code></pre>
+
+  <h3>上下文构建</h3>
+  <p>
+    <code>buildTranscriptEntries()</code> 从对话历史中提取精简的上下文记录。关键设计：
+    <strong>只包含用户文本消息和 AI 的 tool_use 块，排除 AI 文本</strong>（因为 AI 文本可能被精心构造以影响分类器决策）。
+  </p>
+
+  <h3>用户可配置规则</h3>
+  <p><code>AutoModeRules</code> 允许用户通过 <code>settings.autoMode</code> 自定义三类规则：</p>
+  <pre><code><span class="kw">type</span> <span class="tp">AutoModeRules</span> <span class="op">=</span> {
+  <span class="prop">allow</span>: <span class="kw">string</span>[]       <span class="cm">// 允许的操作描述</span>
+  <span class="prop">soft_deny</span>: <span class="kw">string</span>[]   <span class="cm">// 软拒绝的操作描述</span>
+  <span class="prop">environment</span>: <span class="kw">string</span>[] <span class="cm">// 环境上下文描述</span>
+}</code></pre>
+
+  <h3>容错与熔断</h3>
+  <div class="card-grid">
+    <div class="card red">
+      <h4>Iron Gate (失败关闭)</h4>
+      <p>当分类器 API 不可用时，<code>tengu_iron_gate_closed</code> feature gate 决定行为。默认 <strong>fail-closed</strong>：拒绝所有操作并附带重试指引。</p>
+    </div>
+    <div class="card yellow">
+      <h4>连续拒绝限制</h4>
+      <p><code>maxConsecutive: 3</code>，<code>maxTotal: 20</code>。达到限制后回退到用户交互式权限提示，防止 AI 陷入拒绝死循环。</p>
+    </div>
+    <div class="card yellow">
+      <h4>上下文溢出</h4>
+      <p>当对话历史超过分类器的上下文窗口时，自动回退到手动审批模式。在无头模式下直接中止代理。</p>
+    </div>
+    <div class="card blue">
+      <h4>熔断器</h4>
+      <p><code>autoModeCircuitBroken</code> 标志。当 GrowthBook 的 <code>tengu_auto_mode_config.enabled</code> 变为 disabled 时触发，全局阻止 auto 模式。</p>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 8 — 危险权限检测
+     ============================================================ -->
+<section class="section reveal" id="s8">
+  <span class="section-number">08</span>
+  <h2>危险权限检测与 Auto Mode 准入</h2>
+  <p>
+    进入 Auto 模式时，<code>permissionSetup.ts</code> 中的 <code>isDangerousBashPermission()</code>
+    和 <code>isDangerousPowerShellPermission()</code> 会扫描所有现存的 allow 规则，剥离可能绕过分类器的危险规则。
+  </p>
+
+  <h3>危险 Bash 模式</h3>
+  <p><code>DANGEROUS_BASH_PATTERNS</code> 定义了 20+ 种跨平台代码执行入口点：</p>
+  <pre><code><span class="kw">const</span> CROSS_PLATFORM_CODE_EXEC <span class="op">=</span> [
+  <span class="cm">// 解释器</span>
+  <span class="str">'python'</span>, <span class="str">'python3'</span>, <span class="str">'node'</span>, <span class="str">'deno'</span>, <span class="str">'tsx'</span>, <span class="str">'ruby'</span>, <span class="str">'perl'</span>, <span class="str">'php'</span>, <span class="str">'lua'</span>,
+  <span class="cm">// 包管理器执行器</span>
+  <span class="str">'npx'</span>, <span class="str">'bunx'</span>, <span class="str">'npm run'</span>, <span class="str">'yarn run'</span>, <span class="str">'pnpm run'</span>, <span class="str">'bun run'</span>,
+  <span class="cm">// Shell</span>
+  <span class="str">'bash'</span>, <span class="str">'sh'</span>,
+  <span class="cm">// 远程执行</span>
+  <span class="str">'ssh'</span>,
+]
+
+<span class="cm">// Bash 额外：</span>
+<span class="str">'zsh'</span>, <span class="str">'fish'</span>, <span class="str">'eval'</span>, <span class="str">'exec'</span>, <span class="str">'env'</span>, <span class="str">'xargs'</span>, <span class="str">'sudo'</span></code></pre>
+
+  <h3>检测逻辑</h3>
+  <p>对每个危险模式，检查五种变体：</p>
+  <ol>
+    <li><strong>精确匹配：</strong> <code>python</code></li>
+    <li><strong>前缀语法：</strong> <code>python:*</code></li>
+    <li><strong>尾部通配：</strong> <code>python*</code></li>
+    <li><strong>空格通配：</strong> <code>python *</code></li>
+    <li><strong>标志通配：</strong> <code>python -c*</code> 等 <code>python -开头 + *结尾</code></li>
+  </ol>
+
+  <h3>PowerShell 特有危险</h3>
+  <p>PowerShell 在上述跨平台模式之外，还检测 25+ 种 PS 特有的危险 cmdlet：</p>
+  <pre><code><span class="cm">// 嵌套 Shell</span>     <span class="str">'pwsh'</span>, <span class="str">'powershell'</span>, <span class="str">'cmd'</span>, <span class="str">'wsl'</span>
+<span class="cm">// 字符串执行</span>     <span class="str">'iex'</span>, <span class="str">'invoke-expression'</span>, <span class="str">'icm'</span>, <span class="str">'invoke-command'</span>
+<span class="cm">// 进程创建</span>       <span class="str">'start-process'</span>, <span class="str">'saps'</span>, <span class="str">'start-job'</span>, <span class="str">'start-threadjob'</span>
+<span class="cm">// .NET 逃逸</span>     <span class="str">'add-type'</span>, <span class="str">'new-object'</span>
+<span class="cm">// 事件注册</span>       <span class="str">'register-objectevent'</span>, <span class="str">'register-engineevent'</span></code></pre>
+  <p>
+    PowerShell 额外处理 <code>.exe</code> 后缀变体（如 <code>python.exe</code>、<code>npm.exe run</code>），
+    因为 Windows 上的实际二进制名包含 .exe。
+  </p>
+
+  <h3>Agent 工具保护</h3>
+  <div class="callout red">
+    <strong>isDangerousTaskPermission：</strong> <em>任何</em> Agent（子代理）的 allow 规则都被视为危险规则。
+    原因：子代理在执行前需要由分类器评估其 prompt，auto-approve 会绕过这一安全层。
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 9 — 权限 UI 与交互设计
+     ============================================================ -->
+<section class="section reveal" id="s9">
+  <span class="section-number">09</span>
+  <h2>权限对话框与交互设计</h2>
+  <p>
+    权限 UI 系统分布在 <code>src/components/permissions/</code> 下的 30+ 个文件中。
+    采用了工具特定的权限请求组件 + 通用框架的架构。
+  </p>
+
+  <h3>工具-组件映射</h3>
+  <p><code>permissionComponentForTool()</code> 为每种工具类型选择专用的权限请求 UI：</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>工具</th><th>权限组件</th><th>特殊功能</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>BashTool</td><td>BashPermissionRequest</td><td>命令预览、前缀规则建议、风险解释</td></tr>
+        <tr><td>PowerShellTool</td><td>PowerShellPermissionRequest</td><td>PS 特有的命令格式</td></tr>
+        <tr><td>FileEditTool</td><td>FileEditPermissionRequest</td><td>diff 预览</td></tr>
+        <tr><td>FileWriteTool</td><td>FileWritePermissionRequest</td><td>内容预览</td></tr>
+        <tr><td>WebFetchTool</td><td>WebFetchPermissionRequest</td><td>URL 和域名显示</td></tr>
+        <tr><td>SkillTool</td><td>SkillPermissionRequest</td><td>技能名称和描述</td></tr>
+        <tr><td>其他</td><td>FallbackPermissionRequest</td><td>通用兜底</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>三层权限处理器</h3>
+  <p><code>src/hooks/toolPermission/handlers/</code> 下有三个不同场景的处理器：</p>
+  <div class="card-grid">
+    <div class="card accent">
+      <h4>interactiveHandler</h4>
+      <p>主代理交互模式。推送 ToolUseConfirm 到确认队列，异步运行 hooks 和分类器，与用户交互竞速。使用 resolve-once 防卫保证只解析一次。</p>
+    </div>
+    <div class="card accent">
+      <h4>coordinatorHandler</h4>
+      <p>协调器工作模式。在弹出对话框之前等待自动化检查（分类器、hooks）完成。设置 <code>awaitAutomatedChecksBeforeDialog</code>。</p>
+    </div>
+    <div class="card accent">
+      <h4>swarmWorkerHandler</h4>
+      <p>集群工作者模式。处理分布式代理的权限请求，通过消息传递与主代理协调。</p>
+    </div>
+  </div>
+
+  <h3>权限解释器 (Permission Explainer)</h3>
+  <p>
+    <code>src/utils/permissions/permissionExplainer.ts</code> 使用一个独立的 AI 侧查询（sideQuery）来为用户解释命令的含义和风险。
+    它返回三级风险评估（LOW / MEDIUM / HIGH）加上自然语言解释：
+  </p>
+  <pre><code><span class="kw">type</span> <span class="tp">PermissionExplanation</span> <span class="op">=</span> {
+  <span class="prop">riskLevel</span>: <span class="str">'LOW'</span> <span class="op">|</span> <span class="str">'MEDIUM'</span> <span class="op">|</span> <span class="str">'HIGH'</span>
+  <span class="prop">explanation</span>: <span class="kw">string</span>   <span class="cm">// 命令做什么 (1-2 句)</span>
+  <span class="prop">reasoning</span>: <span class="kw">string</span>     <span class="cm">// 为什么要运行 ("I need to...")</span>
+  <span class="prop">risk</span>: <span class="kw">string</span>           <span class="cm">// 潜在风险说明</span>
+}</code></pre>
+
+  <h3>影子规则检测</h3>
+  <p>
+    <code>shadowedRuleDetection.ts</code> 检测不可达的权限规则。例如，如果项目配置了 <code>Bash: deny</code>，
+    那么用户配置的 <code>Bash(npm install): allow</code> 永远不会被触发。系统会发出警告并建议修复方案。
+  </p>
+</section>
+
+<hr>
+
+<!-- ============================================================
+     Section 10 — 命令语义与退出码
+     ============================================================ -->
+<section class="section reveal" id="s10">
+  <span class="section-number">10</span>
+  <h2>命令语义分析与架构哲学</h2>
+  <p>
+    <code>src/tools/BashTool/commandSemantics.ts</code> 实现了命令退出码的语义解读——
+    一个看似不起眼但对用户体验影响深远的系统。
+  </p>
+
+  <h3>语义覆盖</h3>
+  <p>不同命令的退出码含义不同。默认行为是 exit 0 = 成功，其他 = 错误。但某些命令有特殊语义：</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>命令</th><th>Exit 0</th><th>Exit 1</th><th>Exit 2+</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>grep</code> / <code>rg</code></td><td>找到匹配</td><td>未找到匹配（非错误）</td><td>真正的错误</td></tr>
+        <tr><td><code>diff</code></td><td>无差异</td><td>有差异（非错误）</td><td>真正的错误</td></tr>
+        <tr><td><code>find</code></td><td>成功</td><td>部分目录不可访问（非错误）</td><td>真正的错误</td></tr>
+        <tr><td><code>test</code> / <code>[</code></td><td>条件为真</td><td>条件为假（非错误）</td><td>真正的错误</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    这确保了 AI 不会把 <code>grep</code> 返回 1（未找到匹配）误判为执行失败，从而避免不必要的重试或错误报告。
+  </p>
+
+  <h3>架构总结：纵深防御</h3>
+  <p>Claude Code 的权限系统体现了经典的纵深防御（Defense in Depth）思想：</p>
+  <div class="card-grid">
+    <div class="card green">
+      <h4>第一层：模式控制</h4>
+      <p>六种模式从全局层面决定了权限的基本姿态——从 plan（只读）到 bypass（全放行）</p>
+    </div>
+    <div class="card green">
+      <h4>第二层：规则引擎</h4>
+      <p>七层来源的 allow/deny/ask 规则，支持精确、前缀、通配符三种匹配，组织策略具有最高优先级</p>
+    </div>
+    <div class="card green">
+      <h4>第三层：AST 安全解析</h4>
+      <p>基于 tree-sitter 的 fail-closed 解析器，40+ 种危险模式检测，确保命令语义正确理解</p>
+    </div>
+    <div class="card green">
+      <h4>第四层：AI 分类器</h4>
+      <p>Auto 模式下的独立 AI 守门人，带连续拒绝限制、上下文溢出回退、熔断器机制</p>
+    </div>
+    <div class="card green">
+      <h4>第五层：交互式确认</h4>
+      <p>当上述层次都无法自动决策时，回退到用户交互，附带风险解释和规则建议</p>
+    </div>
+    <div class="card green">
+      <h4>第六层：沙箱隔离</h4>
+      <p><code>SandboxManager</code> 提供进程级隔离，即使命令被允许执行，也在受限环境中运行</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>设计哲学：</strong> 权限系统的每一层都遵循"fail-closed"原则——在不确定时拒绝。
+    从 AST 解析器遇到未知节点类型时返回 <code>too-complex</code>，到分类器 API 不可用时触发 Iron Gate 拒绝，
+    再到复合命令超过 50 个子命令时降级为 ask。系统宁可多问用户一次，也不会放过一个未经审查的操作。
+  </div>
+</section>
+
+</div>
+
+<!-- ============================================================
+     Footer
+     ============================================================ -->
+<footer class="footer">
+  <p>
+    基于 <a href="https://github.com/anthropics/claude-code">claude-code</a> 源码分析 &middot;
+    涉及 src/utils/permissions/、src/tools/BashTool/、src/hooks/toolPermission/、src/types/permissions.ts 等 24+ 文件 &middot;
+    2026-03-31
+  </p>
+</footer>
+
+<!-- ============================================================
+     Scripts
+     ============================================================ -->
+<script>
+(function() {
+  'use strict';
+
+  // ---- Theme Toggle ----
+  const html = document.documentElement;
+  const themeToggle = document.getElementById('themeToggle');
+  const themeIcon = document.getElementById('themeIcon');
+
+  function setTheme(dark) {
+    html.setAttribute('data-theme', dark ? 'dark' : 'light');
+    themeIcon.textContent = dark ? '\u2600' : '\u263E';
+    try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch {}
+  }
+
+  // Init from localStorage or system preference
+  const stored = (() => { try { return localStorage.getItem('theme'); } catch { return null; } })();
+  if (stored) {
+    setTheme(stored === 'dark');
+  } else {
+    setTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+
+  themeToggle.addEventListener('click', () => {
+    setTheme(html.getAttribute('data-theme') !== 'dark');
+  });
+
+  // ---- Progress Bar ----
+  const progressBar = document.getElementById('progressBar');
+  function updateProgress() {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    progressBar.style.width = docHeight > 0 ? (scrollTop / docHeight * 100) + '%' : '0%';
+  }
+
+  // ---- Nav visibility ----
+  const nav = document.getElementById('nav');
+  let lastScroll = 0;
+  function updateNav() {
+    const st = window.scrollY;
+    if (st > 300) {
+      nav.classList.add('visible');
+    } else {
+      nav.classList.remove('visible');
+    }
+    lastScroll = st;
+  }
+
+  // ---- Build nav links ----
+  const navLinksContainer = document.getElementById('navLinks');
+  const sections = document.querySelectorAll('.section[id]');
+  const sectionMeta = [
+    { id: 's1', label: '六种模式' },
+    { id: 's2', label: '决策流水线' },
+    { id: 's3', label: '规则引擎' },
+    { id: 's4', label: 'Shell 规则' },
+    { id: 's5', label: 'AST 解析' },
+    { id: 's6', label: '安全检查' },
+    { id: 's7', label: 'AI 分类器' },
+    { id: 's8', label: '危险检测' },
+    { id: 's9', label: '权限 UI' },
+    { id: 's10', label: '语义与哲学' },
+  ];
+  sectionMeta.forEach(function(m) {
+    const a = document.createElement('a');
+    a.href = '#' + m.id;
+    a.textContent = m.label;
+    a.dataset.section = m.id;
+    navLinksContainer.appendChild(a);
+  });
+
+  // ---- Active section tracking ----
+  function updateActiveLink() {
+    const scrollPos = window.scrollY + 200;
+    let currentId = '';
+    sections.forEach(function(s) {
+      if (s.offsetTop <= scrollPos) {
+        currentId = s.id;
+      }
+    });
+    navLinksContainer.querySelectorAll('a').forEach(function(a) {
+      a.classList.toggle('active', a.dataset.section === currentId);
+    });
+  }
+
+  // ---- Scroll Reveal ----
+  function revealOnScroll() {
+    const reveals = document.querySelectorAll('.reveal:not(.visible)');
+    const windowHeight = window.innerHeight;
+    reveals.forEach(function(el) {
+      const top = el.getBoundingClientRect().top;
+      if (top < windowHeight - 60) {
+        el.classList.add('visible');
+      }
+    });
+  }
+
+  // ---- Reduced motion check ----
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) {
+    document.querySelectorAll('.reveal').forEach(function(el) {
+      el.classList.add('visible');
+    });
+  }
+
+  // ---- Throttled scroll handler ----
+  let ticking = false;
+  window.addEventListener('scroll', function() {
+    if (!ticking) {
+      window.requestAnimationFrame(function() {
+        updateProgress();
+        updateNav();
+        updateActiveLink();
+        if (!prefersReducedMotion) revealOnScroll();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
+
+  // Initial calls
+  updateProgress();
+  updateNav();
+  revealOnScroll();
+  updateActiveLink();
+})();
+</script>
+</body>
+</html>

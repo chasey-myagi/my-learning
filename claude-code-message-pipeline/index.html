@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Code 消息管道：从用户输入到 API 响应的全链路解析</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03);--radius:10px;--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-lg:0 8px 32px rgba(0,0,0,.08);--font-sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;--transition:0.3s cubic-bezier(.4,0,.2,1)}
+[data-theme="dark"]{--bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;--fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;--accent:#fb923c;--accent-2:#fdba74;--green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);--border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);--quote-bg:rgba(255,255,255,0.03);--shadow:0 1px 3px rgba(0,0,0,.2);--shadow-lg:0 8px 32px rgba(0,0,0,.3)}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:var(--font-sans);background:var(--bg);color:var(--fg);line-height:1.7;min-height:100vh;transition:background var(--transition),color var(--transition)}
+
+/* Theme toggle */
+.theme-toggle{position:fixed;top:1.25rem;right:1.25rem;z-index:100;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--bg-alt);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:all var(--transition);box-shadow:var(--shadow)}
+.theme-toggle:hover{transform:scale(1.1);box-shadow:var(--shadow-lg)}
+
+/* Header */
+.hero{padding:5rem 2rem 4rem;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,var(--tag-bg) 0%,transparent 70%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .9rem;border-radius:999px;background:var(--tag-bg);color:var(--tag-fg);font-size:.8rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:1.5rem}
+.hero h1{font-size:clamp(1.8rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;max-width:900px;margin:0 auto .8rem}
+.hero h1 .hl{background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{color:var(--fg-2);font-size:1.05rem;max-width:640px;margin:0 auto 2rem}
+.hero-meta{display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;color:var(--fg-3);font-size:.85rem}
+.hero-meta span{display:flex;align-items:center;gap:.4rem}
+
+/* Layout */
+.container{max-width:860px;margin:0 auto;padding:0 1.5rem 6rem}
+
+/* TOC */
+.toc{background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem 2rem;margin-bottom:3.5rem}
+.toc h2{font-size:1rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--fg-3);margin-bottom:1rem}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.4rem}
+.toc a{display:flex;align-items:baseline;gap:.5rem;padding:.35rem 0;color:var(--fg-2);text-decoration:none;font-size:.92rem;transition:color var(--transition)}
+.toc a:hover{color:var(--accent)}
+.toc a .num{color:var(--accent);font-weight:700;font-size:.8rem;font-family:var(--font-mono);min-width:1.6rem}
+
+/* Sections */
+.section{margin-bottom:3.5rem;opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.section.visible{opacity:1;transform:translateY(0)}
+.section-num{font-family:var(--font-mono);font-size:.75rem;font-weight:700;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.25rem}
+.section h2{font-size:1.6rem;font-weight:800;letter-spacing:-.02em;margin-bottom:1rem;line-height:1.25}
+.section h3{font-size:1.15rem;font-weight:700;margin:1.8rem 0 .6rem;color:var(--fg)}
+.section p{color:var(--fg-2);margin-bottom:1rem}
+
+/* Code blocks */
+pre{background:var(--bg-code);color:#e7e5e4;border-radius:var(--radius);padding:1.25rem 1.5rem;overflow-x:auto;font-family:var(--font-mono);font-size:.82rem;line-height:1.65;margin:1rem 0 1.5rem;border:1px solid var(--border)}
+[data-theme="dark"] pre{background:#0a0908}
+code{font-family:var(--font-mono);font-size:.88em}
+p code,li code{background:var(--tag-bg);color:var(--tag-fg);padding:.12em .4em;border-radius:4px;font-size:.84em}
+
+/* Flow diagram */
+.flow-diagram{background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;margin:1.5rem 0;overflow-x:auto}
+.flow-steps{display:flex;align-items:center;gap:.5rem;min-width:max-content;justify-content:center;flex-wrap:wrap}
+.flow-step{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.82rem;font-weight:600;white-space:nowrap;text-align:center}
+.flow-step.primary{background:var(--tag-bg);border-color:var(--accent);color:var(--accent)}
+.flow-arrow{color:var(--fg-3);font-size:1.1rem;flex-shrink:0}
+
+/* Info cards */
+.card{background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin:1.2rem 0}
+.card-header{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:.95rem;margin-bottom:.6rem}
+.card-header .icon{font-size:1.1rem}
+.card p{font-size:.9rem;margin-bottom:.5rem}
+.card ul{padding-left:1.2rem;margin:.4rem 0}
+.card li{font-size:.88rem;color:var(--fg-2);margin-bottom:.25rem}
+
+/* Tables */
+.table-wrap{overflow-x:auto;margin:1rem 0 1.5rem;border:1px solid var(--border);border-radius:var(--radius)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:var(--bg-alt);text-align:left;padding:.65rem 1rem;font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-3);border-bottom:1px solid var(--border)}
+td{padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--fg-2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--quote-bg)}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;padding:.15rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600;letter-spacing:.03em}
+.tag-orange{background:var(--tag-bg);color:var(--tag-fg)}
+.tag-green{background:var(--green-bg);color:var(--green)}
+.tag-red{background:var(--red-bg);color:#ef4444}
+
+/* Callouts */
+.callout{border-left:3px solid var(--accent);background:var(--quote-bg);padding:1rem 1.25rem;margin:1rem 0 1.5rem;border-radius:0 var(--radius) var(--radius) 0}
+.callout-title{font-weight:700;font-size:.88rem;margin-bottom:.3rem}
+.callout p{font-size:.88rem;margin-bottom:.3rem}
+
+/* Architecture diagram */
+.arch-box{border:2px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin:1.5rem 0;position:relative}
+.arch-box .arch-title{position:absolute;top:-.65rem;left:1rem;background:var(--bg);padding:0 .5rem;font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.arch-layers{display:flex;flex-direction:column;gap:.75rem}
+.arch-layer{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--bg-alt);border-radius:8px;border:1px solid var(--border)}
+.arch-layer-label{min-width:110px;font-size:.78rem;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.04em}
+.arch-layer-content{font-size:.88rem;color:var(--fg-2);font-family:var(--font-mono)}
+
+/* Lists */
+ul,ol{padding-left:1.4rem;margin:.5rem 0 1rem}
+li{margin-bottom:.35rem;color:var(--fg-2)}
+li strong{color:var(--fg)}
+
+/* Back to top */
+.back-top{position:fixed;bottom:2rem;right:2rem;width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(10px);transition:all var(--transition);z-index:100}
+.back-top.visible{opacity:1;transform:translateY(0)}
+.back-top:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(220,74,26,.3)}
+
+/* Footer */
+.footer{text-align:center;padding:3rem 2rem;color:var(--fg-3);font-size:.8rem;border-top:1px solid var(--border)}
+.footer a{color:var(--accent);text-decoration:none}
+
+/* Responsive */
+@media(max-width:640px){
+  .hero{padding:3rem 1.25rem 2.5rem}
+  .hero h1{font-size:1.6rem}
+  .container{padding:0 1rem 4rem}
+  .toc-grid{grid-template-columns:1fr}
+  .flow-steps{flex-direction:column}
+  .flow-arrow{transform:rotate(90deg)}
+  .hero-meta{flex-direction:column;gap:.5rem}
+}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+  <span id="theme-icon">&#9790;</span>
+</button>
+
+<header class="hero">
+  <div class="hero-badge">Deep Dive / Source Code Analysis</div>
+  <h1>Claude Code <span class="hl">消息管道</span><br>从用户输入到 API 响应的全链路解析</h1>
+  <p class="hero-sub">基于 Claude Code 源码的深度逆向分析 -- 解剖消息类型系统、规范化流水线、API 通信层、Prompt Caching 策略、流式响应处理、Token 计费与重试机制的完整架构。</p>
+  <div class="hero-meta">
+    <span>&#128209; 源码版本: claude-code/src</span>
+    <span>&#128197; 2026-03-31</span>
+    <span>&#9997; ~5,200 行核心代码分析</span>
+  </div>
+</header>
+
+<main class="container">
+
+<nav class="toc">
+  <h2>目录</h2>
+  <div class="toc-grid">
+    <a href="#s1"><span class="num">01</span>全局架构总览</a>
+    <a href="#s2"><span class="num">02</span>消息类型体系</a>
+    <a href="#s3"><span class="num">03</span>消息规范化流水线</a>
+    <a href="#s4"><span class="num">04</span>API 调用层封装</a>
+    <a href="#s5"><span class="num">05</span>Prompt Caching 策略</a>
+    <a href="#s6"><span class="num">06</span>流式响应处理</a>
+    <a href="#s7"><span class="num">07</span>Token 计费与成本追踪</a>
+    <a href="#s8"><span class="num">08</span>重试与错误处理</a>
+    <a href="#s9"><span class="num">09</span>消息持久化与恢复</a>
+    <a href="#s10"><span class="num">10</span>设计亮点与工程启示</a>
+  </div>
+</nav>
+
+<!-- =========================================== S1 =========================================== -->
+<section class="section" id="s1">
+  <div class="section-num">01</div>
+  <h2>全局架构总览</h2>
+  <p>Claude Code 的消息管道是一条从用户按下回车到 API 响应渲染回终端的完整数据通路。整个管道可以抽象为以下六大阶段：</p>
+
+  <div class="flow-diagram">
+    <div class="flow-steps">
+      <div class="flow-step">用户输入</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step">QueryEngine</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step primary">normalizeMessagesForAPI</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step">queryModel (claude.ts)</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step primary">withRetry + Streaming</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step">AssistantMessage</div>
+    </div>
+  </div>
+
+  <div class="arch-box">
+    <span class="arch-title">核心文件架构</span>
+    <div class="arch-layers">
+      <div class="arch-layer">
+        <span class="arch-layer-label">入口层</span>
+        <span class="arch-layer-content">QueryEngine.ts &rarr; query.ts (queryLoop)</span>
+      </div>
+      <div class="arch-layer">
+        <span class="arch-layer-label">规范化层</span>
+        <span class="arch-layer-content">utils/messages.ts &rarr; normalizeMessagesForAPI()</span>
+      </div>
+      <div class="arch-layer">
+        <span class="arch-layer-label">API 层</span>
+        <span class="arch-layer-content">services/api/claude.ts &rarr; queryModel() / queryModelWithStreaming()</span>
+      </div>
+      <div class="arch-layer">
+        <span class="arch-layer-label">客户端层</span>
+        <span class="arch-layer-content">services/api/client.ts &rarr; getAnthropicClient() (@anthropic-ai/sdk)</span>
+      </div>
+      <div class="arch-layer">
+        <span class="arch-layer-label">可靠性层</span>
+        <span class="arch-layer-content">services/api/withRetry.ts &rarr; withRetry() / CannotRetryError</span>
+      </div>
+      <div class="arch-layer">
+        <span class="arch-layer-label">成本追踪</span>
+        <span class="arch-layer-content">cost-tracker.ts + utils/modelCost.ts + utils/tokens.ts</span>
+      </div>
+    </div>
+  </div>
+
+  <p>整条链路中，<code>query.ts</code> 中的 <code>queryLoop</code> 是外层 while(true) 循环，负责工具调用的多轮迭代；而 <code>claude.ts</code> 中的 <code>queryModel</code> 则负责单次 API 请求的构建、发送与流式解析。两者通过 AsyncGenerator 协议连接，形成了可中断、可恢复的消息流。</p>
+</section>
+
+<!-- =========================================== S2 =========================================== -->
+<section class="section" id="s2">
+  <div class="section-num">02</div>
+  <h2>消息类型体系</h2>
+  <p>Claude Code 内部定义了丰富的消息类型层次，远超 Anthropic API 的简单 user/assistant 二元结构。这些类型全部定义在 <code>types/message.ts</code> 中（编译产物）。</p>
+
+  <h3>核心消息类型</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>类型</th><th>说明</th><th>API 映射</th></tr></thead>
+      <tbody>
+        <tr><td><code>UserMessage</code></td><td>用户输入、工具执行结果（tool_result）</td><td>role: "user"</td></tr>
+        <tr><td><code>AssistantMessage</code></td><td>模型响应，含 text、tool_use、thinking 等 content blocks</td><td>role: "assistant"</td></tr>
+        <tr><td><code>SystemMessage</code></td><td>系统信息：compact boundary、api_error、local_command、permission retry 等多种 subtype</td><td>被 normalizeMessagesForAPI 过滤</td></tr>
+        <tr><td><code>AttachmentMessage</code></td><td>CLAUDE.md、memory 文件、MCP 指令等上下文注入</td><td>重排序后合并到 user message</td></tr>
+        <tr><td><code>ProgressMessage</code></td><td>工具执行进度（UI 专用）</td><td>被过滤，不发送到 API</td></tr>
+        <tr><td><code>TombstoneMessage</code></td><td>标记被删除的消息（undo 操作）</td><td>被过滤</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>AssistantMessage 的丰富字段</h3>
+  <p>从源码 <code>baseCreateAssistantMessage</code> 函数可以看到，一条 AssistantMessage 不只是 API 的 BetaMessage，还携带了大量元数据：</p>
+<pre>
+{
+  type: 'assistant',
+  uuid: randomUUID(),           // 内部唯一标识
+  timestamp: ISO8601,
+  requestId: string,            // API 请求 ID，用于链式追踪
+  message: {                    // Anthropic SDK 的 BetaMessage
+    id, model, role, stop_reason,
+    usage: { input_tokens, output_tokens,
+             cache_creation_input_tokens,
+             cache_read_input_tokens,
+             server_tool_use, service_tier,
+             cache_creation: { ephemeral_1h, ephemeral_5m },
+             inference_geo, iterations, speed },
+    content: BetaContentBlock[]
+  },
+  isApiErrorMessage?: boolean,  // 是否为合成的错误消息
+  apiError?: string,            // 错误分类标记
+  errorDetails?: string,        // 原始 API 错误文本
+  isVirtual?: true,             // 仅 UI 展示，不发送到 API
+  costUSD?: number              // 该次请求的美元成本
+}
+</pre>
+
+  <h3>合成消息 (Synthetic Messages)</h3>
+  <p>系统使用 <code>SYNTHETIC_MODEL = '&lt;synthetic&gt;'</code> 标记非 API 返回的消息，包括：</p>
+  <ul>
+    <li><code>INTERRUPT_MESSAGE</code> -- 用户中断请求</li>
+    <li><code>CANCEL_MESSAGE</code> -- 用户取消工具操作</li>
+    <li><code>REJECT_MESSAGE</code> -- 用户拒绝工具执行</li>
+    <li><code>NO_RESPONSE_REQUESTED</code> -- 不需要 API 响应</li>
+  </ul>
+  <p>这些合成消息通过 <code>isSyntheticMessage()</code> 和 <code>isSyntheticApiErrorMessage()</code> 识别，在 token 统计时被排除。</p>
+
+  <h3>SDK 消息映射</h3>
+  <p><code>utils/messages/mappers.ts</code> 负责内部消息与 SDK 消息格式之间的双向转换：</p>
+  <ul>
+    <li><code>toSDKMessages()</code> -- 内部 Message[] 转 SDKMessage[]（发送给外部 SDK 消费者）</li>
+    <li><code>toInternalMessages()</code> -- SDK 消息转内部格式（接收外部消息）</li>
+    <li>转换过程中处理 compact_boundary 消息的元数据映射（camelCase <=> snake_case）</li>
+  </ul>
+</section>
+
+<!-- =========================================== S3 =========================================== -->
+<section class="section" id="s3">
+  <div class="section-num">03</div>
+  <h2>消息规范化流水线</h2>
+  <p><code>normalizeMessagesForAPI()</code> 是整个管道中最复杂的函数之一（位于 <code>utils/messages.ts</code>），负责将内部的混合消息数组转换为 API 可接受的 <code>[UserMessage | AssistantMessage][]</code> 格式。</p>
+
+  <h3>规范化步骤</h3>
+  <div class="flow-diagram">
+    <div class="flow-steps">
+      <div class="flow-step">reorderAttachments</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step">filterVirtual</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step primary">stripErrorMedia</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step">mergeMessages</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step primary">normalizeToolInput</div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-step">ensureToolResultPairing</div>
+    </div>
+  </div>
+
+  <ol>
+    <li><strong>Attachment 重排序</strong> -- <code>reorderAttachmentsForAPI()</code> 将 attachment 消息向上冒泡，直到遇到 tool_result 或 assistant 消息为止，确保上下文注入不打断工具调用链。</li>
+    <li><strong>过滤虚拟消息</strong> -- 移除 <code>isVirtual: true</code> 的消息（仅 UI 展示用途）。</li>
+    <li><strong>移除错误引发的媒体</strong> -- 如果前一次 API 调用因 PDF 太大或图片超限报错，从对应的 user message 中剥离相关 block。</li>
+    <li><strong>消息合并</strong> -- 相邻同角色消息合并（<code>mergeUserMessages</code>, <code>mergeAssistantMessages</code>），确保 user/assistant 严格交替。</li>
+    <li><strong>工具输入规范化</strong> -- <code>normalizeToolInputForAPI()</code> 确保 tool_use 的 input 是合法 JSON 对象（处理 streaming 拼接的字符串残留）。</li>
+    <li><strong>Tool Result 配对修复</strong> -- <code>ensureToolResultPairing()</code> 为孤立的 tool_use 补充合成的 error tool_result，剥离孤立的 tool_result。</li>
+  </ol>
+
+  <h3>post-normalization 处理</h3>
+  <p>在 <code>claude.ts</code> 中，规范化后的消息还会经历：</p>
+  <ul>
+    <li><strong>Tool Search 字段清理</strong> -- 当模型不支持 tool search 时，剥离 <code>tool_reference</code> 块和 <code>caller</code> 字段</li>
+    <li><strong>Advisor 块清理</strong> -- 无 advisor beta header 时剥离 advisor 相关 blocks</li>
+    <li><strong>媒体数量限制</strong> -- <code>stripExcessMediaItems()</code> 确保不超过 100 个媒体项（<code>API_MAX_MEDIA_PER_REQUEST</code>），超限时从最旧的开始移除</li>
+    <li><strong>签名块清理</strong> -- <code>stripSignatureBlocks()</code> 移除 thinking 块中的签名</li>
+  </ul>
+
+  <div class="callout">
+    <div class="callout-title">设计洞察</div>
+    <p>normalizeMessagesForAPI 被 ~20 个调用方使用（analytics、feedback、sharing 等），因此有意不接受 model 参数，保持接口简洁。模型相关的后处理（如 tool_reference 剥离）在调用方侧完成。</p>
+  </div>
+</section>
+
+<!-- =========================================== S4 =========================================== -->
+<section class="section" id="s4">
+  <div class="section-num">04</div>
+  <h2>API 调用层封装</h2>
+  <p><code>services/api/claude.ts</code> 是 API 通信的核心，包含 ~2500 行代码，封装了从消息构建到流式解析的完整逻辑。</p>
+
+  <h3>调用入口</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>函数</th><th>用途</th><th>返回类型</th></tr></thead>
+      <tbody>
+        <tr><td><code>queryModelWithStreaming()</code></td><td>主要入口 -- 流式返回</td><td><code>AsyncGenerator&lt;StreamEvent | AssistantMessage&gt;</code></td></tr>
+        <tr><td><code>queryModelWithoutStreaming()</code></td><td>非流式降级</td><td><code>Promise&lt;AssistantMessage&gt;</code></td></tr>
+        <tr><td><code>queryModel()</code></td><td>内部实现 -- 构建参数、发送请求、解析流</td><td><code>AsyncGenerator</code></td></tr>
+        <tr><td><code>executeNonStreamingRequest()</code></td><td>流式失败后的非流式 fallback</td><td><code>AsyncGenerator&lt;SystemAPIErrorMessage, BetaMessage&gt;</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>请求参数构建 -- paramsFromContext</h3>
+  <p>核心的 <code>paramsFromContext(retryContext)</code> 闭包在每次重试时被调用，动态构建完整的 API 请求参数：</p>
+
+<pre>
+{
+  model: normalizeModelStringForAPI(options.model),
+  messages: addCacheBreakpoints(messagesForAPI, ...),
+  system: buildSystemPromptBlocks(systemPrompt, ...),
+  tools: allTools,
+  tool_choice: options.toolChoice,
+  betas: betasParams,           // 动态累加的 beta headers
+  metadata: getAPIMetadata(),   // user_id, session_id, device_id
+  max_tokens: maxOutputTokens,
+  thinking: { type: 'adaptive' } | { type: 'enabled', budget_tokens },
+  temperature: 1,               // thinking 启用时强制为 1
+  context_management: {...},    // API 端上下文管理策略
+  output_config: {
+    effort: 'high' | 'medium' | 'low',
+    task_budget: { type: 'tokens', total, remaining },
+    format: BetaJSONOutputFormat  // structured outputs
+  },
+  speed: 'fast',                // fast mode
+  stream: true
+}
+</pre>
+
+  <h3>Beta Headers 动态管理</h3>
+  <p>Claude Code 使用 "粘性锁存 (sticky-on latch)" 策略管理动态 beta headers，避免会话中途切换导致 prompt cache 失效：</p>
+  <ul>
+    <li><code>afkHeaderLatched</code> -- AFK 模式 beta，首次激活后保持整个会话</li>
+    <li><code>fastModeHeaderLatched</code> -- 快速模式 beta，同上</li>
+    <li><code>cacheEditingHeaderLatched</code> -- 缓存编辑 beta，同上</li>
+    <li><code>thinkingClearLatched</code> -- 思维清除，1h 缓存 TTL 过期后触发</li>
+  </ul>
+
+  <div class="callout">
+    <div class="callout-title">关键设计</div>
+    <p>这些 latch 在 <code>/clear</code> 和 <code>/compact</code> 时被 <code>clearBetaHeaderLatches()</code> 重置。切换不当会浪费 50-70K tokens 的 prompt cache。</p>
+  </div>
+
+  <h3>Anthropic SDK 客户端</h3>
+  <p><code>services/api/client.ts</code> 中的 <code>getAnthropicClient()</code> 支持四种 Provider：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Provider</th><th>认证方式</th><th>环境变量</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag tag-orange">firstParty</span> Anthropic API</td><td>API Key / OAuth</td><td>ANTHROPIC_API_KEY</td></tr>
+        <tr><td><span class="tag tag-green">bedrock</span> AWS Bedrock</td><td>AWS Credentials</td><td>CLAUDE_CODE_USE_BEDROCK</td></tr>
+        <tr><td><span class="tag tag-green">vertex</span> GCP Vertex</td><td>Google Auth</td><td>CLAUDE_CODE_USE_VERTEX</td></tr>
+        <tr><td><span class="tag tag-green">foundry</span> Azure</td><td>API Key / Azure AD</td><td>ANTHROPIC_FOUNDRY_RESOURCE</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- =========================================== S5 =========================================== -->
+<section class="section" id="s5">
+  <div class="section-num">05</div>
+  <h2>Prompt Caching 策略</h2>
+  <p>Prompt Caching 是 Claude Code 成本控制的核心机制。系统在多个层面精心设计了缓存策略，确保多轮对话中的重复内容不被重复计费。</p>
+
+  <h3>Cache Control 注入</h3>
+  <p><code>getCacheControl()</code> 函数根据上下文动态决定缓存策略：</p>
+<pre>
+function getCacheControl({ scope, querySource }) {
+  return {
+    type: 'ephemeral',
+    ...(should1hCacheTTL(querySource) && { ttl: '1h' }),
+    ...(scope === 'global' && { scope }),  // 全局缓存范围
+  }
+}
+</pre>
+
+  <h3>缓存断点位置 (addCacheBreakpoints)</h3>
+  <p>系统在消息数组中策略性地放置 <code>cache_control</code> 标记：</p>
+  <ul>
+    <li><strong>User Message 尾部</strong> -- 每个 user message 的最后一个 content block 添加 cache_control</li>
+    <li><strong>Assistant Message 尾部</strong> -- 类似，但排除 thinking 和 redacted_thinking blocks</li>
+    <li><strong>System Prompt</strong> -- 构建 system prompt blocks 时添加</li>
+    <li><strong>Tool Schemas</strong> -- 当使用全局缓存范围时，在工具定义上添加 scope: 'global'</li>
+  </ul>
+
+  <h3>1 小时 TTL 策略</h3>
+  <p><code>should1hCacheTTL()</code> 决定是否使用 1 小时 TTL（默认 5 分钟），条件：</p>
+  <ol>
+    <li>用户类型是 <code>ant</code>（内部员工）或 Claude AI 订阅用户且未使用超量</li>
+    <li>查询来源匹配 GrowthBook 配置的 allowlist（如 <code>repl_main_thread*</code>, <code>sdk</code>）</li>
+    <li>Bedrock 3P 用户可通过 <code>ENABLE_PROMPT_CACHING_1H_BEDROCK</code> 环境变量启用</li>
+  </ol>
+
+  <div class="card">
+    <div class="card-header"><span class="icon">&#9888;</span> 会话稳定性保护</div>
+    <p>缓存资格在会话启动时 <strong>锁存</strong>，防止中途 GrowthBook 更新或超量状态变化导致 TTL 翻转——每次翻转浪费 ~20K tokens。</p>
+    <ul>
+      <li><code>setPromptCache1hEligible()</code> -- 锁存用户资格</li>
+      <li><code>setPromptCache1hAllowlist()</code> -- 锁存 allowlist 配置</li>
+    </ul>
+  </div>
+
+  <h3>Prompt Cache Break 检测</h3>
+  <p><code>promptCacheBreakDetection.ts</code> 实现了详尽的缓存击穿检测——记录每次请求的 system prompt hash、tool schemas hash、model、betas 等状态，在下次请求时对比变化。它甚至能精确到具体是哪个 tool 的 schema 发生了变化（77% 的 tool break 由此引起）。</p>
+
+  <h3>Cached Microcompact (Cache Editing)</h3>
+  <p>进阶特性：通过 API 的 <code>cache_edits</code> 机制，在不破坏缓存的前提下对已缓存的消息做增量修改（如删除旧工具结果以压缩上下文），避免完整的 compact 操作导致缓存全部失效。</p>
+</section>
+
+<!-- =========================================== S6 =========================================== -->
+<section class="section" id="s6">
+  <div class="section-num">06</div>
+  <h2>流式响应处理</h2>
+  <p>Claude Code 使用 Anthropic SDK 的原始流（Raw Stream）而非高级 BetaMessageStream 封装，以避免 O(n^2) 的 partial JSON 解析开销。整个流处理引擎在 <code>claude.ts</code> 的 <code>queryModel</code> 函数内实现。</p>
+
+  <h3>SSE 事件类型与处理</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>事件类型</th><th>处理逻辑</th><th>关键操作</th></tr></thead>
+      <tbody>
+        <tr><td><code>message_start</code></td><td>初始化 partialMessage</td><td>记录 TTFB 时间、初始化 usage、提取 research 元数据</td></tr>
+        <tr><td><code>content_block_start</code></td><td>在 contentBlocks[index] 中创建新块</td><td>根据类型（text/tool_use/thinking/server_tool_use）初始化不同结构</td></tr>
+        <tr><td><code>content_block_delta</code></td><td>增量拼接内容</td><td>text_delta 拼接 text，input_json_delta 拼接 JSON 字符串，thinking_delta 拼接思维链</td></tr>
+        <tr><td><code>content_block_stop</code></td><td>完成单个 content block</td><td>创建 AssistantMessage 并 yield，解析 tool_use 的 JSON input</td></tr>
+        <tr><td><code>message_delta</code></td><td>更新 stop_reason 和 usage</td><td>累加 output_tokens、记录 response headers</td></tr>
+        <tr><td><code>message_stop</code></td><td>标记流结束</td><td>触发 cost 计算、telemetry 上报</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>content_block_stop 的核心处理</h3>
+<pre>
+case 'content_block_stop': {
+  const m: AssistantMessage = {
+    message: {
+      ...partialMessage,
+      content: normalizeContentFromAPI(
+        [contentBlock],   // 单块规范化
+        tools,
+        options.agentId,
+      ),
+    },
+    type: 'assistant',
+    uuid: randomUUID(),
+    timestamp: new Date().toISOString(),
+    costUSD,
+  }
+  newMessages.push(m)
+  yield m                   // 实时 yield 给调用方
+}
+</pre>
+  <p>注意每个 content block 完成时就立即 yield 一个 AssistantMessage，而不是等到整个消息完成。这使得 UI 可以即时展示工具调用结果。</p>
+
+  <h3>流式超时与 Watchdog</h3>
+  <p>系统实现了双层流超时保护：</p>
+  <ul>
+    <li><strong>Idle Watchdog</strong> -- 可配置的空闲超时（默认 90s），如果没有任何 chunk 到达就强制终止流。通过 <code>CLAUDE_STREAM_IDLE_TIMEOUT_MS</code> 和 <code>CLAUDE_ENABLE_STREAM_WATCHDOG</code> 控制。</li>
+    <li><strong>Stall Detection</strong> -- 每个 chunk 到达时检查距上个 chunk 的间隔，超过 30s 记录为 stall（但不终止）。</li>
+  </ul>
+
+  <h3>非流式 Fallback</h3>
+  <p>当流式请求遇到 529 (Overloaded) 错误时，系统会降级为非流式请求（<code>executeNonStreamingRequest</code>），超时设为 300s（远程会话 120s）。非流式模式限制 max_tokens 以控制延迟。</p>
+</section>
+
+<!-- =========================================== S7 =========================================== -->
+<section class="section" id="s7">
+  <div class="section-num">07</div>
+  <h2>Token 计费与成本追踪</h2>
+  <p>Claude Code 实现了从 per-request 到 per-session 的完整成本追踪体系，精确到每个模型和每种 token 类型。</p>
+
+  <h3>Usage 数据结构</h3>
+<pre>
+Usage = {
+  input_tokens: number,
+  output_tokens: number,
+  cache_creation_input_tokens: number,   // 新创建的缓存
+  cache_read_input_tokens: number,       // 命中缓存
+  server_tool_use: {
+    web_search_requests: number,
+    web_fetch_requests: number
+  },
+  service_tier: string | null,
+  cache_creation: {
+    ephemeral_1h_input_tokens: number,
+    ephemeral_5m_input_tokens: number
+  },
+  inference_geo: string | null,
+  iterations: Array&lt;{ input_tokens, output_tokens }&gt; | null,
+  speed: 'fast' | null
+}
+</pre>
+
+  <h3>成本计算模型</h3>
+  <p><code>utils/modelCost.ts</code> 定义了不同模型的定价层级：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模型</th><th>Input ($/Mtok)</th><th>Output ($/Mtok)</th><th>Cache Write</th><th>Cache Read</th></tr></thead>
+      <tbody>
+        <tr><td>Opus 4/4.1</td><td>$15</td><td>$75</td><td>$18.75</td><td>$1.50</td></tr>
+        <tr><td>Opus 4.5/4.6</td><td>$5</td><td>$25</td><td>$6.25</td><td>$0.50</td></tr>
+        <tr><td>Opus 4.6 (fast)</td><td>$30</td><td>$150</td><td>$37.50</td><td>$3.00</td></tr>
+        <tr><td>Sonnet 系列</td><td>$3</td><td>$15</td><td>$3.75</td><td>$0.30</td></tr>
+        <tr><td>Haiku 3.5</td><td>$0.80</td><td>$4</td><td>$1.00</td><td>$0.08</td></tr>
+        <tr><td>Haiku 4.5</td><td>$1</td><td>$5</td><td>$1.25</td><td>$0.10</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>累积追踪链路</h3>
+  <p><code>addToTotalSessionCost()</code> 是成本追踪的核心函数，每次 API 响应完成后调用：</p>
+  <ol>
+    <li>按模型累加 token 统计（<code>addToTotalModelUsage</code>）</li>
+    <li>更新全局成本状态（<code>addToTotalCostState</code>）</li>
+    <li>写入 OTel counter（<code>getCostCounter().add()</code>）</li>
+    <li>分别计数 input/output/cacheRead/cacheCreation tokens（<code>getTokenCounter().add()</code>）</li>
+    <li>递归处理 Advisor 子调用的费用</li>
+  </ol>
+
+  <h3>会话成本持久化</h3>
+  <p><code>cost-tracker.ts</code> 将成本状态持久化到项目配置中（<code>saveCurrentSessionCosts</code>），支持 <code>/resume</code> 时恢复（<code>restoreCostStateForSession</code>）。存储字段包括 totalCostUSD、totalAPIDuration、totalLinesAdded/Removed、各模型的详细 usage。</p>
+
+  <h3>Token 统计函数</h3>
+  <ul>
+    <li><code>getTokenUsage(message)</code> -- 从 AssistantMessage 中提取 Usage（排除合成消息）</li>
+    <li><code>getTokenCountFromUsage(usage)</code> -- input + cache_creation + cache_read + output</li>
+    <li><code>tokenCountFromLastAPIResponse(messages)</code> -- 从最近一条 API 响应获取 context 大小</li>
+    <li><code>finalContextTokensFromLastResponse(messages)</code> -- 使用 usage.iterations 的最后一条（用于 task_budget.remaining 计算）</li>
+  </ul>
+</section>
+
+<!-- =========================================== S8 =========================================== -->
+<section class="section" id="s8">
+  <div class="section-num">08</div>
+  <h2>重试与错误处理</h2>
+  <p><code>services/api/withRetry.ts</code> 实现了一个复杂的重试引擎，它不只是简单的指数退避，而是一个考虑了 fast mode fallback、429/529 差异化处理、持久模式无限重试等多维度的决策系统。</p>
+
+  <h3>核心类型</h3>
+<pre>
+export async function* withRetry&lt;T&gt;(
+  getClient: () => Promise&lt;Anthropic&gt;,
+  operation: (client, attempt, context: RetryContext) => Promise&lt;T&gt;,
+  options: RetryOptions,
+): AsyncGenerator&lt;SystemAPIErrorMessage, T&gt;
+</pre>
+  <p>关键：withRetry 是一个 <strong>AsyncGenerator</strong>，在等待重试期间 yield SystemAPIErrorMessage 给 UI 层展示。</p>
+
+  <h3>重试决策矩阵</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>错误类型</th><th>HTTP Status</th><th>处理策略</th></tr></thead>
+      <tbody>
+        <tr><td>Rate Limit</td><td>429</td><td>订阅用户不重试；企业/PAYG 用户重试；Fast Mode 触发 cooldown</td></tr>
+        <tr><td>Overloaded</td><td>529</td><td>前台查询最多 3 次后 fallback 到 fallback model；背景查询立即放弃</td></tr>
+        <tr><td>Auth Error</td><td>401</td><td>清除 API key 缓存、刷新 OAuth token 后重试</td></tr>
+        <tr><td>Token Revoked</td><td>403</td><td>OAuth token 吊销，强制刷新后重试</td></tr>
+        <tr><td>Context Overflow</td><td>400</td><td>解析错误信息中的 token 数，动态减小 max_tokens 后重试</td></tr>
+        <tr><td>Timeout</td><td>408</td><td>正常重试</td></tr>
+        <tr><td>Connection Reset</td><td>ECONNRESET</td><td>禁用 Keep-Alive、重建连接后重试</td></tr>
+        <tr><td>Server Error</td><td>500+</td><td>正常重试</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>退避策略</h3>
+<pre>
+// 指数退避 + 抖动
+baseDelay = min(BASE_DELAY_MS * 2^(attempt-1), maxDelayMs)
+jitter    = random() * 0.25 * baseDelay
+delayMs   = baseDelay + jitter
+
+// 常量
+BASE_DELAY_MS = 500
+DEFAULT_MAX_RETRIES = 10
+MAX_529_RETRIES = 3
+</pre>
+
+  <h3>Fast Mode Fallback</h3>
+  <p>当 fast mode 请求遇到 429/529 时，系统根据 retry-after 头的长短做分叉决策：</p>
+  <ul>
+    <li><strong>短延迟 (&lt;20s)</strong> -- 保持 fast mode 等待重试（保护 prompt cache，同一模型名）</li>
+    <li><strong>长延迟 (&gt;20s 或未知)</strong> -- 进入 cooldown 切换到标准速度（最少 10 分钟）</li>
+    <li><strong>超量不可用</strong> -- 检查 <code>anthropic-ratelimit-unified-overage-disabled-reason</code> header，永久禁用 fast mode</li>
+  </ul>
+
+  <h3>529 Fallback Model</h3>
+  <p>连续 3 次 529 错误后，非订阅用户触发 <code>FallbackTriggeredError</code>，外层 query loop 捕获后切换到 fallback model（通常从 Opus 降级到 Sonnet）。</p>
+
+  <h3>持久重试模式</h3>
+  <p>通过 <code>CLAUDE_CODE_UNATTENDED_RETRY</code> 环境变量启用（内部功能），针对无人值守的远程会话：</p>
+  <ul>
+    <li>429/529 <strong>无限重试</strong>，退避上限 5 分钟</li>
+    <li>尊重 <code>anthropic-ratelimit-unified-reset</code> header 等待到重置时间</li>
+    <li>长等待时每 30 秒 yield 一个心跳消息，防止宿主环境标记会话为空闲</li>
+    <li>重置上限 6 小时</li>
+  </ul>
+
+  <h3>前台 vs 后台查询差异</h3>
+  <p>通过 <code>FOREGROUND_529_RETRY_SOURCES</code> 集合区分——只有用户正在等待的查询（repl_main_thread, agent, compact, side_question, auto_mode 等）才重试 529。后台任务（summary, title, suggestion, classifier）立即放弃，避免容量雪崩时的 3-10x 重试放大。</p>
+</section>
+
+<!-- =========================================== S9 =========================================== -->
+<section class="section" id="s9">
+  <div class="section-num">09</div>
+  <h2>消息持久化与恢复</h2>
+  <p>Claude Code 的消息不是一次性的——它们被持久化到磁盘，支持 <code>/resume</code> 恢复会话、<code>/compact</code> 压缩上下文、以及跨设备的远程会话同步。</p>
+
+  <h3>持久化存储</h3>
+  <p><code>utils/sessionStorage.ts</code> 负责会话的序列化与反序列化。每条消息以 <code>SerializedMessage</code> 格式存储，保留完整的内部类型信息。</p>
+
+  <h3>会话恢复流程 (conversationRecovery.ts)</h3>
+  <ol>
+    <li>加载会话日志文件（<code>loadTranscriptFile</code> / <code>loadFullLog</code>）</li>
+    <li>构建会话链（<code>buildConversationChain</code>），处理多分支和 compact 边界</li>
+    <li>一致性校验（<code>checkResumeConsistency</code>）</li>
+    <li>迁移旧版 attachment 类型（<code>migrateLegacyAttachmentTypes</code>）</li>
+    <li>过滤孤立的 thinking-only 消息（<code>filterOrphanedThinkingOnlyMessages</code>）</li>
+    <li>过滤未解决的 tool_use（<code>filterUnresolvedToolUses</code>）</li>
+    <li>恢复 file history 快照和 plan 状态</li>
+  </ol>
+
+  <h3>Compact 机制</h3>
+  <p><code>services/compact/</code> 目录实现了多层压缩策略：</p>
+  <ul>
+    <li><strong>Auto Compact</strong> -- 当 token 数接近 context window 时自动触发（阈值 = 有效窗口 - 13K buffer）</li>
+    <li><strong>Reactive Compact</strong> -- prompt_too_long 错误后的响应式压缩</li>
+    <li><strong>Session Memory Compact</strong> -- 提取会话记忆到独立存储</li>
+    <li><strong>Snip Compact</strong> -- 历史记录裁剪</li>
+    <li><strong>Cached Microcompact</strong> -- 不破坏 prompt cache 的增量修改</li>
+  </ul>
+  <p>Compact 后在消息数组中插入 <code>SystemCompactBoundaryMessage</code>，<code>getMessagesAfterCompactBoundary()</code> 确保只有边界之后的消息被发送到 API。</p>
+
+  <h3>Tool Result 存储优化</h3>
+  <p><code>utils/toolResultStorage.ts</code> 实现了 per-message 的工具结果大小预算（<code>applyToolResultBudget</code>）。超大的工具输出会被替换为压缩摘要，替换记录被持久化以支持恢复。</p>
+
+  <h3>SDK 消息同步</h3>
+  <p>对于远程会话（Claude Desktop、mobile apps），<code>utils/messages/mappers.ts</code> 负责内部消息与 SDK 格式的双向转换。特别处理：</p>
+  <ul>
+    <li>local_command 输出转换为合成的 assistant message（Android 和 session-ingress 不支持 local_command_output 子类型）</li>
+    <li>Plan 内容注入到 ExitPlanModeV2 的 tool_input 中（V2 工具从文件读取 plan，但 SDK 消费者期望 tool_input.plan 存在）</li>
+    <li>Rate limit 信息映射（<code>toSDKRateLimitInfo</code>）</li>
+  </ul>
+</section>
+
+<!-- =========================================== S10 =========================================== -->
+<section class="section" id="s10">
+  <div class="section-num">10</div>
+  <h2>设计亮点与工程启示</h2>
+  <p>从 Claude Code 的消息管道中可以提炼出多项值得借鉴的工程实践。</p>
+
+  <h3>1. AsyncGenerator 作为贯穿协议</h3>
+  <p>从 <code>queryLoop</code> 到 <code>queryModel</code> 再到 <code>withRetry</code>，整条链路使用 AsyncGenerator 连接。这不是偶然选择——AsyncGenerator 天然支持：</p>
+  <ul>
+    <li>流式数据传递（yield 事件逐个送达）</li>
+    <li>背压控制（消费者暂停时生产者自动阻塞）</li>
+    <li>错误冒泡（throw 会穿透 yield* 链）</li>
+    <li>取消传播（.return() 沿链路关闭所有 generator）</li>
+  </ul>
+
+  <h3>2. 会话级锁存防止缓存抖动</h3>
+  <p>多处使用 "一旦激活就不关闭" 的 latch 策略（beta headers、1h TTL 资格、allowlist）。这种 "宁可多发一个 header 也不翻转" 的思路，源于一个量化指标：每次翻转浪费 20-70K tokens 的 prompt cache。</p>
+
+  <h3>3. 分层错误处理</h3>
+  <div class="card">
+    <div class="card-header"><span class="icon">&#128736;</span> 三层错误处理</div>
+    <ul>
+      <li><strong>withRetry 层</strong> -- 网络级重试、auth 刷新、rate limit 退避</li>
+      <li><strong>queryModel 层</strong> -- 流式错误降级、context overflow 调整、fallback model</li>
+      <li><strong>query loop 层</strong> -- tool 执行错误处理、auto compact、reactive compact</li>
+    </ul>
+  </div>
+
+  <h3>4. 前台/后台查询差异化</h3>
+  <p>通过 <code>QuerySource</code> 标记每个查询的来源，在重试策略、缓存策略、telemetry 粒度上做精细区分。背景查询的重试被严格限制，避免容量雪崩时的放大效应。</p>
+
+  <h3>5. 防御性消息修复</h3>
+  <p>normalizeMessagesForAPI 不信任输入数据的完整性。它会：</p>
+  <ul>
+    <li>修复 tool_use/tool_result 的配对缺失（生产事故后的安全网）</li>
+    <li>去重同 ID 的 tool_use blocks（CC-1212 bug 的修复）</li>
+    <li>为空白 assistant message 添加占位符（防止 API 收到以 assistant 开头的消息序列）</li>
+    <li>跨消息的 tool_use ID 去重（orphan handler 重推导致的重复）</li>
+  </ul>
+
+  <h3>6. 指纹追踪与归因</h3>
+  <p><code>computeFingerprintFromMessages()</code> 从首个 user message 计算指纹，注入到 system prompt 的 attribution header 中。每条 assistant message 的 <code>requestId</code> 形成链式追踪，支持跨请求的分析。</p>
+
+  <h3>7. 成本意识的工程文化</h3>
+  <p>从代码注释中可以看到量化思维无处不在：</p>
+  <ul>
+    <li>"每次 TTL 翻转浪费 ~20K tokens"</li>
+    <li>"BQ 2026-03-10: 1,279 sessions had 50+ consecutive failures"</li>
+    <li>"77% of tool breaks" 由 schema 变化引起</li>
+    <li>"3-10x gateway amplification" 量化了背景重试的风险</li>
+  </ul>
+  <p>这些数据直接驱动了工程决策，而不是凭直觉。</p>
+</section>
+
+</main>
+
+<footer class="footer">
+  <p>Research generated from <a href="https://github.com/anthropics/claude-code" target="_blank">claude-code</a> source code analysis.</p>
+  <p>Claude Code Message Pipeline -- Full Stack Analysis / 2026-03-31</p>
+</footer>
+
+<button class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
+
+<script>
+// Theme toggle
+function toggleTheme(){
+  const html=document.documentElement;
+  const isDark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',isDark?'light':'dark');
+  document.getElementById('theme-icon').innerHTML=isDark?'&#9728;':'&#9790;';
+  localStorage.setItem('theme',isDark?'light':'dark');
+}
+(function(){
+  const saved=localStorage.getItem('theme');
+  if(saved){
+    document.documentElement.setAttribute('data-theme',saved);
+    document.getElementById('theme-icon').innerHTML=saved==='dark'?'&#9790;':'&#9728;';
+  }
+})();
+
+// Scroll animations
+const observer=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:0.08});
+document.querySelectorAll('.section').forEach(s=>observer.observe(s));
+
+// Back to top
+const backTop=document.getElementById('backTop');
+window.addEventListener('scroll',()=>{
+  backTop.classList.toggle('visible',window.scrollY>600);
+});
+</script>
+</body>
+</html>

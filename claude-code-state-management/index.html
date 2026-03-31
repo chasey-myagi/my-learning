@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 状态管理：不可变状态树与响应式架构</title>
+<style>
+:root{--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03)}
+[data-theme="dark"]{--bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;--fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;--accent:#fb923c;--accent-2:#fdba74;--green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);--border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);--quote-bg:rgba(255,255,255,0.03)}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px;scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:var(--bg);color:var(--fg);line-height:1.7;transition:background .3s,color .3s}
+::selection{background:var(--accent);color:#fff}
+
+/* ===== Theme Toggle ===== */
+.theme-toggle{position:fixed;top:1.25rem;right:1.25rem;z-index:100;background:var(--bg-alt);border:1px solid var(--border);border-radius:999px;padding:.45rem .75rem;cursor:pointer;font-size:.82rem;color:var(--fg-2);transition:all .2s;display:flex;align-items:center;gap:.4rem;backdrop-filter:blur(8px)}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.theme-toggle svg{width:14px;height:14px;fill:currentColor}
+
+/* ===== TOC Sidebar ===== */
+.toc-toggle{position:fixed;top:1.25rem;left:1.25rem;z-index:101;background:var(--bg-alt);border:1px solid var(--border);border-radius:999px;padding:.45rem .75rem;cursor:pointer;font-size:.82rem;color:var(--fg-2);transition:all .2s;display:flex;align-items:center;gap:.4rem;backdrop-filter:blur(8px)}
+.toc-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.toc-sidebar{position:fixed;top:0;left:0;width:280px;height:100vh;background:var(--bg);border-right:1px solid var(--border);z-index:100;transform:translateX(-100%);transition:transform .3s ease;overflow-y:auto;padding:3.5rem 1.25rem 2rem}
+.toc-sidebar.open{transform:translateX(0)}
+.toc-sidebar nav a{display:block;padding:.35rem 0;color:var(--fg-3);text-decoration:none;font-size:.82rem;transition:color .15s;border-left:2px solid transparent;padding-left:.75rem}
+.toc-sidebar nav a:hover,.toc-sidebar nav a.active{color:var(--accent);border-left-color:var(--accent)}
+.toc-sidebar nav a.depth-2{padding-left:1.5rem;font-size:.78rem}
+.toc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-overlay.open{opacity:1;pointer-events:auto}
+
+/* ===== Layout ===== */
+.container{max-width:52rem;margin:0 auto;padding:4rem 1.5rem 6rem}
+@media(max-width:640px){.container{padding:2rem 1rem 4rem}}
+
+/* ===== Hero ===== */
+.hero{text-align:center;margin-bottom:4rem;padding:3rem 0 2rem}
+.hero-badge{display:inline-flex;align-items:center;gap:.4rem;background:var(--tag-bg);color:var(--tag-fg);font-size:.75rem;font-weight:600;padding:.3rem .75rem;border-radius:999px;margin-bottom:1.25rem;letter-spacing:.03em;text-transform:uppercase}
+.hero h1{font-size:2.25rem;font-weight:800;line-height:1.2;letter-spacing:-.03em;margin-bottom:.75rem}
+@media(max-width:640px){.hero h1{font-size:1.6rem}}
+.hero .subtitle{font-size:1.05rem;color:var(--fg-2);max-width:36rem;margin:0 auto;line-height:1.65}
+.hero-meta{display:flex;justify-content:center;gap:1.5rem;margin-top:1.5rem;font-size:.8rem;color:var(--fg-3)}
+.hero-meta span{display:flex;align-items:center;gap:.3rem}
+
+/* ===== Sections ===== */
+section{margin-bottom:3.5rem}
+section h2{font-size:1.45rem;font-weight:700;letter-spacing:-.02em;margin-bottom:1.25rem;padding-bottom:.5rem;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:.6rem}
+section h2 .num{display:inline-flex;align-items:center;justify-content:center;width:1.75rem;height:1.75rem;background:var(--accent);color:#fff;font-size:.75rem;font-weight:700;border-radius:6px;flex-shrink:0}
+section h3{font-size:1.1rem;font-weight:600;margin:1.5rem 0 .75rem;color:var(--fg)}
+section h4{font-size:.95rem;font-weight:600;margin:1rem 0 .5rem;color:var(--fg-2)}
+p{margin-bottom:1rem;color:var(--fg-2)}
+p+p{margin-top:.5rem}
+strong{color:var(--fg);font-weight:600}
+
+/* ===== Code ===== */
+code{font-family:'JetBrains Mono','Fira Code','SF Mono',Consolas,monospace;font-size:.85em;background:var(--tag-bg);color:var(--tag-fg);padding:.15em .4em;border-radius:4px}
+pre{background:var(--bg-code);color:#e7e5e4;padding:1.25rem 1.5rem;border-radius:10px;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.82rem;line-height:1.7;border:1px solid rgba(255,255,255,.06)}
+pre code{background:none;color:inherit;padding:0;font-size:inherit}
+.code-label{display:inline-block;background:var(--accent);color:#fff;font-size:.68rem;font-weight:600;padding:.15rem .55rem;border-radius:5px 5px 0 0;margin-bottom:-1px;position:relative;z-index:1;letter-spacing:.03em}
+
+/* ===== Callouts ===== */
+.callout{padding:1rem 1.25rem;border-radius:8px;margin:1.25rem 0;border-left:3px solid}
+.callout.insight{background:var(--green-bg);border-color:var(--green)}
+.callout.warning{background:var(--red-bg);border-color:#ef4444}
+.callout.note{background:var(--quote-bg);border-color:var(--border)}
+.callout-title{font-weight:600;font-size:.85rem;margin-bottom:.35rem;display:flex;align-items:center;gap:.4rem}
+.callout.insight .callout-title{color:var(--green)}
+.callout.warning .callout-title{color:#ef4444}
+.callout p{margin-bottom:.4rem;font-size:.88rem}
+
+/* ===== Tags ===== */
+.tag{display:inline-block;background:var(--tag-bg);color:var(--tag-fg);font-size:.72rem;font-weight:600;padding:.2rem .55rem;border-radius:999px;margin-right:.3rem;letter-spacing:.02em}
+
+/* ===== Tables ===== */
+.table-wrap{overflow-x:auto;margin:1rem 0 1.5rem;border:1px solid var(--border);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:var(--bg-alt);font-weight:600;text-align:left;padding:.65rem .85rem;color:var(--fg);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:.6rem .85rem;border-bottom:1px solid var(--border);color:var(--fg-2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+
+/* ===== Arch Diagram ===== */
+.arch-diagram{background:var(--bg-alt);border:1px solid var(--border);border-radius:12px;padding:2rem 1.5rem;margin:1.5rem 0;text-align:center;overflow-x:auto}
+.arch-diagram pre{background:transparent;border:none;color:var(--fg);font-size:.78rem;line-height:1.6;text-align:left;display:inline-block;margin:0}
+.arch-diagram pre code{color:var(--fg)}
+
+/* ===== Flow List ===== */
+.flow-list{list-style:none;padding:0;margin:1rem 0}
+.flow-list li{position:relative;padding:.65rem 0 .65rem 2.5rem;border-left:2px solid var(--border);margin-left:1rem}
+.flow-list li::before{content:attr(data-step);position:absolute;left:-1rem;top:.55rem;width:2rem;height:2rem;background:var(--accent);color:#fff;font-size:.72rem;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.flow-list li:last-child{border-left-color:transparent}
+
+/* ===== Pill List ===== */
+ul.pill-list{list-style:none;display:flex;flex-wrap:wrap;gap:.5rem;padding:0;margin:1rem 0}
+ul.pill-list li{background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:.45rem .85rem;font-size:.82rem;color:var(--fg-2)}
+ul.pill-list li strong{color:var(--fg)}
+
+/* ===== Unordered list default ===== */
+section ul:not(.pill-list):not(.flow-list){padding-left:1.5rem;margin:.75rem 0 1.25rem}
+section ul:not(.pill-list):not(.flow-list) li{margin-bottom:.4rem;color:var(--fg-2);font-size:.92rem}
+section ol{padding-left:1.5rem;margin:.75rem 0 1.25rem}
+section ol li{margin-bottom:.4rem;color:var(--fg-2);font-size:.92rem}
+
+/* ===== Back to top ===== */
+.back-top{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--accent);color:#fff;border:none;border-radius:50%;width:2.5rem;height:2.5rem;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:50}
+.back-top.visible{opacity:1;pointer-events:auto}
+.back-top:hover{transform:scale(1.1)}
+
+/* ===== Footer ===== */
+footer{text-align:center;padding:2rem 0;border-top:1px solid var(--border);margin-top:4rem;color:var(--fg-3);font-size:.8rem}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--fg-3)}
+
+/* ===== Responsive ===== */
+@media(max-width:640px){
+  section h2{font-size:1.2rem}
+  pre{font-size:.75rem;padding:.85rem 1rem}
+  .hero-meta{flex-direction:column;align-items:center;gap:.5rem}
+}
+</style>
+</head>
+<body>
+<!-- Theme Toggle -->
+<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+  <svg viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+  <span>主题</span>
+</button>
+
+<!-- TOC Toggle -->
+<button class="toc-toggle" onclick="toggleToc()" aria-label="Toggle TOC">
+  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+  <span>目录</span>
+</button>
+
+<!-- TOC Sidebar -->
+<div class="toc-overlay" onclick="toggleToc()"></div>
+<aside class="toc-sidebar" id="tocSidebar">
+  <nav id="tocNav"></nav>
+</aside>
+
+<!-- Back to top -->
+<button class="back-top" id="backTop" onclick="window.scrollTo({top:0})">&#8593;</button>
+
+<div class="container">
+
+<!-- Hero -->
+<header class="hero">
+  <div class="hero-badge">Deep Dive / Source Code Analysis</div>
+  <h1>Claude Code 状态管理<br>不可变状态树与响应式架构</h1>
+  <p class="subtitle">深入 Claude Code CLI 源码，解析其自研的 Zustand 风格状态容器、DeepImmutable 类型守卫、选择器订阅机制与多层配置验证系统的设计哲学。</p>
+  <div class="hero-meta">
+    <span>2026-03-31</span>
+    <span>~20 min read</span>
+    <span>源码版本: latest</span>
+  </div>
+</header>
+
+<!-- ====== Section 1: Architecture Overview ====== -->
+<section id="s1">
+  <h2><span class="num">1</span>架构全景：状态管理的核心拓扑</h2>
+
+  <p>Claude Code 的状态管理并没有使用 Redux、MobX 或 Zustand 等第三方库，而是<strong>从零实现了一个仅 34 行的微型状态容器</strong>，搭配 React 18 的 <code>useSyncExternalStore</code> API 实现响应式绑定。整个架构可以用下面的拓扑图概括：</p>
+
+  <div class="arch-diagram">
+<pre><code>
+  ┌─────────────────────────────────────────────────────────────┐
+  │                    createStore&lt;AppState&gt;                     │
+  │  ┌────────────┐   ┌────────────┐   ┌────────────────────┐  │
+  │  │  getState() │   │  setState() │   │   subscribe()      │  │
+  │  │  → AppState │   │  (updater)  │   │   → unsubscribe    │  │
+  │  └────────────┘   └─────┬──────┘   └────────┬───────────┘  │
+  │                         │                    │              │
+  │              ┌──────────▼─────────┐          │              │
+  │              │  Object.is(prev,   │    listeners.forEach()  │
+  │              │    next) bailout   │          │              │
+  │              └──────────┬─────────┘          │              │
+  │                         │                    │              │
+  │              ┌──────────▼─────────┐          │              │
+  │              │  onChange callback  │◄─────────┘              │
+  │              │  (side effects)    │                         │
+  │              └────────────────────┘                         │
+  └─────────────────────────────────────────────────────────────┘
+                            │
+               ┌────────────┼────────────┐
+               ▼            ▼            ▼
+        ┌─────────┐  ┌──────────┐  ┌──────────────┐
+        │ React   │  │ onChange  │  │ Non-React    │
+        │ (hooks) │  │ AppState │  │ subscribers  │
+        └─────────┘  └──────────┘  └──────────────┘
+</code></pre>
+  </div>
+
+  <div class="callout insight">
+    <div class="callout-title">核心设计哲学</div>
+    <p>不依赖外部状态管理库，34 行代码实现完整的 Store 原语。用 TypeScript 的 <code>DeepImmutable</code> 泛型在编译期保证不可变性，运行时零开销。</p>
+  </div>
+</section>
+
+<!-- ====== Section 2: Store Implementation ====== -->
+<section id="s2">
+  <h2><span class="num">2</span>状态容器实现：34 行的极简 Store</h2>
+
+  <p>核心实现在 <code>src/state/store.ts</code>，仅导出两个类型和一个工厂函数：</p>
+
+  <div class="code-label">src/state/store.ts</div>
+<pre><code>type Listener = () =&gt; void
+type OnChange&lt;T&gt; = (args: { newState: T; oldState: T }) =&gt; void
+
+export type Store&lt;T&gt; = {
+  getState: () =&gt; T
+  setState: (updater: (prev: T) =&gt; T) =&gt; void
+  subscribe: (listener: Listener) =&gt; () =&gt; void
+}
+
+export function createStore&lt;T&gt;(
+  initialState: T,
+  onChange?: OnChange&lt;T&gt;,
+): Store&lt;T&gt; {
+  let state = initialState
+  const listeners = new Set&lt;Listener&gt;()
+
+  return {
+    getState: () =&gt; state,
+
+    setState: (updater: (prev: T) =&gt; T) =&gt; {
+      const prev = state
+      const next = updater(prev)
+      if (Object.is(next, prev)) return  // ← bailout 优化
+      state = next
+      onChange?.({ newState: next, oldState: prev })
+      for (const listener of listeners) listener()
+    },
+
+    subscribe: (listener: Listener) =&gt; {
+      listeners.add(listener)
+      return () =&gt; listeners.delete(listener)
+    },
+  }
+}</code></pre>
+
+  <h3>关键设计决策</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>特性</th><th>实现方式</th><th>对比 Zustand</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Bailout 机制</strong></td><td><code>Object.is(next, prev)</code> 引用相等跳过</td><td>相同</td></tr>
+        <tr><td><strong>更新方式</strong></td><td>仅 <code>updater function</code>，无直接赋值</td><td>Zustand 支持 partial 对象和 updater</td></tr>
+        <tr><td><strong>Side Effects</strong></td><td>内置 <code>onChange</code> 回调在状态更新后同步执行</td><td>需 <code>subscribe</code> 或中间件</td></tr>
+        <tr><td><strong>中间件</strong></td><td>无中间件系统</td><td>支持 immer / persist / devtools</td></tr>
+        <tr><td><strong>Selector</strong></td><td>在 React 侧通过 <code>useSyncExternalStore</code> 实现</td><td>内置 selector</td></tr>
+        <tr><td><strong>体积</strong></td><td>~34 行，0 依赖</td><td>~2KB gzipped</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout note">
+    <div class="callout-title">为什么不用 Zustand？</div>
+    <p>Claude Code 是一个 CLI 终端应用（基于 Ink/React），不需要 devtools、持久化中间件等 Web 场景特性。自研 34 行 Store 足够满足需求，还能精确控制 <code>onChange</code> 的执行时机——这对权限模式同步到远程 CCR 服务至关重要。</p>
+  </div>
+</section>
+
+<!-- ====== Section 3: AppState Structure ====== -->
+<section id="s3">
+  <h2><span class="num">3</span>AppState 完整结构：不可变状态树</h2>
+
+  <p>状态树定义在 <code>src/state/AppStateStore.ts</code>，使用 <code>DeepImmutable&lt;T&gt;</code> 包裹核心字段，并通过交叉类型 <code>&amp;</code> 混入包含函数类型的可变字段：</p>
+
+  <div class="code-label">类型签名骨架</div>
+<pre><code>export type AppState = DeepImmutable&lt;{
+  settings: SettingsJson
+  verbose: boolean
+  mainLoopModel: ModelSetting
+  toolPermissionContext: ToolPermissionContext
+  // ... 50+ 个 readonly 字段
+}&gt; &amp; {
+  // 包含函数类型，排除在 DeepImmutable 之外
+  tasks: { [taskId: string]: TaskState }
+  agentNameRegistry: Map&lt;string, AgentId&gt;
+  mcp: { clients: MCPServerConnection[]; tools: Tool[]; ... }
+  plugins: { enabled: LoadedPlugin[]; ... }
+  // ... 更多可变字段
+}</code></pre>
+
+  <h3>状态分类一览</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>分类</th><th>代表字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag">配置</span></td><td><code>settings</code>, <code>mainLoopModel</code>, <code>verbose</code></td><td>从 settings.json 读取，支持热更新</td></tr>
+        <tr><td><span class="tag">权限</span></td><td><code>toolPermissionContext</code></td><td>权限模式 (default/plan/auto)、allow/deny/ask 规则</td></tr>
+        <tr><td><span class="tag">UI 状态</span></td><td><code>expandedView</code>, <code>footerSelection</code>, <code>coordinatorTaskIndex</code></td><td>终端 UI 的视图选择与导航</td></tr>
+        <tr><td><span class="tag">任务</span></td><td><code>tasks</code>, <code>foregroundedTaskId</code></td><td>后台 Agent 任务的生命周期管理</td></tr>
+        <tr><td><span class="tag">MCP</span></td><td><code>mcp.clients</code>, <code>mcp.tools</code>, <code>mcp.commands</code></td><td>MCP 服务器连接池与工具注册</td></tr>
+        <tr><td><span class="tag">插件</span></td><td><code>plugins.enabled</code>, <code>plugins.errors</code></td><td>插件生命周期与安装状态</td></tr>
+        <tr><td><span class="tag">推测执行</span></td><td><code>speculation</code>, <code>speculationSessionTimeSavedMs</code></td><td>Prompt Suggestion 的推测执行状态机</td></tr>
+        <tr><td><span class="tag">Bridge</span></td><td><code>replBridge*</code> (15+ 字段)</td><td>Always-on Bridge 与 claude.ai 的双向连接</td></tr>
+        <tr><td><span class="tag">团队</span></td><td><code>teamContext</code>, <code>inbox</code>, <code>agentNameRegistry</code></td><td>多 Agent Swarm 协作状态</td></tr>
+        <tr><td><span class="tag">CU</span></td><td><code>computerUseMcpState</code></td><td>Computer Use 的应用白名单、截图尺寸、授权标志</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout insight">
+    <div class="callout-title">状态树规模</div>
+    <p>AppState 包含约 <strong>80+ 个顶层字段</strong>，涵盖从模型选择到远程桥接的完整 CLI 生命周期。<code>getDefaultAppState()</code> 函数提供全部初始值，确保每个字段都有明确的零值语义。</p>
+  </div>
+</section>
+
+<!-- ====== Section 4: DeepImmutable ====== -->
+<section id="s4">
+  <h2><span class="num">4</span>DeepImmutable 类型系统：编译期不可变性守卫</h2>
+
+  <p><code>DeepImmutable&lt;T&gt;</code> 是一个递归泛型，对对象的每一层属性施加 <code>readonly</code>，将 <code>Map</code> 替换为 <code>ReadonlyMap</code>，将 <code>Set</code> 替换为 <code>ReadonlySet</code>，将数组替换为 <code>ReadonlyArray</code>。它定义在 <code>src/types/utils.ts</code>（构建时编译进 bundle）。</p>
+
+  <h3>典型的 DeepImmutable 递归结构</h3>
+
+  <div class="code-label">标准递归不可变类型（推断的定义）</div>
+<pre><code>type DeepImmutable&lt;T&gt; =
+  T extends Map&lt;infer K, infer V&gt;
+    ? ReadonlyMap&lt;DeepImmutable&lt;K&gt;, DeepImmutable&lt;V&gt;&gt;
+    : T extends Set&lt;infer U&gt;
+      ? ReadonlySet&lt;DeepImmutable&lt;U&gt;&gt;
+      : T extends Array&lt;infer U&gt;
+        ? ReadonlyArray&lt;DeepImmutable&lt;U&gt;&gt;
+        : T extends object
+          ? { readonly [K in keyof T]: DeepImmutable&lt;T[K]&gt; }
+          : T</code></pre>
+
+  <h3>为什么需要 <code>&amp;</code> 交叉排除？</h3>
+
+  <p>AppState 中的 <code>tasks</code>、<code>mcp</code>、<code>replContext</code> 等字段包含<strong>函数类型</strong>（如 <code>abortController</code>、<code>vmContext</code>、<code>handler</code>），对函数递归 <code>readonly</code> 会导致类型错误。因此 Claude Code 采用<strong>交叉类型分治</strong>策略：</p>
+
+<pre><code>// DeepImmutable 包裹纯数据字段
+type AppState = DeepImmutable&lt;{ settings: ..., verbose: ..., ... }&gt;
+  // 交叉混入含函数类型的字段
+  &amp; { tasks: { [id: string]: TaskState }, ... }</code></pre>
+
+  <p>这种设计在 <code>Tool.ts</code> 中同样被使用：</p>
+
+  <div class="code-label">src/Tool.ts</div>
+<pre><code>// Apply DeepImmutable to the imported type
+export type ToolPermissionContext = DeepImmutable&lt;{
+  mode: PermissionMode
+  additionalWorkingDirectories: Map&lt;string, AdditionalWorkingDirectory&gt;
+  alwaysAllowRules: ToolPermissionRulesBySource
+  alwaysDenyRules: ToolPermissionRulesBySource
+  alwaysAskRules: ToolPermissionRulesBySource
+  isBypassPermissionsModeAvailable: boolean
+  shouldAvoidPermissionPrompts?: boolean
+  // ...
+}&gt;</code></pre>
+
+  <div class="callout warning">
+    <div class="callout-title">注意事项</div>
+    <p><code>DeepImmutable</code> 是<strong>纯编译期</strong>保护——运行时 JavaScript 对象仍然可变。所有状态更新必须通过 <code>setState(prev =&gt; ({ ...prev, field: newValue }))</code> 的展开运算符创建新引用，这也是 <code>Object.is</code> bailout 的前提。</p>
+  </div>
+</section>
+
+<!-- ====== Section 5: React Integration ====== -->
+<section id="s5">
+  <h2><span class="num">5</span>React 绑定：选择器订阅与 useSyncExternalStore</h2>
+
+  <p>React 侧的集成在 <code>src/state/AppState.tsx</code> 中完成，核心是三个 hooks：</p>
+
+  <h3>useAppState —— 选择器订阅</h3>
+
+  <div class="code-label">src/state/AppState.tsx</div>
+<pre><code>/**
+ * Subscribe to a slice of AppState. Only re-renders when
+ * the selected value changes (compared via Object.is).
+ *
+ * Do NOT return new objects from the selector -- Object.is
+ * will always see them as changed.
+ */
+export function useAppState(selector) {
+  const store = useAppStore()
+  const get = () =&gt; {
+    const state = store.getState()
+    return selector(state)
+  }
+  return useSyncExternalStore(store.subscribe, get, get)
+}</code></pre>
+
+  <p>使用方式非常直观：</p>
+<pre><code>// 独立订阅不同字段 — 各自独立 re-render
+const verbose = useAppState(s =&gt; s.verbose)
+const model = useAppState(s =&gt; s.mainLoopModel)
+
+// 订阅子对象引用（不要创建新对象！）
+const { text, promptId } = useAppState(s =&gt; s.promptSuggestion) // OK
+// const bad = useAppState(s =&gt; ({ a: s.verbose }))  // 每次都 re-render!</code></pre>
+
+  <h3>useSetAppState —— 纯写入 hook</h3>
+<pre><code>export function useSetAppState() {
+  return useAppStore().setState  // 稳定引用，永不触发 re-render
+}</code></pre>
+
+  <h3>useAppStateMaybeOutsideOfProvider —— 安全降级</h3>
+<pre><code>// 在 AppStateProvider 外部调用时返回 undefined，不抛异常
+export function useAppStateMaybeOutsideOfProvider(selector) {
+  const store = useContext(AppStoreContext)
+  return useSyncExternalStore(
+    store ? store.subscribe : NOOP_SUBSCRIBE,
+    () =&gt; store ? selector(store.getState()) : undefined
+  )
+}</code></pre>
+
+  <h3>useSettings —— 专用配置 hook</h3>
+  <p>在 <code>src/hooks/useSettings.ts</code> 中进一步封装：</p>
+<pre><code>export type ReadonlySettings = AppState['settings'] // DeepImmutable wrapped
+
+export function useSettings(): ReadonlySettings {
+  return useAppState(s =&gt; s.settings)
+}</code></pre>
+
+  <div class="callout insight">
+    <div class="callout-title">React Compiler 优化</div>
+    <p>AppState.tsx 的编译产物使用了 <code>react/compiler-runtime</code> 的 <code>_c</code> 函数做自动 memo 缓存（<code>$[0]</code>, <code>$[1]</code>... 的 slot 数组），说明 Claude Code 已经启用了 React Compiler。这意味着 <code>useAppState</code> 中的 selector 闭包和 <code>get</code> 函数都会被自动缓存，避免不必要的 re-subscribe。</p>
+  </div>
+</section>
+
+<!-- ====== Section 6: onChange Side Effects ====== -->
+<section id="s6">
+  <h2><span class="num">6</span>状态变更回调：onChangeAppState 副作用链</h2>
+
+  <p><code>createStore</code> 的第二个参数 <code>onChange</code> 接收 <code>onChangeAppState</code> 函数，它是<strong>所有状态变更的单一副作用管道</strong>。每次 <code>setState</code> 产生新状态后同步调用。</p>
+
+  <div class="code-label">src/state/onChangeAppState.ts 副作用链</div>
+
+  <ol class="flow-list">
+    <li data-step="1"><strong>权限模式同步</strong> — 检测 <code>toolPermissionContext.mode</code> 变化，通知 CCR 远程服务和 SDK status stream。先 externalize 模式名（bubble/ungated auto 等内部模式映射到 default），避免向外部暴露内部模式。</li>
+    <li data-step="2"><strong>模型设置持久化</strong> — <code>mainLoopModel</code> 变化时写入 <code>userSettings</code>，并同步 <code>setMainLoopModelOverride</code>。设为 null 时清除设置。</li>
+    <li data-step="3"><strong>视图状态持久化</strong> — <code>expandedView</code> 变化时写入 <code>globalConfig</code>（<code>showExpandedTodos</code> / <code>showSpinnerTree</code>），保证重启后恢复上次视图。</li>
+    <li data-step="4"><strong>verbose 持久化</strong> — 同步到 <code>globalConfig.verbose</code>。</li>
+    <li data-step="5"><strong>配置变更缓存清理</strong> — <code>settings</code> 引用变化时清除 API Key Helper、AWS/GCP 凭证缓存，重新应用环境变量。</li>
+  </ol>
+
+  <div class="callout note">
+    <div class="callout-title">设计亮点</div>
+    <p>权限模式变更的注释特别提到，在引入 onChange 之前，有 <strong>8+ 个不同的 mutation 路径</strong>需要各自手动通知 CCR，其中只有 2 个路径实际做了通知。集中到 onChange 后，任何 <code>setAppState</code> 调用只要改变了 mode，都会自动同步——这是<strong>"把副作用集中化"</strong>的典型案例。</p>
+  </div>
+</section>
+
+<!-- ====== Section 7: Selectors ====== -->
+<section id="s7">
+  <h2><span class="num">7</span>选择器模式：纯函数状态投影</h2>
+
+  <p><code>src/state/selectors.ts</code> 定义了独立于 React 的纯选择器函数，用于非 hook 场景（工具执行、任务路由等）：</p>
+
+  <h3>getViewedTeammateTask</h3>
+<pre><code>export function getViewedTeammateTask(
+  appState: Pick&lt;AppState, 'viewingAgentTaskId' | 'tasks'&gt;
+): InProcessTeammateTaskState | undefined {
+  const { viewingAgentTaskId, tasks } = appState
+  if (!viewingAgentTaskId) return undefined
+  const task = tasks[viewingAgentTaskId]
+  if (!task || !isInProcessTeammateTask(task)) return undefined
+  return task
+}</code></pre>
+
+  <h3>getActiveAgentForInput —— 输入路由选择器</h3>
+<pre><code>export type ActiveAgentForInput =
+  | { type: 'leader' }
+  | { type: 'viewed'; task: InProcessTeammateTaskState }
+  | { type: 'named_agent'; task: LocalAgentTaskState }
+
+export function getActiveAgentForInput(appState: AppState): ActiveAgentForInput {
+  const viewedTask = getViewedTeammateTask(appState)
+  if (viewedTask) return { type: 'viewed', task: viewedTask }
+  // fallback: check for named agent (local_agent type)
+  const { viewingAgentTaskId, tasks } = appState
+  if (viewingAgentTaskId) {
+    const task = tasks[viewingAgentTaskId]
+    if (task?.type === 'local_agent') return { type: 'named_agent', task }
+  }
+  return { type: 'leader' }
+}</code></pre>
+
+  <p>注意选择器使用 <code>Pick&lt;AppState, ...&gt;</code> 约束入参，<strong>只依赖必要的字段</strong>。这使得选择器可以在测试中用最小对象调用，也为未来的 selector 缓存提供了精确的依赖声明。</p>
+
+  <h3>teammateViewHelpers —— 视图切换的状态变迁</h3>
+
+  <p><code>src/state/teammateViewHelpers.ts</code> 包含 <code>enterTeammateView</code>、<code>exitTeammateView</code>、<code>stopOrDismissAgent</code> 三个函数，是状态更新的 "action" 层。它们通过 <code>setAppState(prev =&gt; ({ ...prev, ... }))</code> 模式保持不可变性：</p>
+
+<pre><code>// 进入队友视图：设 retain=true 阻止驱逐，清 evictAfter
+// 切换时释放前一个队友（retain=false, messages 清空）
+export function enterTeammateView(taskId, setAppState) {
+  setAppState(prev =&gt; {
+    let tasks = prev.tasks
+    if (switching || needsRetain) {
+      tasks = { ...prev.tasks }  // 浅拷贝 tasks 对象
+      if (switching) tasks[prevId] = release(prevTask)
+      if (needsRetain) tasks[taskId] = { ...task, retain: true }
+    }
+    return { ...prev, viewingAgentTaskId: taskId, tasks }
+  })
+}</code></pre>
+</section>
+
+<!-- ====== Section 8: Config Validation ====== -->
+<section id="s8">
+  <h2><span class="num">8</span>配置验证：Zod Schema 与多源合并</h2>
+
+  <h3>5 层配置源及优先级</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>优先级</th><th>Source</th><th>路径</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>1 (最低)</td><td><code>userSettings</code></td><td><code>~/.claude/settings.json</code></td><td>用户全局配置</td></tr>
+        <tr><td>2</td><td><code>projectSettings</code></td><td><code>.claude/settings.json</code></td><td>项目级共享配置</td></tr>
+        <tr><td>3</td><td><code>localSettings</code></td><td><code>.claude/settings.local.json</code></td><td>项目级本地配置 (gitignored)</td></tr>
+        <tr><td>4</td><td><code>flagSettings</code></td><td><code>--settings</code> CLI flag</td><td>命令行传入</td></tr>
+        <tr><td>5 (最高)</td><td><code>policySettings</code></td><td><code>managed-settings.json</code> + <code>.d/</code></td><td>企业管理策略</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>所有层使用 <code>lodash mergeWith</code> 深度合并，策略设置 (<code>policySettings</code>) 总是最终覆盖。</p>
+
+  <h3>SettingsSchema —— Zod 校验</h3>
+
+  <p><code>src/utils/settings/types.ts</code> 中定义了完整的 <code>SettingsSchema</code>（基于 Zod v4），包含 50+ 个可选字段。关键设计原则在注释中明确声明：</p>
+
+  <div class="callout note">
+    <div class="callout-title">向后兼容性承诺</div>
+    <p><strong>允许</strong>：添加可选字段、添加 enum 值、放宽验证。<br><strong>禁止</strong>：删除字段、删除 enum 值、必选化可选字段、收紧类型。</p>
+    <p>无效字段被保留在文件中（不删除），只是运行时不使用。这让用户可以手动修复错误的配置。</p>
+  </div>
+
+  <h3>核心配置字段</h3>
+
+  <ul class="pill-list">
+    <li><strong>apiKeyHelper</strong> 认证脚本</li>
+    <li><strong>model</strong> 模型覆盖</li>
+    <li><strong>permissions</strong> 权限规则</li>
+    <li><strong>hooks</strong> 生命周期钩子</li>
+    <li><strong>env</strong> 环境变量</li>
+    <li><strong>enabledPlugins</strong> 插件列表</li>
+    <li><strong>availableModels</strong> 企业模型白名单</li>
+    <li><strong>allowedMcpServers</strong> MCP 白名单</li>
+    <li><strong>strictPluginOnlyCustomization</strong> 企业锁定</li>
+    <li><strong>cleanupPeriodDays</strong> 日志保留</li>
+  </ul>
+
+  <h3>配置热更新流水线</h3>
+
+  <ol class="flow-list">
+    <li data-step="1"><strong>changeDetector</strong> — chokidar 监听所有 settings 文件目录，awaitWriteFinish 去抖（1s 稳定性检查）。额外处理 delete-and-recreate 模式（grace period）。</li>
+    <li data-step="2"><strong>ConfigChange hooks</strong> — 变更事件先经过 hooks 系统，exit code 2 可阻止变更生效。</li>
+    <li data-step="3"><strong>fanOut</strong> — 重置 settings 缓存一次（避免 N 个 subscriber 各自重置造成 N 次磁盘读取），然后 emit signal。</li>
+    <li data-step="4"><strong>useSettingsChange</strong> — React hook 监听 signal，调用 <code>applySettingsChange</code>。</li>
+    <li data-step="5"><strong>applySettingsChange</strong> — 重新读取 settings，重新加载权限规则，更新 hooks 快照，推入 AppState。</li>
+    <li data-step="6"><strong>onChangeAppState</strong> — 检测 settings 引用变化，清除 auth 缓存，重新应用环境变量。</li>
+  </ol>
+</section>
+
+<!-- ====== Section 9: Session Persistence ====== -->
+<section id="s9">
+  <h2><span class="num">9</span>会话持久化：JSONL 日志与断点恢复</h2>
+
+  <p>会话持久化系统在 <code>src/utils/sessionStorage.ts</code>（5000+ 行），是 Claude Code 最庞大的单文件之一。</p>
+
+  <h3>存储格式</h3>
+
+  <p>每个会话以 <strong>JSONL（JSON Lines）</strong> 格式追加写入单个文件，每行是一个带类型标签的条目：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Entry Type</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>message</code></td><td>对话消息（user/assistant/system）</td></tr>
+        <tr><td><code>summary</code></td><td>首条有意义用户消息的摘要（用于 <code>claude ps</code> 列表）</td></tr>
+        <tr><td><code>custom-title</code></td><td>用户自定义标题</td></tr>
+        <tr><td><code>ai-title</code></td><td>AI 生成的会话标题</td></tr>
+        <tr><td><code>tag</code></td><td>会话标签</td></tr>
+        <tr><td><code>task-summary</code></td><td>周期性任务摘要快照</td></tr>
+        <tr><td><code>agent-name</code> / <code>agent-color</code></td><td>Agent 元信息</td></tr>
+        <tr><td><code>file-history-snapshot</code></td><td>文件变更历史快照</td></tr>
+        <tr><td><code>attribution-snapshot</code></td><td>Commit attribution 快照</td></tr>
+        <tr><td><code>content-replacement</code></td><td>大型工具结果的磁盘存储引用</td></tr>
+        <tr><td><code>context-collapse-commit</code></td><td>上下文折叠的 commit 日志</td></tr>
+        <tr><td><code>worktree-session</code></td><td>Git worktree 会话状态</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>恢复流程</h3>
+
+  <p><code>src/utils/sessionRestore.ts</code> 的 <code>restoreSessionStateFromLog</code> 从日志条目中恢复多项状态：</p>
+
+<pre><code>export function restoreSessionStateFromLog(
+  result: ResumeResult,
+  setAppState: (f: (prev: AppState) =&gt; AppState) =&gt; void,
+): void {
+  // 1. 恢复文件历史 — fileHistoryRestoreStateFromLog
+  // 2. 恢复 commit attribution (ant-only)
+  // 3. 恢复 context-collapse commit log
+  // 4. 恢复 TodoWrite state (SDK mode only)
+}</code></pre>
+
+  <h3>追加写入与刷新</h3>
+
+  <p>会话文件采用<strong>延迟物化</strong>策略——直到第一条用户消息才创建文件（<code>materializeSessionFile</code>），避免空会话产生垃圾文件。所有写入通过 <code>appendEntryToFile</code> 追加，支持异步批量刷新（<code>flushSessionStorage</code>）和 graceful shutdown 时的同步写入。</p>
+
+  <div class="callout insight">
+    <div class="callout-title">性能优化：Lite Log</div>
+    <p>对于大型会话文件，<code>sessionStorage</code> 支持 "lite" 模式——只读取文件的 head (摘要/标题区) 和 tail (最近消息)，跳过中间的大量消息体。<code>SKIP_PRECOMPACT_THRESHOLD</code> 控制跳过阈值，<code>readHeadAndTail</code> 用 <code>fstatSync</code> + <code>readSync</code> 直接定位文件末尾，避免全量解析。</p>
+  </div>
+</section>
+
+<!-- ====== Section 10: Migrations ====== -->
+<section id="s10">
+  <h2><span class="num">10</span>配置迁移策略：渐进式版本演化</h2>
+
+  <p><code>src/migrations/</code> 包含 11 个独立迁移脚本，每个处理一种特定的配置演化场景：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>迁移脚本</th><th>职责</th><th>策略</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>migrateFennecToOpus</code></td>
+          <td>fennec-latest 别名迁移到 opus</td>
+          <td>只改 userSettings，仅 ant 用户</td>
+        </tr>
+        <tr>
+          <td><code>migrateLegacyOpusToCurrent</code></td>
+          <td>旧 Opus 模型 ID 升级</td>
+          <td>匹配旧 ID，写入新别名</td>
+        </tr>
+        <tr>
+          <td><code>migrateOpusToOpus1m</code></td>
+          <td>Opus 迁移到 Opus[1m]</td>
+          <td>保持上下文窗口升级</td>
+        </tr>
+        <tr>
+          <td><code>migrateSonnet1mToSonnet45</code></td>
+          <td>sonnet[1m] 到 Sonnet 4.5 ID</td>
+          <td>精确字符串匹配</td>
+        </tr>
+        <tr>
+          <td><code>migrateSonnet45ToSonnet46</code></td>
+          <td>Sonnet 4.5 到 Sonnet 4.6</td>
+          <td>仅 Pro/Max/Team Premium 用户，记录时间戳</td>
+        </tr>
+        <tr>
+          <td><code>migrateAutoUpdatesToSettings</code></td>
+          <td>autoUpdates 从 globalConfig 迁移到 settings.json</td>
+          <td>写入 <code>env.DISABLE_AUTOUPDATER</code></td>
+        </tr>
+        <tr>
+          <td><code>migrateBypassPermissionsAccepted</code></td>
+          <td>权限旁路设置迁移</td>
+          <td>globalConfig → settings.json</td>
+        </tr>
+        <tr>
+          <td><code>migrateEnableAllProjectMcpServers</code></td>
+          <td>MCP 服务器批准策略迁移</td>
+          <td>多步骤安全迁移</td>
+        </tr>
+        <tr>
+          <td><code>migrateReplBridgeEnabled</code></td>
+          <td>Bridge 设置重命名</td>
+          <td>key rename</td>
+        </tr>
+        <tr>
+          <td><code>resetAutoModeOptInForDefaultOffer</code></td>
+          <td>重置 auto mode 弹窗</td>
+          <td>一次性重置 + globalConfig guard</td>
+        </tr>
+        <tr>
+          <td><code>resetProToOpusDefault</code></td>
+          <td>Pro 用户默认模型重置</td>
+          <td>条件性重置</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>迁移设计原则</h3>
+
+  <ul>
+    <li><strong>幂等性</strong>：每个迁移检查当前状态，只在需要时执行。大多数通过 <code>getSettingsForSource('userSettings')</code> 读取未合并的配置，避免被其他层覆盖。</li>
+    <li><strong>单源修改</strong>：只修改 <code>userSettings</code>，不碰 project/local/policy 配置。注释明确说明原因——修改 merged settings 会导致"静默提升到全局"。</li>
+    <li><strong>一次性守卫</strong>：复杂迁移使用 <code>globalConfig</code> 中的布尔标志（如 <code>hasResetAutoModeOptInForDefaultOffer</code>）防止重复执行。</li>
+    <li><strong>用户分群</strong>：多个迁移按用户类型（ant/external）、订阅等级（Pro/Max/Team）、API Provider（firstParty/bedrock）做条件分支。</li>
+  </ul>
+
+  <div class="callout insight">
+    <div class="callout-title">无集中版本号</div>
+    <p>与传统数据库迁移不同，Claude Code 没有全局版本号或迁移注册表。每个迁移函数独立判断是否需要执行，依赖当前配置状态而非版本戳。这种设计简化了分支合并和回滚，但也意味着迁移之间的<strong>执行顺序依赖调用点的排列</strong>。</p>
+  </div>
+</section>
+
+<!-- ====== Section 11: Provider Architecture ====== -->
+<section id="s11">
+  <h2><span class="num">11</span>Provider 架构：从 Store 到 UI 的数据流</h2>
+
+  <p><code>AppStateProvider</code> 是整个应用的状态根节点，创建 Store 并通过 React Context 向下传递：</p>
+
+  <div class="code-label">简化的 Provider 结构</div>
+<pre><code>const AppStoreContext = React.createContext&lt;AppStateStore | null&gt;(null)
+const HasAppStateContext = React.createContext&lt;boolean&gt;(false)
+
+function AppStateProvider({ children, initialState, onChangeAppState }) {
+  // 防止嵌套
+  if (useContext(HasAppStateContext)) {
+    throw new Error("AppStateProvider can not be nested")
+  }
+
+  // 创建 store — 仅在初始化时
+  const [store] = useState(() =&gt;
+    createStore(initialState ?? getDefaultAppState(), onChangeAppState)
+  )
+
+  // Mount 时检查权限模式
+  useEffect(() =&gt; {
+    if (isBypassPermissionsModeDisabled()) {
+      store.setState(prev =&gt; ({
+        ...prev,
+        toolPermissionContext: createDisabledBypassPermissionsContext(...)
+      }))
+    }
+  }, [])
+
+  // 监听配置文件变更
+  useSettingsChange(source =&gt; applySettingsChange(source, store.setState))
+
+  return (
+    &lt;HasAppStateContext.Provider value={true}&gt;
+      &lt;AppStoreContext.Provider value={store}&gt;
+        &lt;MailboxProvider&gt;
+          &lt;VoiceProvider&gt;{children}&lt;/VoiceProvider&gt;
+        &lt;/MailboxProvider&gt;
+      &lt;/AppStoreContext.Provider&gt;
+    &lt;/HasAppStateContext.Provider&gt;
+  )
+}</code></pre>
+
+  <h3>关键组合</h3>
+
+  <ul>
+    <li><strong>HasAppStateContext</strong>：布尔 Context，防止 Provider 嵌套导致多 Store 实例。</li>
+    <li><strong>MailboxProvider</strong>：Agent Swarm 的消息邮箱系统。</li>
+    <li><strong>VoiceProvider</strong>：语音模式（ant-only feature），通过 <code>bun:bundle</code> 的 <code>feature()</code> 做死代码消除。</li>
+  </ul>
+
+  <div class="callout note">
+    <div class="callout-title">DCE (Dead Code Elimination)</div>
+    <p>Claude Code 使用 Bun 的 <code>feature()</code> 做条件编译。例如 <code>feature('VOICE_MODE')</code> 在外部构建中编译为 <code>false</code>，使 VoiceProvider 变成 passthrough，其完整实现被 tree-shake 移除。同样的模式用于 <code>COMMIT_ATTRIBUTION</code>、<code>CONTEXT_COLLAPSE</code>、<code>TRANSCRIPT_CLASSIFIER</code> 等。</p>
+  </div>
+</section>
+
+<!-- ====== Section 12: Summary ====== -->
+<section id="s12">
+  <h2><span class="num">12</span>总结：设计取舍与架构评价</h2>
+
+  <h3>优势</h3>
+  <ul>
+    <li><strong>极致轻量</strong>：34 行 Store 实现，零外部依赖，启动零开销。</li>
+    <li><strong>类型安全</strong>：<code>DeepImmutable</code> 在编译期阻止意外修改，交叉类型优雅处理函数字段。</li>
+    <li><strong>副作用集中化</strong>：<code>onChangeAppState</code> 作为单一 choke point，消除了散落的手动同步。</li>
+    <li><strong>配置热更新</strong>：chokidar 监听 + signal 通知 + 缓存重置一体化，文件变更到 UI 刷新的延迟约 1.5s。</li>
+    <li><strong>向后兼容</strong>：Zod 校验 + 保留无效字段 + 无版本号迁移，对用户极其友好。</li>
+  </ul>
+
+  <h3>值得关注的取舍</h3>
+  <ul>
+    <li><strong>状态树扁平化</strong>：80+ 个顶层字段（特别是 15+ 个 <code>replBridge*</code>），缺少领域分组的中间层。但对于 CLI 应用而言，这种简单性是合理的——避免了深层 selector 的复杂性。</li>
+    <li><strong>无 selector 缓存</strong>：依赖 <code>useSyncExternalStore</code> 的 <code>Object.is</code> 比较，如果 selector 返回新对象会导致无效 re-render。但注释已明确警告，且 React Compiler 帮助缓解了这个问题。</li>
+    <li><strong>迁移无编排</strong>：每个迁移自行判断是否执行，没有中央迁移注册表。对于 CLI 产品（而非数据库）这是合理的简化。</li>
+    <li><strong>sessionStorage 单文件</strong>：5000+ 行的巨型模块，集中了所有 JSONL 读写逻辑。可能是技术债，但也避免了模块间的循环依赖。</li>
+  </ul>
+
+  <div class="arch-diagram" style="margin-top:2rem">
+<pre><code>
+  ┌─────────── 配置层 ────────────┐     ┌──────── 运行时状态 ────────┐
+  │ settings.json (5 layers)      │     │ AppState (80+ fields)      │
+  │ Zod SettingsSchema validation │────▶│ DeepImmutable&lt;T&gt; &amp; mutable │
+  │ chokidar hot-reload           │     │ createStore (34 lines)     │
+  └───────────────────────────────┘     └─────────┬──────────────────┘
+                                                  │
+                                    ┌─────────────┼─────────────┐
+                                    ▼             ▼             ▼
+                              useAppState   onChangeAppState   selectors
+                             (React hooks)  (side effects)   (pure fns)
+                                    │             │             │
+                                    ▼             ▼             ▼
+                               UI Render     CCR/SDK sync    Task routing
+                                                  │
+  ┌──────── 持久化层 ────────────┐                │
+  │ JSONL session transcript     │◄───────────────┘
+  │ globalConfig (.claude.json)  │
+  │ migrations/ (11 scripts)     │
+  └──────────────────────────────┘
+</code></pre>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  Claude Code State Management Deep Dive &mdash; Generated 2026-03-31<br>
+  Source: <code>src/state/</code>, <code>src/schemas/</code>, <code>src/migrations/</code>, <code>src/utils/settings/</code>
+</footer>
+
+<script>
+// Theme
+function toggleTheme(){
+  const d=document.documentElement;
+  const next=d.getAttribute('data-theme')==='dark'?'light':'dark';
+  d.setAttribute('data-theme',next);
+  localStorage.setItem('theme',next);
+}
+(function(){
+  const saved=localStorage.getItem('theme');
+  if(saved)document.documentElement.setAttribute('data-theme',saved);
+  else if(matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');
+})();
+
+// TOC
+function toggleToc(){
+  document.getElementById('tocSidebar').classList.toggle('open');
+  document.querySelector('.toc-overlay').classList.toggle('open');
+}
+
+// Build TOC
+(function(){
+  const nav=document.getElementById('tocNav');
+  document.querySelectorAll('section[id]').forEach(sec=>{
+    const h2=sec.querySelector('h2');
+    if(!h2)return;
+    const a=document.createElement('a');
+    a.href='#'+sec.id;
+    a.textContent=h2.textContent;
+    a.onclick=()=>toggleToc();
+    nav.appendChild(a);
+  });
+})();
+
+// Back to top
+const backTop=document.getElementById('backTop');
+window.addEventListener('scroll',()=>{
+  backTop.classList.toggle('visible',window.scrollY>400);
+},{passive:true});
+</script>
+</body>
+</html>

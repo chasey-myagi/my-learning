@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 技能与插件系统：可扩展架构的三驾马车</title>
+<style>
+/* ===== CSS Variables ===== */
+:root{--bg:#f4f0ec;--bg-alt:#eae4dd;--bg-code:#1e1b18;--fg:#1c1917;--fg-2:#44403c;--fg-3:#78716c;--accent:#dc4a1a;--accent-2:#9a3412;--green:#15803d;--green-bg:#ecfdf5;--red-bg:#fef2f2;--border:#d6d0c8;--tag-bg:rgba(220,74,26,0.08);--tag-fg:var(--accent-2);--quote-bg:rgba(28,25,23,0.03);--card-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);--glow:rgba(220,74,26,0.15)}
+[data-theme="dark"]{--bg:#0c0a09;--bg-alt:#1c1917;--bg-code:#0a0908;--fg:#e7e5e4;--fg-2:#a8a29e;--fg-3:#78716c;--accent:#fb923c;--accent-2:#fdba74;--green:#4ade80;--green-bg:rgba(74,222,128,0.08);--red-bg:rgba(248,113,113,0.08);--border:#292524;--tag-bg:rgba(251,146,60,0.12);--tag-fg:var(--accent);--quote-bg:rgba(255,255,255,0.03);--card-shadow:0 1px 3px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2);--glow:rgba(251,146,60,0.1)}
+
+/* ===== Reset & Base ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,'Noto Sans SC',sans-serif;background:var(--bg);color:var(--fg);line-height:1.75;transition:background .3s,color .3s;overflow-x:hidden}
+
+/* ===== Theme Toggle ===== */
+.theme-toggle{position:fixed;top:1.25rem;right:1.25rem;z-index:100;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--bg-alt);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:all .2s;backdrop-filter:blur(12px)}
+.theme-toggle:hover{border-color:var(--accent);box-shadow:0 0 20px var(--glow)}
+
+/* ===== Layout ===== */
+.container{max-width:900px;margin:0 auto;padding:0 1.5rem}
+
+/* ===== Hero ===== */
+.hero{padding:6rem 0 4rem;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 40%,var(--glow),transparent);pointer-events:none}
+.hero h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-0.03em;line-height:1.2;margin-bottom:1rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero .subtitle{font-size:1.15rem;color:var(--fg-2);max-width:640px;margin:0 auto 2rem}
+.hero-meta{display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap;font-size:0.85rem;color:var(--fg-3)}
+.hero-meta span{display:flex;align-items:center;gap:0.35rem}
+
+/* ===== TOC ===== */
+.toc{background:var(--bg-alt);border:1px solid var(--border);border-radius:12px;padding:2rem;margin:3rem 0}
+.toc h2{font-size:1.1rem;font-weight:700;margin-bottom:1rem;color:var(--accent)}
+.toc ol{padding-left:1.5rem;columns:2;column-gap:2rem}
+.toc li{margin-bottom:0.5rem;font-size:0.95rem;break-inside:avoid}
+.toc a{color:var(--fg);text-decoration:none;border-bottom:1px dashed var(--border);transition:all .15s}
+.toc a:hover{color:var(--accent);border-color:var(--accent)}
+
+/* ===== Section ===== */
+.section{padding:4rem 0 2rem;opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease}
+.section.visible{opacity:1;transform:translateY(0)}
+.section-num{display:inline-block;font-size:0.75rem;font-weight:700;color:var(--accent);background:var(--tag-bg);padding:0.15rem 0.6rem;border-radius:20px;margin-bottom:0.75rem;letter-spacing:0.05em}
+.section h2{font-size:1.75rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:1.25rem;line-height:1.3}
+.section h3{font-size:1.2rem;font-weight:700;margin:2rem 0 0.75rem;color:var(--fg)}
+.section p,.section li{color:var(--fg-2);font-size:0.95rem}
+.section p{margin-bottom:1rem}
+.section ul,.section ol{margin-bottom:1.25rem;padding-left:1.5rem}
+.section li{margin-bottom:0.4rem}
+
+/* ===== Code ===== */
+code{font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:0.85em;background:var(--tag-bg);color:var(--tag-fg);padding:0.15em 0.4em;border-radius:4px}
+pre{background:var(--bg-code);color:#e7e5e4;padding:1.25rem 1.5rem;border-radius:10px;overflow-x:auto;margin:1rem 0 1.5rem;font-size:0.85rem;line-height:1.6;border:1px solid var(--border)}
+pre code{background:none;color:inherit;padding:0}
+
+/* ===== Card ===== */
+.card{background:var(--bg-alt);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin:1.25rem 0;transition:border-color .2s,box-shadow .2s}
+.card:hover{border-color:var(--accent);box-shadow:0 0 24px var(--glow)}
+.card-title{font-weight:700;font-size:1rem;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.5rem}
+.card-title .icon{font-size:1.1rem}
+
+/* ===== Architecture Diagram ===== */
+.arch-diagram{background:var(--bg-alt);border:1px solid var(--border);border-radius:12px;padding:2rem;margin:2rem 0;overflow-x:auto}
+.arch-diagram pre{background:transparent;border:none;padding:0;margin:0;color:var(--fg-2);font-size:0.8rem;line-height:1.5}
+
+/* ===== Tag ===== */
+.tag{display:inline-block;font-size:0.75rem;font-weight:600;background:var(--tag-bg);color:var(--tag-fg);padding:0.15rem 0.55rem;border-radius:20px;margin:0 0.25rem 0.25rem 0}
+
+/* ===== Table ===== */
+.table-wrap{overflow-x:auto;margin:1.25rem 0}
+table{width:100%;border-collapse:collapse;font-size:0.9rem}
+th{text-align:left;font-weight:700;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-3);padding:0.75rem 1rem;border-bottom:2px solid var(--border)}
+td{padding:0.65rem 1rem;border-bottom:1px solid var(--border);color:var(--fg-2)}
+tr:hover td{background:var(--quote-bg)}
+
+/* ===== Flow ===== */
+.flow{display:flex;align-items:center;flex-wrap:wrap;gap:0.75rem;margin:1.5rem 0}
+.flow-step{background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:0.6rem 1rem;font-size:0.85rem;font-weight:600;color:var(--fg)}
+.flow-arrow{color:var(--accent);font-weight:700;font-size:1.1rem}
+
+/* ===== Callout ===== */
+.callout{background:var(--quote-bg);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:1rem 1.25rem;margin:1.25rem 0;font-size:0.9rem;color:var(--fg-2)}
+.callout strong{color:var(--fg)}
+.callout.green{border-left-color:var(--green);background:var(--green-bg)}
+.callout.red{border-left-color:#ef4444;background:var(--red-bg)}
+
+/* ===== Grid ===== */
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem;margin:1.25rem 0}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin:1.25rem 0}
+
+/* ===== Stats ===== */
+.stats{display:flex;gap:1.5rem;flex-wrap:wrap;margin:1.5rem 0}
+.stat{text-align:center;flex:1;min-width:120px}
+.stat-num{font-size:2rem;font-weight:800;color:var(--accent);line-height:1.2}
+.stat-label{font-size:0.8rem;color:var(--fg-3);margin-top:0.25rem}
+
+/* ===== Separator ===== */
+.sep{border:none;border-top:1px solid var(--border);margin:3rem 0}
+
+/* ===== Scroll Progress ===== */
+.scroll-progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent-2));z-index:200;transition:width .1s linear;width:0}
+
+/* ===== Responsive ===== */
+@media(max-width:640px){
+  .toc ol{columns:1}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .hero{padding:4rem 0 2.5rem}
+  .stats{flex-direction:column;align-items:center}
+}
+
+/* ===== Animations ===== */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.animate-in{animation:fadeInUp .5s ease forwards}
+</style>
+</head>
+<body>
+
+<div class="scroll-progress" id="scrollProgress"></div>
+<button class="theme-toggle" id="themeToggle" title="Toggle theme">&#9681;</button>
+
+<!-- ===== Hero ===== -->
+<header class="hero">
+<div class="container">
+  <h1>Claude Code 技能与插件系统<br>可扩展架构的三驾马车</h1>
+  <p class="subtitle">深入 Claude Code 源码，解析 Skills / Plugins / Commands 三大扩展系统的设计哲学、加载机制与协作关系</p>
+  <div class="hero-meta">
+    <span>&#128218; 源码深度研究</span>
+    <span>&#128197; 2026-03-31</span>
+    <span>&#9881; src/skills + src/plugins + src/commands</span>
+  </div>
+</div>
+</header>
+
+<main class="container">
+
+<!-- ===== TOC ===== -->
+<nav class="toc">
+<h2>&#128209; 目录</h2>
+<ol>
+  <li><a href="#ch1">三大扩展系统总览</a></li>
+  <li><a href="#ch2">技能格式规范：SKILL.md 与 Frontmatter</a></li>
+  <li><a href="#ch3">技能加载与发现引擎</a></li>
+  <li><a href="#ch4">SkillTool 执行引擎</a></li>
+  <li><a href="#ch5">内置技能（Bundled Skills）</a></li>
+  <li><a href="#ch6">插件系统与 Marketplace</a></li>
+  <li><a href="#ch7">命令系统架构</a></li>
+  <li><a href="#ch8">内置命令全景图</a></li>
+  <li><a href="#ch9">三大系统协作关系</a></li>
+  <li><a href="#ch10">用户自定义扩展指南</a></li>
+</ol>
+</nav>
+
+<!-- ===== Stats ===== -->
+<div class="stats">
+  <div class="stat"><div class="stat-num">70+</div><div class="stat-label">内置命令</div></div>
+  <div class="stat"><div class="stat-num">15+</div><div class="stat-label">Bundled Skills</div></div>
+  <div class="stat"><div class="stat-num">4</div><div class="stat-label">技能来源层级</div></div>
+  <div class="stat"><div class="stat-num">3</div><div class="stat-label">命令类型</div></div>
+</div>
+
+<hr class="sep">
+
+<!-- ===== CH1 ===== -->
+<section class="section" id="ch1">
+<span class="section-num">CHAPTER 01</span>
+<h2>三大扩展系统总览</h2>
+
+<p>Claude Code 的可扩展性建立在三个互补的系统之上：<strong>Skills（技能）</strong>、<strong>Plugins（插件）</strong>、<strong>Commands（命令）</strong>。它们各有定位，却在运行时统一到 <code>Command</code> 类型体系中。</p>
+
+<div class="arch-diagram">
+<pre>
+                        ┌─────────────────────────────────────────┐
+                        │            getCommands(cwd)             │
+                        │      统一命令注册表 (commands.ts)        │
+                        └──────────┬──────────────────────────────┘
+                                   │
+             ┌─────────────────────┼─────────────────────┐
+             │                     │                     │
+    ┌────────▼────────┐  ┌────────▼────────┐  ┌────────▼────────┐
+    │    Skills 技能   │  │  Plugins 插件   │  │  Commands 命令  │
+    │                 │  │                 │  │                 │
+    │  Bundled Skills │  │  Built-in       │  │  prompt 型      │
+    │  User Skills    │  │  Marketplace    │  │  local 型       │
+    │  Project Skills │  │  Session        │  │  local-jsx 型   │
+    │  Managed Skills │  │                 │  │                 │
+    │  MCP Skills     │  │  hooks/MCP/LSP  │  │  70+ 内置命令   │
+    └─────────────────┘  └─────────────────┘  └─────────────────┘
+</pre>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="card-title"><span class="icon">&#9889;</span> Skills 技能</div>
+    <p>Markdown 格式的可复用能力单元。模型可通过 SkillTool 主动调用。支持 inline 或 fork 两种执行模式。</p>
+    <div><span class="tag">SKILL.md</span><span class="tag">Frontmatter</span><span class="tag">YAML</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">&#128268;</span> Plugins 插件</div>
+    <p>重量级扩展包。一个插件可包含多个 skills、hooks、MCP servers、LSP servers。通过 Marketplace 分发。</p>
+    <div><span class="tag">Marketplace</span><span class="tag">manifest.json</span><span class="tag">Git</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">&#9881;</span> Commands 命令</div>
+    <p>CLI 的核心交互入口。分 prompt / local / local-jsx 三种类型。用户通过 <code>/</code> 前缀触发。</p>
+    <div><span class="tag">slash command</span><span class="tag">TypeScript</span><span class="tag">Ink JSX</span></div>
+  </div>
+</div>
+
+<div class="callout">
+<strong>统一类型体系</strong>：无论来源如何，所有技能、插件命令和内置命令最终都被标准化为 <code>Command</code> 联合类型（<code>PromptCommand | LocalCommand | LocalJSXCommand</code>），存储在同一个注册表中，通过 <code>getCommands(cwd)</code> 统一查询。
+</div>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH2 ===== -->
+<section class="section" id="ch2">
+<span class="section-num">CHAPTER 02</span>
+<h2>技能格式规范：SKILL.md 与 Frontmatter</h2>
+
+<p>技能的物理形态是一个目录，包含 <code>SKILL.md</code> 文件。该文件使用 YAML Frontmatter + Markdown Body 的双层结构。</p>
+
+<h3>目录结构</h3>
+<pre><code>.claude/skills/
+  my-skill/
+    SKILL.md          # 唯一必需文件
+    helper.sh         # 可选的辅助文件
+    templates/        # 可选的子目录
+      prompt.txt
+</code></pre>
+
+<h3>完整 Frontmatter Schema</h3>
+<pre><code>---
+# 基础信息
+description: "技能的描述（展示在列表中）"
+name: "显示名称（可选，默认用目录名）"
+when_to_use: "模型何时应该使用此技能（详细场景描述）"
+version: "1.0.0"
+
+# 调用控制
+user-invocable: true          # 用户可否通过 /skill-name 调用
+disable-model-invocation: false  # 禁止模型主动调用
+argument-hint: "file path"    # 参数提示（灰色显示在命令后）
+arguments:                    # 命名参数列表
+  - file_path
+  - output_dir
+
+# 工具与模型
+allowed-tools:                # 技能激活时可用的工具
+  - Bash(npm:*)
+  - Read
+  - Edit
+model: sonnet                 # 模型覆盖（haiku/sonnet/opus/inherit）
+effort: high                  # 思考努力级别
+
+# 执行模式
+context: fork                 # inline（默认）或 fork（子 Agent）
+agent: Bash                   # fork 时使用的 Agent 类型
+
+# 条件激活
+paths:                        # gitignore 风格的路径模式
+  - "src/**/*.ts"
+  - "tests/"
+
+# Hooks
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - command: "echo pre-hook"
+          type: command
+
+# Shell
+shell: bash                   # !` ` 块使用的 shell（bash/powershell）
+---
+
+# 技能正文（Markdown）
+
+这里是技能的 prompt 内容...
+
+支持变量替换：
+- ${1}、${2} — 位置参数
+- ${file_path} — 命名参数
+- ${CLAUDE_SKILL_DIR} — 技能所在目录
+- ${CLAUDE_SESSION_ID} — 当前会话 ID
+
+支持内联 Shell 执行：
+!`ls -la`
+
+```! bash
+echo "这会在技能加载时执行"
+```
+</code></pre>
+
+<h3>Frontmatter 解析流程</h3>
+<p>源码位于 <code>src/utils/frontmatterParser.ts</code>，解析分三步：</p>
+<div class="flow">
+  <div class="flow-step">&#10102; 正则匹配 --- 分隔符</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10103; YAML 解析 frontmatter 块</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10104; 类型校验 + 默认值填充</div>
+</div>
+
+<p><code>parseSkillFrontmatterFields()</code>（<code>src/skills/loadSkillsDir.ts:185</code>）统一处理所有 frontmatter 字段，被文件技能和 MCP 技能共用。关键逻辑：</p>
+<ul>
+  <li><code>description</code> 为空时，从 Markdown 正文首行提取</li>
+  <li><code>model: 'inherit'</code> 表示使用父级模型，不覆盖</li>
+  <li><code>hooks</code> 通过 Zod Schema 严格校验</li>
+  <li><code>paths</code> 支持逗号分隔字符串或 YAML 列表</li>
+</ul>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH3 ===== -->
+<section class="section" id="ch3">
+<span class="section-num">CHAPTER 03</span>
+<h2>技能加载与发现引擎</h2>
+
+<p>技能加载系统是整个扩展架构的核心。源码主体在 <code>src/skills/loadSkillsDir.ts</code>（约 1000 行），负责从 4 个层级的目录中发现、加载、去重和管理技能。</p>
+
+<h3>四层技能源</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>层级</th><th>路径</th><th>SettingSource</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Managed</strong></td><td><code>{managedPath}/.claude/skills/</code></td><td>policySettings</td><td>企业策略推送的技能，最高优先级</td></tr>
+    <tr><td><strong>User</strong></td><td><code>~/.claude/skills/</code></td><td>userSettings</td><td>用户全局技能</td></tr>
+    <tr><td><strong>Project</strong></td><td><code>.claude/skills/</code>（项目目录到 home 的每一级）</td><td>projectSettings</td><td>项目级技能</td></tr>
+    <tr><td><strong>Additional</strong></td><td><code>--add-dir</code> 指定的额外目录</td><td>projectSettings</td><td>外挂目录技能</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>加载流程</h3>
+<div class="flow">
+  <div class="flow-step">&#10102; getSkillDirCommands(cwd)</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10103; 并行扫描 4 层目录</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10104; realpath 去重</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10105; 条件/无条件分离</div>
+</div>
+
+<pre><code>// src/skills/loadSkillsDir.ts - 核心加载逻辑
+const [managedSkills, userSkills, projectSkillsNested,
+       additionalSkillsNested, legacyCommands] = await Promise.all([
+  loadSkillsFromSkillsDir(managedSkillsDir, 'policySettings'),
+  loadSkillsFromSkillsDir(userSkillsDir, 'userSettings'),
+  Promise.all(projectSkillsDirs.map(dir =>
+    loadSkillsFromSkillsDir(dir, 'projectSettings'))),
+  Promise.all(additionalDirs.map(dir =>
+    loadSkillsFromSkillsDir(join(dir, '.claude', 'skills'), 'projectSettings'))),
+  loadSkillsFromCommandsDir(cwd),  // 兼容旧的 /commands/ 目录
+])</code></pre>
+
+<h3>去重机制</h3>
+<p>通过 <code>realpath()</code> 解析符号链接到规范路径，确保同一文件不会通过不同路径（如符号链接、重叠的父目录）被重复加载。这比 inode 比较更可靠，避免了虚拟文件系统/NFS 上 inode 不准确的问题。</p>
+
+<h3>条件技能（Conditional Skills）</h3>
+<p>带有 <code>paths</code> frontmatter 的技能不会立即激活。它们被存储在 <code>conditionalSkills</code> Map 中，等待模型触及匹配路径时才激活：</p>
+<pre><code>// 当模型操作文件时触发
+activateConditionalSkillsForPaths(filePaths, cwd)
+// 使用 gitignore 风格匹配
+if (skillIgnore.ignores(relativePath)) {
+  dynamicSkills.set(name, skill)      // 移入动态技能
+  conditionalSkills.delete(name)       // 移出条件池
+  activatedConditionalSkillNames.add(name)
+}</code></pre>
+
+<div class="callout green">
+<strong>性能优化</strong>：技能加载结果通过 lodash <code>memoize</code> 缓存，以 <code>cwd</code> 为 key。但可用性检查（<code>meetsAvailabilityRequirement</code>、<code>isCommandEnabled</code>）每次调用 <code>getCommands()</code> 都会重新评估，确保认证状态变化（如 <code>/login</code>）立即生效。
+</div>
+
+<h3>动态技能发现</h3>
+<p>除了条件技能，系统还支持运行时动态发现技能目录。新发现的技能通过信号（<code>createSignal</code>）通知缓存清除，避免循环依赖。</p>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH4 ===== -->
+<section class="section" id="ch4">
+<span class="section-num">CHAPTER 04</span>
+<h2>SkillTool 执行引擎</h2>
+
+<p>SkillTool 是模型调用技能的唯一入口，定义在 <code>src/tools/SkillTool/SkillTool.ts</code>。它是一个标准的 <code>Tool</code>，通过 <code>buildTool()</code> 构建，拥有输入验证、权限检查、执行三阶段。</p>
+
+<h3>输入 Schema</h3>
+<pre><code>z.object({
+  skill: z.string()  // 技能名称，如 "commit", "review-pr", "pdf"
+  args: z.string().optional()  // 可选参数
+})</code></pre>
+
+<h3>执行流程</h3>
+<div class="flow">
+  <div class="flow-step">&#10102; validateInput</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10103; checkPermissions</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10104; call (inline/fork)</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10105; 返回结果</div>
+</div>
+
+<h3>两种执行模式</h3>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title"><span class="icon">&#128196;</span> Inline 模式（默认）</div>
+    <p>技能 prompt 直接展开到当前对话上下文中。模型在同一个 token 预算内处理技能内容。</p>
+    <pre><code>// 返回结果
+{
+  success: true,
+  commandName: "skill-name",
+  allowedTools: [...],
+  status: "inline"
+}</code></pre>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">&#128268;</span> Fork 模式</div>
+    <p>技能在隔离的子 Agent 中运行，拥有独立的 token 预算。通过 <code>runAgent()</code> 驱动，支持进度回报。</p>
+    <pre><code>// context: 'fork' 触发
+{
+  success: true,
+  commandName: "skill-name",
+  status: "forked",
+  agentId: "uuid",
+  result: "执行结果文本"
+}</code></pre>
+  </div>
+</div>
+
+<h3>Prompt 构建</h3>
+<p>技能列表被嵌入到 SkillTool 的 prompt 中，通过 <code>system-reminder</code> 消息展示给模型。列表有预算控制：</p>
+<pre><code>// src/tools/SkillTool/prompt.ts
+const SKILL_BUDGET_CONTEXT_PERCENT = 0.01  // 上下文窗口的 1%
+const MAX_LISTING_DESC_CHARS = 250         // 每条描述最大字符数
+
+// Bundled skills 描述永不截断
+// 其他技能描述按预算等比截断
+// 极端情况下非 bundled 只显示名称</code></pre>
+
+<h3>权限检查</h3>
+<p>SkillTool 支持基于规则的权限匹配，规则格式支持：</p>
+<ul>
+  <li>精确匹配：<code>Skill(commit)</code></li>
+  <li>前缀通配：<code>Skill(review:*)</code> — 匹配 <code>review-pr</code>、<code>review-code</code> 等</li>
+  <li>官方插件信任：来自官方 marketplace 的技能可配置自动信任</li>
+</ul>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH5 ===== -->
+<section class="section" id="ch5">
+<span class="section-num">CHAPTER 05</span>
+<h2>内置技能（Bundled Skills）</h2>
+
+<p>内置技能编译到 CLI 二进制中，无需磁盘文件，所有用户开箱即用。注册入口在 <code>src/skills/bundled/index.ts</code>。</p>
+
+<h3>注册模式</h3>
+<pre><code>// src/skills/bundledSkills.ts
+export function registerBundledSkill(definition: BundledSkillDefinition): void {
+  // definition 包含：name, description, whenToUse,
+  // allowedTools, model, getPromptForCommand, files, ...
+  const command: Command = { type: 'prompt', source: 'bundled', ... }
+  bundledSkills.push(command)
+}
+
+// 技能可附带引用文件（延迟提取到磁盘）
+files?: Record&lt;string, string&gt;  // 相对路径 -> 内容</code></pre>
+
+<h3>当前 Bundled Skills 清单</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>技能名</th><th>功能</th><th>条件</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>update-config</code></td><td>通过 settings.json 配置 Claude Code</td><td>Always</td></tr>
+    <tr><td><code>keybindings</code></td><td>自定义键盘快捷键</td><td>Always</td></tr>
+    <tr><td><code>verify</code></td><td>验证代码/配置正确性</td><td>Always</td></tr>
+    <tr><td><code>debug</code></td><td>调试辅助</td><td>Always</td></tr>
+    <tr><td><code>lorem-ipsum</code></td><td>生成占位文本</td><td>Always</td></tr>
+    <tr><td><code>skillify</code></td><td>将操作转化为可复用技能</td><td>Always</td></tr>
+    <tr><td><code>remember</code></td><td>记忆管理</td><td>Always</td></tr>
+    <tr><td><code>simplify</code></td><td>代码审查 + 清理（启动 3 个并行 Agent）</td><td>Always</td></tr>
+    <tr><td><code>batch</code></td><td>批量执行任务</td><td>Always</td></tr>
+    <tr><td><code>stuck</code></td><td>卡住时的自助修复</td><td>Always</td></tr>
+    <tr><td><code>claude-api</code></td><td>使用 Anthropic SDK 构建应用</td><td>BUILDING_CLAUDE_APPS flag</td></tr>
+    <tr><td><code>loop</code></td><td>循环执行 prompt/command</td><td>AGENT_TRIGGERS flag</td></tr>
+    <tr><td><code>schedule</code></td><td>远程定时 Agent</td><td>AGENT_TRIGGERS_REMOTE flag</td></tr>
+    <tr><td><code>claude-in-chrome</code></td><td>Chrome 浏览器集成</td><td>shouldAutoEnableClaudeInChrome()</td></tr>
+    <tr><td><code>dream</code></td><td>自动梦境（后台思考）</td><td>KAIROS flag</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>文件提取安全机制</h3>
+<p>Bundled Skills 的附带文件（<code>files</code> 字段）在首次调用时延迟提取到磁盘。安全措施包括：</p>
+<ul>
+  <li>每进程随机 nonce 目录（防预创建攻击）</li>
+  <li><code>O_NOFOLLOW | O_EXCL</code> — 不跟随符号链接，拒绝已存在文件</li>
+  <li><code>0o700 / 0o600</code> 权限 — 仅所有者可访问</li>
+  <li>路径遍历检查 — 拒绝 <code>..</code> 和绝对路径</li>
+</ul>
+
+<div class="callout">
+<strong>Built-in Plugins 与 Bundled Skills 的区别</strong>：Bundled Skills 始终可用且无法禁用；Built-in Plugins 出现在 <code>/plugin</code> UI 中，用户可以开关（持久化到 settings）。一个 Built-in Plugin 可以包含多个 skills、hooks 和 MCP servers。
+</div>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH6 ===== -->
+<section class="section" id="ch6">
+<span class="section-num">CHAPTER 06</span>
+<h2>插件系统与 Marketplace</h2>
+
+<p>插件系统是 Claude Code 最重量级的扩展机制，涉及约 40 个源文件（<code>src/utils/plugins/</code>），覆盖安装、加载、缓存、版本控制、安全策略等完整生命周期。</p>
+
+<h3>插件组成</h3>
+<p>一个 <code>LoadedPlugin</code> 可以包含以下组件：</p>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">&#128221; Skills</div>
+    <p><code>skillsPath</code> / <code>skillsPaths</code> 指向包含 SKILL.md 的目录</p>
+  </div>
+  <div class="card">
+    <div class="card-title">&#128268; Hooks</div>
+    <p><code>hooksConfig: HooksSettings</code> — PreToolUse / PostToolUse / Stop 等事件钩子</p>
+  </div>
+  <div class="card">
+    <div class="card-title">&#128640; MCP Servers</div>
+    <p><code>mcpServers: Record&lt;string, McpServerConfig&gt;</code> — MCP 协议服务器</p>
+  </div>
+  <div class="card">
+    <div class="card-title">&#128214; LSP Servers</div>
+    <p><code>lspServers: Record&lt;string, LspServerConfig&gt;</code> — Language Server Protocol 服务器</p>
+  </div>
+</div>
+
+<h3>三种插件来源</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>来源</th><th>标识符格式</th><th>特点</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Marketplace</strong></td><td><code>plugin-name@marketplace-name</code></td><td>通过 Git 仓库分发，支持版本控制、自动更新、策略封锁</td></tr>
+    <tr><td><strong>Built-in</strong></td><td><code>plugin-name@builtin</code></td><td>编译到 CLI 中，可通过 /plugin UI 开关</td></tr>
+    <tr><td><strong>Session</strong></td><td><code>--plugin-dir</code> 参数</td><td>会话级别，仅当前运行有效</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Marketplace 架构</h3>
+<pre><code>~/.claude/plugins/
+  known_marketplaces.json    # 已知 marketplace 配置
+  marketplaces/              # marketplace 缓存
+    my-marketplace/          # Git 克隆的 marketplace 仓库
+      .claude-plugin/
+        marketplace.json     # marketplace 清单
+  installed/                 # 已安装插件的版本缓存</code></pre>
+
+<p>官方保留的 marketplace 名称：</p>
+<div>
+  <span class="tag">claude-code-marketplace</span>
+  <span class="tag">claude-code-plugins</span>
+  <span class="tag">anthropic-marketplace</span>
+  <span class="tag">anthropic-plugins</span>
+  <span class="tag">agent-skills</span>
+</div>
+
+<h3>加载流程</h3>
+<div class="flow">
+  <div class="flow-step">&#10102; loadAllPlugins()</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10103; marketplace + session + builtin 并行加载</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10104; mergePluginSources() 去重</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">&#10105; 依赖验证 + 策略过滤</div>
+</div>
+
+<p>两种加载变体：</p>
+<ul>
+  <li><strong><code>loadAllPlugins()</code></strong> — 完整加载，可能触发 Git clone（用于 <code>/plugins</code>、显式刷新）</li>
+  <li><strong><code>loadAllPluginsCacheOnly()</code></strong> — 仅缓存，从 <code>installed_plugins.json</code> 读取（用于启动时，不阻塞网络）</li>
+</ul>
+
+<h3>后台安装管理器</h3>
+<p><code>PluginInstallationManager</code>（<code>src/services/plugins/</code>）在启动后异步 reconcile marketplace：</p>
+<ul>
+  <li>发现 <code>missing</code> 的 marketplace → 后台 clone</li>
+  <li>检测 <code>sourceChanged</code> → 后台更新</li>
+  <li>新安装完成 → 自动 refresh 插件列表</li>
+  <li>更新完成 → 设置 <code>needsRefresh</code>，提示用户 <code>/reload-plugins</code></li>
+</ul>
+
+<div class="callout red">
+<strong>安全防线</strong>：插件系统有多层安全机制 — marketplace 名称反仿冒检测（正则 + Unicode 同形字检查）、策略封锁列表（<code>pluginPolicy.ts</code>）、非 ASCII 字符拦截、企业 managed settings 锁定。
+</div>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH7 ===== -->
+<section class="section" id="ch7">
+<span class="section-num">CHAPTER 07</span>
+<h2>命令系统架构</h2>
+
+<p>命令系统定义在 <code>src/commands.ts</code>（约 750 行）和 <code>src/types/command.ts</code>。它是三大扩展系统的统一调度层。</p>
+
+<h3>Command 类型体系</h3>
+<pre><code>// src/types/command.ts
+type Command = CommandBase & (PromptCommand | LocalCommand | LocalJSXCommand)
+
+type CommandBase = {
+  name: string
+  description: string
+  aliases?: string[]
+  availability?: ('claude-ai' | 'console')[]  // 认证要求
+  isEnabled?: () => boolean                     // 条件启用
+  isHidden?: boolean                            // 隐藏于 typeahead
+  loadedFrom?: 'commands_DEPRECATED' | 'skills' | 'plugin' | 'managed' | 'bundled' | 'mcp'
+  kind?: 'workflow'
+  whenToUse?: string
+  // ...
+}</code></pre>
+
+<h3>三种命令类型</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>类型</th><th>执行方式</th><th>用途</th><th>示例</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>prompt</code></td>
+      <td>展开为 prompt 文本发送给模型</td>
+      <td>技能、自定义命令</td>
+      <td>/commit, /review, 所有 skills</td>
+    </tr>
+    <tr>
+      <td><code>local</code></td>
+      <td>本地 TypeScript 函数执行，返回文本结果</td>
+      <td>简单本地操作</td>
+      <td>/compact, /cost, /clear</td>
+    </tr>
+    <tr>
+      <td><code>local-jsx</code></td>
+      <td>渲染 Ink（React-like）UI 组件</td>
+      <td>交互式界面</td>
+      <td>/help, /config, /doctor, /plugin</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>命令注册与合并</h3>
+<p><code>getCommands(cwd)</code> 是命令系统的核心入口，合并顺序决定优先级：</p>
+<pre><code>// src/commands.ts - loadAllCommands()
+return [
+  ...bundledSkills,        // 1. 内置技能（最高优先）
+  ...builtinPluginSkills,  // 2. Built-in 插件技能
+  ...skillDirCommands,     // 3. 文件技能（/skills/ 和 /commands/）
+  ...workflowCommands,     // 4. Workflow 命令
+  ...pluginCommands,       // 5. 插件命令
+  ...pluginSkills,         // 6. 插件技能
+  ...COMMANDS(),           // 7. 内置命令（最低优先）
+]</code></pre>
+
+<h3>命令生命周期</h3>
+<div class="flow">
+  <div class="flow-step">用户输入 /xxx</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">findCommand() 名称/别名匹配</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">类型判断</div>
+  <div class="flow-arrow">&#8594;</div>
+  <div class="flow-step">执行</div>
+</div>
+<ul>
+  <li><strong>prompt 型</strong>：调用 <code>getPromptForCommand(args, context)</code> → 内容注入对话 → 模型处理</li>
+  <li><strong>local 型</strong>：<code>load()</code> 延迟加载模块 → <code>call(args, context)</code> → 返回文本</li>
+  <li><strong>local-jsx 型</strong>：<code>load()</code> → <code>call(onDone, context, args)</code> → 渲染 React 组件</li>
+</ul>
+
+<h3>可用性过滤</h3>
+<p>每次 <code>getCommands()</code> 调用都会重新评估两层过滤：</p>
+<ol>
+  <li><strong><code>meetsAvailabilityRequirement()</code></strong> — 认证类型匹配（claude-ai / console）</li>
+  <li><strong><code>isCommandEnabled()</code></strong> — feature flag / 环境变量 / 平台检查</li>
+</ol>
+
+<div class="callout">
+<strong>远程安全</strong>：<code>REMOTE_SAFE_COMMANDS</code> 白名单控制 <code>--remote</code> 模式下可用的命令。<code>BRIDGE_SAFE_COMMANDS</code> 控制从 Mobile/Web 客户端发来的命令。<code>prompt</code> 类型天然安全（只产生文本），<code>local-jsx</code> 类型全部封锁（渲染 Ink UI）。
+</div>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH8 ===== -->
+<section class="section" id="ch8">
+<span class="section-num">CHAPTER 08</span>
+<h2>内置命令全景图</h2>
+
+<p>Claude Code 注册了 70+ 个内置命令，涵盖开发、配置、协作、调试各方面。以下按功能分组展示核心命令。</p>
+
+<h3>&#9997; 开发工作流</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>命令</th><th>类型</th><th>功能</th></tr></thead>
+  <tbody>
+    <tr><td><code>/review</code></td><td>prompt</td><td>代码审查</td></tr>
+    <tr><td><code>/commit</code></td><td>prompt</td><td>Git 提交（内部专用）</td></tr>
+    <tr><td><code>/diff</code></td><td>local-jsx</td><td>查看文件差异</td></tr>
+    <tr><td><code>/branch</code></td><td>local-jsx</td><td>分支管理</td></tr>
+    <tr><td><code>/plan</code></td><td>local-jsx</td><td>规划模式切换</td></tr>
+    <tr><td><code>/rewind</code></td><td>local-jsx</td><td>回退到之前的状态</td></tr>
+    <tr><td><code>/security-review</code></td><td>prompt</td><td>安全审查</td></tr>
+    <tr><td><code>/release-notes</code></td><td>local-jsx</td><td>生成发布日志</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>&#9881; 配置与设置</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>命令</th><th>类型</th><th>功能</th></tr></thead>
+  <tbody>
+    <tr><td><code>/config</code></td><td>local-jsx</td><td>配置管理界面</td></tr>
+    <tr><td><code>/model</code></td><td>local-jsx</td><td>切换模型</td></tr>
+    <tr><td><code>/permissions</code></td><td>local-jsx</td><td>权限管理</td></tr>
+    <tr><td><code>/hooks</code></td><td>local-jsx</td><td>Hook 管理</td></tr>
+    <tr><td><code>/mcp</code></td><td>local-jsx</td><td>MCP 服务器管理</td></tr>
+    <tr><td><code>/theme</code></td><td>local-jsx</td><td>主题切换</td></tr>
+    <tr><td><code>/vim</code></td><td>local-jsx</td><td>Vim 模式切换</td></tr>
+    <tr><td><code>/keybindings</code></td><td>local-jsx</td><td>键绑定管理</td></tr>
+    <tr><td><code>/privacy-settings</code></td><td>local-jsx</td><td>隐私设置</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>&#128202; 监控与诊断</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>命令</th><th>类型</th><th>功能</th></tr></thead>
+  <tbody>
+    <tr><td><code>/cost</code></td><td>local-jsx</td><td>当前会话费用统计</td></tr>
+    <tr><td><code>/usage</code></td><td>local-jsx</td><td>API 用量查看</td></tr>
+    <tr><td><code>/doctor</code></td><td>local-jsx</td><td>安装诊断（可禁用）</td></tr>
+    <tr><td><code>/stats</code></td><td>local-jsx</td><td>会话统计</td></tr>
+    <tr><td><code>/status</code></td><td>local-jsx</td><td>状态概览</td></tr>
+    <tr><td><code>/insights</code></td><td>prompt</td><td>使用报告分析（延迟加载，113KB）</td></tr>
+    <tr><td><code>/context</code></td><td>local-jsx</td><td>上下文信息</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>&#128640; 会话管理</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>命令</th><th>类型</th><th>功能</th></tr></thead>
+  <tbody>
+    <tr><td><code>/compact</code></td><td>local-jsx</td><td>压缩上下文</td></tr>
+    <tr><td><code>/clear</code></td><td>local-jsx</td><td>清屏</td></tr>
+    <tr><td><code>/resume</code></td><td>local-jsx</td><td>恢复历史会话</td></tr>
+    <tr><td><code>/session</code></td><td>local-jsx</td><td>会话管理（QR code / URL）</td></tr>
+    <tr><td><code>/memory</code></td><td>local-jsx</td><td>记忆管理</td></tr>
+    <tr><td><code>/export</code></td><td>local-jsx</td><td>导出对话</td></tr>
+    <tr><td><code>/copy</code></td><td>local-jsx</td><td>复制上一条消息</td></tr>
+    <tr><td><code>/files</code></td><td>local-jsx</td><td>列出已追踪文件</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>&#128268; 扩展与插件</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>命令</th><th>类型</th><th>功能</th></tr></thead>
+  <tbody>
+    <tr><td><code>/plugin</code></td><td>local-jsx</td><td>插件管理（安装/卸载/开关/浏览 marketplace）</td></tr>
+    <tr><td><code>/reload-plugins</code></td><td>local-jsx</td><td>重新加载插件</td></tr>
+    <tr><td><code>/skills</code></td><td>local-jsx</td><td>列出可用技能</td></tr>
+    <tr><td><code>/agents</code></td><td>local-jsx</td><td>Agent 管理</td></tr>
+    <tr><td><code>/tasks</code></td><td>local-jsx</td><td>任务管理</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>&#127758; 远程与集成</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>命令</th><th>类型</th><th>功能</th></tr></thead>
+  <tbody>
+    <tr><td><code>/mobile</code></td><td>local-jsx</td><td>移动端 QR 码</td></tr>
+    <tr><td><code>/desktop</code></td><td>local-jsx</td><td>桌面端设置</td></tr>
+    <tr><td><code>/ide</code></td><td>local-jsx</td><td>IDE 集成</td></tr>
+    <tr><td><code>/chrome</code></td><td>local-jsx</td><td>Chrome 集成</td></tr>
+    <tr><td><code>/login</code> / <code>/logout</code></td><td>local-jsx</td><td>认证管理</td></tr>
+    <tr><td><code>/upgrade</code></td><td>local-jsx</td><td>升级 CLI</td></tr>
+    <tr><td><code>/install-github-app</code></td><td>local-jsx</td><td>安装 GitHub App</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+<strong>Feature Flag 条件命令</strong>：许多命令通过 <code>feature('FLAG_NAME')</code> 条件加载：<code>/voice</code>（VOICE_MODE）、<code>/bridge</code>（BRIDGE_MODE）、<code>/fork</code>（FORK_SUBAGENT）、<code>/buddy</code>（BUDDY）、<code>/ultraplan</code>（ULTRAPLAN）等。这些是实验性功能，通过编译时标志控制。
+</div>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH9 ===== -->
+<section class="section" id="ch9">
+<span class="section-num">CHAPTER 09</span>
+<h2>三大系统协作关系</h2>
+
+<p>技能、插件和命令并非孤立运作。它们通过统一的注册表和调度机制紧密协作。</p>
+
+<h3>数据流全景</h3>
+<div class="arch-diagram">
+<pre>
+用户输入 "/" 前缀
+     │
+     ▼
+┌─────────────┐     ┌──────────────────────────────────┐
+│  Typeahead   │────▶│ getCommands(cwd) 统一注册表       │
+│  补全列表    │     │                                  │
+└─────────────┘     │  ┌────────────────────────────┐  │
+                    │  │ Bundled Skills              │  │
+模型通过 SkillTool  │  │ Built-in Plugin Skills      │  │
+调用技能             │  │ File Skills (/skills/)      │  │
+     │              │  │ Workflow Commands            │  │
+     ▼              │  │ Plugin Commands & Skills     │  │
+┌─────────────┐     │  │ Built-in Commands (70+)     │  │
+│  SkillTool  │────▶│  │ Dynamic Skills              │  │
+│  (model)    │     │  │ MCP Skills                  │  │
+└─────────────┘     │  └────────────────────────────┘  │
+                    └──────────────────────────────────┘
+                               │
+                    ┌──────────┼──────────┐
+                    ▼          ▼          ▼
+              ┌──────────┐ ┌──────┐ ┌──────────┐
+              │ prompt 型 │ │local │ │local-jsx │
+              │          │ │      │ │          │
+              │ 展开到    │ │ 执行  │ │ 渲染 Ink │
+              │ 对话上下文│ │ 本地  │ │ React UI │
+              └──────────┘ └──────┘ └──────────┘
+</pre>
+</div>
+
+<h3>插件如何贡献技能</h3>
+<p>插件通过 <code>skillsPath</code> / <code>skillsPaths</code> 字段指向包含 SKILL.md 的目录。加载时：</p>
+<ol>
+  <li><code>getPluginSkills()</code> 扫描已启用插件的技能目录</li>
+  <li>使用与文件技能相同的 <code>parseFrontmatter</code> + <code>createSkillCommand</code> 流程</li>
+  <li>技能名称加上插件前缀：<code>plugin-name:skill-name</code></li>
+  <li>进入统一注册表，模型可通过 SkillTool 调用</li>
+</ol>
+
+<h3>MCP 如何贡献技能</h3>
+<p>MCP 服务器可以暴露 prompts，这些 prompts 可以被标记为技能（<code>loadedFrom: 'mcp'</code>）：</p>
+<ul>
+  <li>通过 <code>mcpSkillBuilders</code> 注册表（write-once pattern）获取创建函数</li>
+  <li>使用与文件技能相同的 <code>parseSkillFrontmatterFields</code> 解析</li>
+  <li>安全限制：MCP 技能的 Markdown 中不执行内联 shell 命令（<code>!`...`</code>）</li>
+  <li>通过 <code>getMcpSkillCommands()</code> 过滤，只有 <code>loadedFrom === 'mcp'</code> 的才算技能</li>
+</ul>
+
+<h3>缓存失效链</h3>
+<pre><code>clearCommandsCache()
+  ├── clearCommandMemoizationCaches()
+  │     ├── loadAllCommands.cache.clear()
+  │     ├── getSkillToolCommands.cache.clear()
+  │     ├── getSlashCommandToolSkills.cache.clear()
+  │     └── clearSkillIndexCache()   // experimental search
+  ├── clearPluginCommandCache()
+  ├── clearPluginSkillsCache()
+  └── clearSkillCaches()
+        ├── getSkillDirCommands.cache.clear()
+        ├── loadMarkdownFilesForSubdir.cache.clear()
+        ├── conditionalSkills.clear()
+        └── activatedConditionalSkillNames.clear()</code></pre>
+</section>
+
+<hr class="sep">
+
+<!-- ===== CH10 ===== -->
+<section class="section" id="ch10">
+<span class="section-num">CHAPTER 10</span>
+<h2>用户自定义扩展指南</h2>
+
+<h3>创建用户技能</h3>
+<p>最简单的扩展方式 — 在 <code>~/.claude/skills/</code> 下创建技能目录：</p>
+<pre><code># 创建技能目录
+mkdir -p ~/.claude/skills/my-skill
+
+# 编写 SKILL.md
+cat > ~/.claude/skills/my-skill/SKILL.md << 'EOF'
+---
+description: "我的自定义技能"
+when_to_use: "当用户需要做 XX 时使用"
+allowed-tools:
+  - Bash
+  - Read
+  - Edit
+---
+
+# 技能 Prompt
+
+你的指令内容...
+EOF</code></pre>
+
+<h3>创建项目技能</h3>
+<pre><code># 项目级技能（提交到 Git）
+mkdir -p .claude/skills/deploy
+
+cat > .claude/skills/deploy/SKILL.md << 'EOF'
+---
+description: "部署到生产环境"
+user-invocable: true
+context: fork
+allowed-tools:
+  - Bash(npm:*)
+  - Bash(docker:*)
+---
+执行部署流程...
+EOF</code></pre>
+
+<h3>创建条件技能</h3>
+<pre><code>---
+description: "React 组件规范检查"
+paths:
+  - "src/components/**/*.tsx"
+  - "src/pages/**/*.tsx"
+---
+当你修改 React 组件时，检查以下规范...</code></pre>
+
+<h3>创建 Fork 技能</h3>
+<pre><code>---
+description: "并行代码审查"
+context: fork
+agent: general-purpose
+effort: high
+model: opus
+---
+在独立上下文中执行深度代码审查...</code></pre>
+
+<h3>技能扩展决策树</h3>
+<div class="arch-diagram">
+<pre>
+需要扩展 Claude Code?
+     │
+     ├─ 只需要一个 prompt? ──────────▶ 创建 SKILL.md
+     │     ├─ 全局可用? ──────────────▶ ~/.claude/skills/
+     │     ├─ 项目特定? ──────────────▶ .claude/skills/
+     │     └─ 按文件类型激活? ────────▶ 加 paths frontmatter
+     │
+     ├─ 需要 hooks + MCP + 多技能? ──▶ 创建 Plugin
+     │     ├─ 团队共享? ─────────────▶ 发布到 Marketplace
+     │     └─ 个人使用? ─────────────▶ 本地 --plugin-dir
+     │
+     └─ 需要 UI 交互? ──────────────▶ 贡献内置命令（需修改源码）
+</pre>
+</div>
+
+<div class="callout green">
+<strong>最佳实践</strong>：
+<br>1. 优先使用 <code>context: fork</code> 运行复杂技能，避免消耗主对话的 token 预算
+<br>2. 用 <code>allowed-tools</code> 精确控制技能可用的工具，遵循最小权限原则
+<br>3. 写好 <code>when_to_use</code> 帮助模型正确匹配技能，这比 description 更重要
+<br>4. 条件技能（<code>paths</code>）是零成本的 — 不匹配时不占用技能列表空间
+</div>
+</section>
+
+<hr class="sep">
+
+<!-- ===== Footer ===== -->
+<footer style="padding:3rem 0;text-align:center;color:var(--fg-3);font-size:0.85rem">
+  <p>基于 Claude Code 源码深度研究 | 源码路径：<code>src/skills/</code> <code>src/plugins/</code> <code>src/commands/</code> <code>src/tools/SkillTool/</code></p>
+  <p style="margin-top:0.5rem">Generated with Claude Opus 4.6 | 2026-03-31</p>
+</footer>
+
+</main>
+
+<script>
+// Theme toggle
+const toggle = document.getElementById('themeToggle');
+const html = document.documentElement;
+const saved = localStorage.getItem('theme');
+if (saved) html.setAttribute('data-theme', saved);
+
+toggle.addEventListener('click', () => {
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+});
+
+// Scroll progress
+const bar = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  bar.style.width = h > 0 ? (window.scrollY / h * 100) + '%' : '0';
+}, { passive: true });
+
+// Scroll-in animation
+const sections = document.querySelectorAll('.section');
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+sections.forEach(s => io.observe(s));
+</script>
+</body>
+</html>

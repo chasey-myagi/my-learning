@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 性能工程：从 65ms 启动优化到 Prompt Caching</title>
+<style>
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-tertiary: #1a1a26;
+  --bg-card: #16161f;
+  --bg-code: #1e1e2e;
+  --border-primary: #2a2a3a;
+  --border-accent: #3d3d55;
+  --text-primary: #e8e8f0;
+  --text-secondary: #a0a0b8;
+  --text-tertiary: #6e6e88;
+  --accent-blue: #5b8af5;
+  --accent-cyan: #4dd4d4;
+  --accent-green: #4dd47e;
+  --accent-orange: #e89b4d;
+  --accent-red: #e85b5b;
+  --accent-purple: #9b7af5;
+  --accent-pink: #e86b9b;
+  --gradient-hero: linear-gradient(135deg, #5b8af5 0%, #9b7af5 50%, #e86b9b 100%);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-elevated: 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Hero ── */
+.hero {
+  padding: 80px 0 48px;
+  border-bottom: 1px solid var(--border-primary);
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -30%;
+  width: 160%;
+  height: 200%;
+  background: radial-gradient(ellipse at 30% 20%, rgba(91,138,245,0.06) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 80%, rgba(155,122,245,0.04) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 20px;
+}
+.hero-label::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--accent-cyan);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.hero h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  line-height: 1.2;
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 16px;
+}
+.hero-subtitle {
+  font-size: 17px;
+  color: var(--text-secondary);
+  max-width: 640px;
+  line-height: 1.6;
+}
+.hero-meta {
+  display: flex;
+  gap: 24px;
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.hero-meta span { display: flex; align-items: center; gap: 6px; }
+
+/* ── TOC ── */
+.toc {
+  padding: 32px 0;
+  border-bottom: 1px solid var(--border-primary);
+}
+.toc h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+.toc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+}
+.toc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+.toc-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.toc-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  min-width: 22px;
+}
+
+/* ── Sections ── */
+.section {
+  padding: 56px 0;
+  border-bottom: 1px solid var(--border-primary);
+}
+.section:last-of-type { border-bottom: none; }
+.section-header {
+  margin-bottom: 32px;
+}
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.section h2 {
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+.section-lead {
+  font-size: 16px;
+  color: var(--text-secondary);
+  max-width: 700px;
+}
+.section p {
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+/* ── Code blocks ── */
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  overflow-x: auto;
+  margin: 20px 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+p code, li code {
+  background: var(--bg-code);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: var(--accent-cyan);
+  border: 1px solid var(--border-primary);
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin: 20px 0;
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Metric / Stat boxes ── */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.metric {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+}
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.metric-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* ── Timeline ── */
+.timeline {
+  position: relative;
+  padding-left: 28px;
+  margin: 24px 0;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-primary);
+}
+.timeline-item {
+  position: relative;
+  padding: 12px 0 12px 20px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  top: 18px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-blue);
+  background: var(--bg-primary);
+}
+.timeline-item .time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+.timeline-item .desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ── Diagram ── */
+.diagram {
+  background: var(--bg-code);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin: 24px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--text-secondary);
+}
+
+/* ── Feature flags ── */
+.flag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+.flag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-code);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-orange);
+}
+.flag .state {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.flag .state.on { background: rgba(77,212,126,0.15); color: var(--accent-green); }
+.flag .state.off { background: rgba(232,91,91,0.15); color: var(--accent-red); }
+
+/* ── Callout ── */
+.callout {
+  border-left: 3px solid var(--accent-blue);
+  padding: 16px 20px;
+  margin: 20px 0;
+  background: rgba(91,138,245,0.06);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.callout.warn { border-left-color: var(--accent-orange); background: rgba(232,155,77,0.06); }
+.callout.perf { border-left-color: var(--accent-green); background: rgba(77,212,126,0.06); }
+.callout strong { color: var(--text-primary); }
+
+/* ── Lists ── */
+ul, ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+li {
+  margin: 6px 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+li strong { color: var(--text-primary); }
+
+/* ── Table ── */
+.table-wrap {
+  overflow-x: auto;
+  margin: 20px 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th {
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 2px solid var(--border-accent);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+}
+tr:hover td { background: rgba(91,138,245,0.03); }
+
+/* ── Footer ── */
+.footer {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+.footer a { color: var(--accent-blue); text-decoration: none; }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .container { padding: 0 16px; }
+  .hero { padding: 48px 0 32px; }
+  .section { padding: 36px 0; }
+  .metrics-row { grid-template-columns: 1fr 1fr; }
+  .hero-meta { flex-wrap: wrap; gap: 12px; }
+}
+
+/* ── Syntax highlight (inline) ── */
+.kw { color: #c792ea; }
+.fn { color: #82aaff; }
+.str { color: #c3e88d; }
+.cmt { color: #546e7a; font-style: italic; }
+.num { color: #f78c6c; }
+.type { color: #ffcb6b; }
+.op { color: #89ddff; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<header class="hero">
+  <div class="hero-label">Claude Code Source Deep Dive</div>
+  <h1>Claude Code 性能工程：<br>从 65ms 启动优化到 Prompt Caching</h1>
+  <p class="hero-subtitle">
+    深入剖析 Claude Code CLI 的十大性能优化策略 —— 并行预取、死代码消除、Prompt Caching、
+    令牌估算、流式执行、投机预取。基于源码的第一手分析。
+  </p>
+  <div class="hero-meta">
+    <span>源码版本: claude-code/src</span>
+    <span>分析日期: 2026-03-31</span>
+    <span>章节: 10</span>
+  </div>
+</header>
+
+<!-- ═══════════════ TOC ═══════════════ -->
+<nav class="toc">
+  <h2>目录</h2>
+  <div class="toc-grid">
+    <a class="toc-item" href="#s1"><span class="toc-num">01</span> 启动流水线：并行预取三重奏</a>
+    <a class="toc-item" href="#s2"><span class="toc-num">02</span> StartupProfiler：亚毫秒级检查点</a>
+    <a class="toc-item" href="#s3"><span class="toc-num">03</span> Bun 死代码消除 (DCE)</a>
+    <a class="toc-item" href="#s4"><span class="toc-num">04</span> 延迟加载策略：按需付费</a>
+    <a class="toc-item" href="#s5"><span class="toc-num">05</span> API 预连接与 TCP+TLS 握手</a>
+    <a class="toc-item" href="#s6"><span class="toc-num">06</span> Prompt Caching：多级缓存体系</a>
+    <a class="toc-item" href="#s7"><span class="toc-num">07</span> 工具结果存储与大结果截断</a>
+    <a class="toc-item" href="#s8"><span class="toc-num">08</span> 令牌估算优化</a>
+    <a class="toc-item" href="#s9"><span class="toc-num">09</span> OpenTelemetry 可观测性</a>
+    <a class="toc-item" href="#s10"><span class="toc-num">10</span> 流式执行与投机推理</a>
+  </div>
+</nav>
+
+<!-- ═══════════════ SECTION 1 ═══════════════ -->
+<section class="section" id="s1">
+  <div class="section-header">
+    <div class="section-num">01</div>
+    <h2>启动流水线：并行预取三重奏</h2>
+    <p class="section-lead">
+      main.tsx 的前 20 行是整个 CLI 最关键的启动路径 —— 三个 side-effect import 必须在所有其他模块之前执行，
+      把 ~135ms 的模块求值时间转化为免费的并行窗口。
+    </p>
+  </div>
+
+  <p>Claude Code 的启动流水线是一个经典的 <strong>"在等待的时候把活干了"</strong> 模式。
+    <code>main.tsx</code> 文件的前三条 import 带有刻意的副作用：</p>
+
+  <pre><span class="cmt">// main.tsx: 前 20 行 — 顺序敏感的副作用导入</span>
+<span class="kw">import</span> { profileCheckpoint } <span class="kw">from</span> <span class="str">'./utils/startupProfiler.js'</span>;
+profileCheckpoint(<span class="str">'main_tsx_entry'</span>);           <span class="cmt">// 1. 标记入口时间</span>
+
+<span class="kw">import</span> { startMdmRawRead } <span class="kw">from</span> <span class="str">'./utils/settings/mdm/rawRead.js'</span>;
+startMdmRawRead();                              <span class="cmt">// 2. 启动 MDM plist 子进程</span>
+
+<span class="kw">import</span> { startKeychainPrefetch } <span class="kw">from</span> <span class="str">'./utils/secureStorage/keychainPrefetch.js'</span>;
+startKeychainPrefetch();                        <span class="cmt">// 3. 启动 Keychain 并行读取</span>
+
+<span class="cmt">// ↓ 接下来 ~135ms 的 import 求值…… 子进程已经在跑了</span>
+<span class="kw">import</span> { feature } <span class="kw">from</span> <span class="str">'bun:bundle'</span>;
+<span class="kw">import</span> { Command } <span class="kw">from</span> <span class="str">'@commander-js/extra-typings'</span>;
+<span class="kw">import</span> chalk <span class="kw">from</span> <span class="str">'chalk'</span>;
+<span class="cmt">// ... 100+ more imports ...</span></pre>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-orange)"></span>时序模型</div>
+    <div class="diagram">main.tsx entry
+    |
+    |-- profileCheckpoint('main_tsx_entry')
+    |-- startMdmRawRead()          ──► plutil 子进程 (macOS plist) ───┐
+    |-- startKeychainPrefetch()    ──► security 子进程 x2           ──┤
+    |                                   (OAuth ~32ms + Legacy ~33ms)  │
+    |-- import chalk, commander... ────────────────────────────────────┤ ~135ms 并行
+    |-- import React, lodash ...   ────────────────────────────────────┤
+    |-- import tools, context ...  ────────────────────────────────────┤
+    |                                                                  │
+    └── profileCheckpoint('main_tsx_imports_loaded') ──────────────────┘
+    |
+    |-- preAction:
+    |     await ensureMdmSettingsLoaded()          ← 命中缓存，~0ms
+    |     await ensureKeychainPrefetchCompleted()  ← 命中缓存，~0ms</div>
+  </div>
+
+  <div class="metrics-row">
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-red)">65<span style="font-size:14px">ms</span></div>
+      <div class="metric-label">原始 Keychain 串行耗时</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-green)">~0<span style="font-size:14px">ms</span></div>
+      <div class="metric-label">并行后额外等待</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-cyan)">135<span style="font-size:14px">ms</span></div>
+      <div class="metric-label">import 求值窗口</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:28px; font-size:18px; font-weight:600;">Keychain 预取的精巧设计</h3>
+  <p><code>keychainPrefetch.ts</code> 有几个值得注意的工程细节：</p>
+  <ul>
+    <li><strong>超时保护</strong>：10 秒超时。若子进程超时（<code>err.killed</code>），
+      不 prime 缓存，让后续同步 spawn 重试 —— 避免把"真有 key 但没取到"误判为"没有 key"</li>
+    <li><strong>最小导入链</strong>：只导入 <code>child_process</code> + <code>macOsKeychainHelpers.ts</code>，
+      刻意避免 <code>macOsKeychainStorage.ts</code>（它会拉入 execa → human-signals → cross-spawn，
+      额外 ~58ms 的同步模块初始化）</li>
+    <li><strong>状态判断</strong>：<code>legacyApiKeyPrefetch</code> 区分 <code>null</code>（未完成）
+      和 <code>{ stdout: null }</code>（完成但无 key），让同步读取路径只信任已完成的结果</li>
+  </ul>
+
+  <h3 style="margin-top:28px; font-size:18px; font-weight:600;">MDM 原始读取</h3>
+  <p><code>rawRead.ts</code> 在 macOS 上并行发射多个 <code>plutil</code> 子进程读取 plist 配置，
+    在 Windows 上并行查询 HKLM / HKCU 注册表。一个快速优化：
+    用同步的 <code>existsSync</code> 先检查 plist 文件是否存在 —— 非 MDM 机器根本没有这些文件，
+    跳过 ~5ms 的无用 plutil 进程启动。</p>
+</section>
+
+<!-- ═══════════════ SECTION 2 ═══════════════ -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <div class="section-num">02</div>
+    <h2>StartupProfiler：亚毫秒级检查点系统</h2>
+    <p class="section-lead">
+      三个分层采样的性能剖析器覆盖启动、查询、无头三种模式，零开销旁路设计确保非采样用户完全无感。
+    </p>
+  </div>
+
+  <p>性能优化的前提是能测量。Claude Code 构建了一个基于 <code>perf_hooks</code> 的三级 profiler 体系：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Profiler</th><th>覆盖范围</th><th>采样率 (内部)</th><th>采样率 (外部)</th><th>触发方式</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>startupProfiler</code></td>
+          <td>cli_entry → main_after_run</td>
+          <td>100%</td>
+          <td>0.5%</td>
+          <td>自动 (模块加载即启动)</td>
+        </tr>
+        <tr>
+          <td><code>headlessProfiler</code></td>
+          <td>每轮 turn 的 TTFT / 查询开销</td>
+          <td>100%</td>
+          <td>5%</td>
+          <td>-p (非交互) 模式</td>
+        </tr>
+        <tr>
+          <td><code>queryProfiler</code></td>
+          <td>API 请求内部阶段</td>
+          <td>100%</td>
+          <td>采样</td>
+          <td>每次 API 调用</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>核心设计原则：<strong>"决策在模块加载时做一次，非采样路径零开销"</strong></p>
+
+  <pre><span class="cmt">// startupProfiler.ts: 模块级决策</span>
+<span class="kw">const</span> SHOULD_PROFILE = DETAILED_PROFILING || STATSIG_LOGGING_SAMPLED;
+
+<span class="kw">export function</span> <span class="fn">profileCheckpoint</span>(name: <span class="type">string</span>): <span class="type">void</span> {
+  <span class="kw">if</span> (!SHOULD_PROFILE) <span class="kw">return</span>;  <span class="cmt">// 非采样用户：一个 if 的成本</span>
+  <span class="kw">const</span> perf = getPerformance();
+  perf.mark(name);
+  <span class="kw">if</span> (DETAILED_PROFILING) {
+    memorySnapshots.push(process.memoryUsage());
+  }
+}</pre>
+
+  <p>四个关键阶段定义告诉 Statsig 要追踪什么：</p>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-purple)"></span>PHASE_DEFINITIONS</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Phase</th><th>Start Checkpoint</th><th>End Checkpoint</th></tr></thead>
+        <tbody>
+          <tr><td><code>import_time</code></td><td>cli_entry</td><td>main_tsx_imports_loaded</td></tr>
+          <tr><td><code>init_time</code></td><td>init_function_start</td><td>init_function_end</td></tr>
+          <tr><td><code>settings_time</code></td><td>eagerLoadSettings_start</td><td>eagerLoadSettings_end</td></tr>
+          <tr><td><code>total_time</code></td><td>cli_entry</td><td>main_after_run</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p>设置 <code>CLAUDE_CODE_PROFILE_STARTUP=1</code> 可以获得完整的瀑布图报告，
+    包含每个检查点的绝对时间、增量时间、RSS 内存和堆使用量。报告保存到
+    <code>~/.claude/startup-perf/{sessionId}.txt</code>。</p>
+</section>
+
+<!-- ═══════════════ SECTION 3 ═══════════════ -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <div class="section-num">03</div>
+    <h2>Bun 死代码消除 (DCE)</h2>
+    <p class="section-lead">
+      <code>feature('FLAG')</code> 不是运行时检查 —— 它是编译期的布尔常量替换，
+      让 Bun bundler 在 tree-shaking 时整块删除未启用的特性代码。
+    </p>
+  </div>
+
+  <p><code>import { feature } from 'bun:bundle'</code> 是 Bun bundler 提供的特殊模块。
+    每个 <code>feature('FLAG')</code> 调用在构建时被替换为 <code>true</code> 或 <code>false</code> 字面量，
+    配合 bundler 的 DCE pass，整个条件分支在输出中被彻底删除。</p>
+
+  <pre><span class="cmt">// 源码中的写法</span>
+<span class="kw">const</span> coordinatorModeModule = <span class="fn">feature</span>(<span class="str">'COORDINATOR_MODE'</span>)
+  ? require(<span class="str">'./coordinator/coordinatorMode.js'</span>)
+  : <span class="kw">null</span>;
+
+<span class="kw">const</span> assistantModule = <span class="fn">feature</span>(<span class="str">'KAIROS'</span>)
+  ? require(<span class="str">'./assistant/index.js'</span>)
+  : <span class="kw">null</span>;
+
+<span class="cmt">// 编译后（若 KAIROS=false）：
+// const assistantModule = null;
+// assistant/index.js 整个模块树不会被打入 bundle</span></pre>
+
+  <p>在 main.tsx 中发现的所有 feature flag：</p>
+
+  <div class="flag-grid">
+    <div class="flag"><code>COORDINATOR_MODE</code></div>
+    <div class="flag"><code>KAIROS</code></div>
+    <div class="flag"><code>KAIROS_BRIEF</code></div>
+    <div class="flag"><code>KAIROS_CHANNELS</code></div>
+    <div class="flag"><code>TRANSCRIPT_CLASSIFIER</code></div>
+    <div class="flag"><code>DIRECT_CONNECT</code></div>
+    <div class="flag"><code>SSH_REMOTE</code></div>
+    <div class="flag"><code>UDS_INBOX</code></div>
+    <div class="flag"><code>LODESTONE</code></div>
+    <div class="flag"><code>BG_SESSIONS</code></div>
+    <div class="flag"><code>BRIDGE_MODE</code></div>
+    <div class="flag"><code>PROACTIVE</code></div>
+    <div class="flag"><code>UPLOAD_USER_SETTINGS</code></div>
+    <div class="flag"><code>WEB_BROWSER_TOOL</code></div>
+    <div class="flag"><code>CHICAGO_MCP</code></div>
+    <div class="flag"><code>HARD_FAIL</code></div>
+    <div class="flag"><code>CCR_MIRROR</code></div>
+    <div class="flag"><code>AGENT_MEMORY_SNAPSHOT</code></div>
+    <div class="flag"><code>CACHED_MICROCOMPACT</code></div>
+  </div>
+
+  <div class="callout perf">
+    <strong>性能影响：</strong>每个被关闭的 feature flag 不仅省去了运行时的条件判断，
+    更重要的是整个相关模块子树（coordinator、assistant、transcriptClassifier 等）
+    不会出现在最终 bundle 中。这直接减少了启动时需要解析和求值的 JavaScript 体积。
+  </div>
+
+  <p>这种模式贯穿了多个文件：<code>claude.ts</code>、<code>setup.ts</code>、<code>compact.ts</code>、
+    <code>toolExecution.ts</code> 等都使用 <code>feature()</code> 来条件加载模块。
+    值得注意的是，所有被 feature gate 保护的导入都使用 <code>require()</code> 而非 <code>import()</code> ——
+    这是因为只有同步 require 才能被 Bun 的静态分析识别并在 DCE 时处理。</p>
+</section>
+
+<!-- ═══════════════ SECTION 4 ═══════════════ -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <div class="section-num">04</div>
+    <h2>延迟加载策略：按需付费</h2>
+    <p class="section-lead">
+      从 OpenTelemetry (~1.2MB) 到 gRPC (~700KB)，从 AWS SDK (~279KB) 到原生音频模块，
+      每一个重量级依赖都有精心设计的懒加载路径。
+    </p>
+  </div>
+
+  <p>Claude Code 的延迟加载遵循一个原则：<strong>"你不用的东西，不该在启动时为它买单"</strong>。
+    以下是几个典型案例：</p>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-cyan)"></span>OpenTelemetry (init.ts)</div>
+    <p style="font-size:14px;margin-bottom:8px;">注释原文："initializeTelemetry is loaded lazily via import() to defer ~400KB of OpenTelemetry + protobuf modules. gRPC exporters (~700KB via @grpc/grpc-js) are further lazy-loaded within instrumentation.ts."</p>
+    <pre><span class="cmt">// init.ts: 1P event logging 延迟初始化</span>
+<span class="kw">void</span> Promise.all([
+  <span class="kw">import</span>(<span class="str">'../services/analytics/firstPartyEventLogger.js'</span>),
+  <span class="kw">import</span>(<span class="str">'../services/analytics/growthbook.js'</span>),
+]).then(([fp, gb]) <span class="op">=></span> {
+  fp.initialize1PEventLogging();
+});</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-orange)"></span>gRPC 按协议懒加载 (instrumentation.ts)</div>
+    <p style="font-size:14px;margin-bottom:8px;">OTLP 导出器有 grpc / http-json / http-protobuf 三种协议，但一个进程只用一种。
+      静态导入会加载全部六个包 (~1.2MB)；动态导入只加载实际协议的那一个：</p>
+    <pre><span class="kw">switch</span> (protocol) {
+  <span class="kw">case</span> <span class="str">'grpc'</span>: {
+    <span class="cmt">// Lazy-import to keep @grpc/grpc-js (~700KB) out of</span>
+    <span class="cmt">// the telemetry chunk when protocol is http/protobuf</span>
+    <span class="kw">const</span> { OTLPMetricExporter } = <span class="kw">await import</span>(
+      <span class="str">'@opentelemetry/exporter-metrics-otlp-grpc'</span>
+    );
+    <span class="kw">break</span>;
+  }
+  <span class="kw">case</span> <span class="str">'http/protobuf'</span>: { <span class="cmt">/* 只加载 proto 包 */</span> }
+  <span class="kw">case</span> <span class="str">'http/json'</span>:     { <span class="cmt">/* 只加载 http 包 */</span> }
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-green)"></span>AWS Bedrock SDK (tokenEstimation.ts)</div>
+    <pre><span class="cmt">// @aws-sdk/client-bedrock-runtime is imported dynamically</span>
+<span class="cmt">// to defer ~279KB of AWS SDK code until a Bedrock call</span>
+<span class="cmt">// is actually made</span>
+<span class="kw">const</span> { CountTokensCommand } = <span class="kw">await import</span>(
+  <span class="str">'@aws-sdk/client-bedrock-runtime'</span>
+);</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-pink)"></span>原生音频模块 (voice.ts)</div>
+    <p style="font-size:14px;margin-bottom:8px;">CoreAudio dlopen 在冷启动时可达 ~8s（后台 coreaudiod 唤醒），
+      因此不做预加载，第一次按下语音键时才触发：</p>
+    <pre><span class="kw">let</span> audioNapiPromise: Promise&lt;AudioNapi&gt; | <span class="kw">null</span> = <span class="kw">null</span>;
+
+<span class="kw">function</span> <span class="fn">loadAudioNapi</span>(): Promise&lt;AudioNapi&gt; {
+  audioNapiPromise <span class="op">??=</span> (<span class="kw">async</span> () <span class="op">=></span> {
+    <span class="kw">const</span> mod = <span class="kw">await import</span>(<span class="str">'audio-capture-napi'</span>);
+    mod.isNativeAudioAvailable();  <span class="cmt">// 触发真正的 dlopen</span>
+    <span class="kw">return</span> mod;
+  })();
+  <span class="kw">return</span> audioNapiPromise;
+}</pre>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模块</th><th>体积</th><th>加载触发条件</th></tr></thead>
+      <tbody>
+        <tr><td>OpenTelemetry + protobuf</td><td>~400KB</td><td>telemetry 初始化时</td></tr>
+        <tr><td>@grpc/grpc-js</td><td>~700KB</td><td>gRPC 协议选中时</td></tr>
+        <tr><td>AWS Bedrock SDK</td><td>~279KB</td><td>Bedrock token count 时</td></tr>
+        <tr><td>audio-capture-napi</td><td>原生 dylib</td><td>第一次语音按键</td></tr>
+        <tr><td>execa / human-signals / cross-spawn</td><td>~58ms init</td><td>被 keychainPrefetch 绕过</td></tr>
+        <tr><td>coordinator / assistant 模块树</td><td>不定</td><td>feature flag 打开时</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════ SECTION 5 ═══════════════ -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <div class="section-num">05</div>
+    <h2>API 预连接与 TCP+TLS 握手</h2>
+    <p class="section-lead">
+      一个 fire-and-forget 的 HEAD 请求，把 ~100-200ms 的 TCP+TLS 握手从关键路径上移走。
+    </p>
+  </div>
+
+  <p><code>apiPreconnect.ts</code> 实现了一个简洁的预连接策略：在 <code>init()</code> 中
+    CA 证书和代理配置完成后，立即发射一个 <code>HEAD</code> 请求。
+    Bun 的 fetch 共享全局 keep-alive 连接池，所以后续的真实 API 请求可以复用已经建好的连接。</p>
+
+  <pre><span class="kw">export function</span> <span class="fn">preconnectAnthropicApi</span>(): <span class="type">void</span> {
+  <span class="kw">if</span> (fired) <span class="kw">return</span>;
+  fired = <span class="kw">true</span>;
+
+  <span class="cmt">// 跳过：Bedrock / Vertex / Foundry (不同端点)</span>
+  <span class="cmt">// 跳过：proxy / mTLS / unix socket (SDK 用独立 dispatcher)</span>
+
+  <span class="kw">const</span> baseUrl = process.env.ANTHROPIC_BASE_URL
+    || getOauthConfig().BASE_API_URL;
+
+  <span class="cmt">// HEAD = 无响应体 → 连接立即可复用</span>
+  <span class="cmt">// 10s 超时 → 慢网络不阻塞进程</span>
+  <span class="kw">void</span> fetch(baseUrl, {
+    method: <span class="str">'HEAD'</span>,
+    signal: AbortSignal.timeout(<span class="num">10_000</span>),
+  }).catch(() <span class="op">=></span> {});
+}</pre>
+
+  <div class="callout">
+    <strong>调用时机的演进：</strong>早期版本在 <code>cli.tsx</code> 中调用，但那时 settings.json 还没加载完，
+    <code>ANTHROPIC_BASE_URL</code>、代理配置、mTLS 配置都不可见 —— 预连接会 warm 错误的连接池。
+    现在移到 <code>init.ts</code> 中 <code>applyExtraCACertsFromConfig()</code> + <code>configureGlobalAgents()</code>
+    之后，确保预连接使用正确的传输配置。
+  </div>
+
+  <div class="metrics-row">
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-orange)">100-200<span style="font-size:14px">ms</span></div>
+      <div class="metric-label">TCP+TLS 握手耗时</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-green)">~0<span style="font-size:14px">ms</span></div>
+      <div class="metric-label">首次 API 调用额外等待</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SECTION 6 ═══════════════ -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <div class="section-num">06</div>
+    <h2>Prompt Caching：多级缓存体系</h2>
+    <p class="section-lead">
+      三级缓存作用域（global / org / none）、精确到 5 分钟 / 1 小时的 TTL 控制、
+      缓存中断检测与归因系统 —— 这是目前 CLI 中最精密的性能优化之一。
+    </p>
+  </div>
+
+  <p>Prompt Caching 是 Claude API 的一项核心能力 —— 对于每次请求中不变的 system prompt 和 tool schema 部分，
+    服务端可以缓存其 token 计算结果，后续请求命中时省去重复计算。
+    Claude Code 在客户端做了大量工作来最大化命中率。</p>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">缓存作用域策略</h3>
+
+  <p><code>api.ts</code> 中的 <code>splitSysPromptPrefix()</code> 函数将 system prompt 拆分为不同缓存级别的块：</p>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-blue)"></span>三种缓存布局</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>场景</th><th>块1</th><th>块2</th><th>块3</th><th>块4</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>有 MCP 工具</td>
+            <td>Attribution (null)</td>
+            <td>Prefix (org)</td>
+            <td>其余内容 (org)</td>
+            <td>--</td>
+          </tr>
+          <tr>
+            <td>Global cache + boundary</td>
+            <td>Attribution (null)</td>
+            <td>Prefix (null)</td>
+            <td>静态内容 (global)</td>
+            <td>动态内容 (null)</td>
+          </tr>
+          <tr>
+            <td>默认 / 3P</td>
+            <td>Attribution (null)</td>
+            <td>Prefix (org)</td>
+            <td>其余内容 (org)</td>
+            <td>--</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p>每个块上的 <code>cache_control</code> 字段指导服务端：</p>
+  <pre>cache_control: {
+  type: <span class="str">'ephemeral'</span>,
+  scope: <span class="str">'global'</span> | <span class="str">'org'</span>,  <span class="cmt">// global = 跨组织共享</span>
+  ttl: <span class="str">'5m'</span> | <span class="str">'1h'</span>          <span class="cmt">// 1h 仅限白名单用户</span>
+}</pre>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">缓存中断检测 (promptCacheBreakDetection.ts)</h3>
+
+  <p>这是一个 ~700 行的精密系统，分两阶段运行：</p>
+
+  <ol>
+    <li><strong>Phase 1 (pre-call)</strong>：在 API 请求前对 system prompt、tool schema、model、betas 等做哈希快照，
+      检测哪些字段发生了变化</li>
+    <li><strong>Phase 2 (post-call)</strong>：API 响应后比较 <code>cache_read_input_tokens</code>，
+      若下降超过 5% 且绝对值超过 2000 tokens，则判定为缓存中断，并归因到具体原因</li>
+  </ol>
+
+  <p>可检测的缓存中断原因：</p>
+  <ul>
+    <li>System prompt 变化（含字符增量）</li>
+    <li>Tool schema 变化（具体到哪个工具的 schema 变了）</li>
+    <li>Model 切换</li>
+    <li>Fast mode 切换</li>
+    <li>Beta header 变化</li>
+    <li>Effort 值变化</li>
+    <li>Extra body params 变化</li>
+    <li>5min / 1h TTL 过期</li>
+    <li>服务端路由/驱逐（无客户端变化，<5min 间隔）</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>Auto mode / Overage 状态抖动修复：</strong>源码注释指出，AFK_MODE_BETA_HEADER 和 overage 状态
+    曾经因为会话中途变化导致缓存中断。修复方法是 <strong>"sticky-on latching"</strong> ——
+    一旦在会话中打开，就在整个会话中保持，即使状态条件不再满足。
+  </div>
+</section>
+
+<!-- ═══════════════ SECTION 7 ═══════════════ -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <div class="section-num">07</div>
+    <h2>工具结果存储与大结果截断</h2>
+    <p class="section-lead">
+      当 Grep 返回 400KB 的搜索结果时，直接塞进上下文窗口是灾难。
+      toolResultStorage 实现了磁盘持久化 + 预览截断 + 按消息批量预算控制。
+    </p>
+  </div>
+
+  <p><code>toolResultStorage.ts</code> 是上下文窗口管理的关键组件。它解决的核心问题：
+    <strong>如何在不丢失信息的前提下，防止工具结果撑爆 context window</strong>。</p>
+
+  <div class="metrics-row">
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-orange)">50K<span style="font-size:14px">chars</span></div>
+      <div class="metric-label">单工具默认阈值</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-cyan)">200K<span style="font-size:14px">chars</span></div>
+      <div class="metric-label">单消息聚合上限</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-green)">2KB<span style="font-size:14px"></span></div>
+      <div class="metric-label">预览大小</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" style="color:var(--accent-purple)">400KB<span style="font-size:14px"></span></div>
+      <div class="metric-label">最大字节 (100K tokens)</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">三层防线</h3>
+
+  <ol>
+    <li><strong>Per-tool 阈值</strong>：每个工具声明自己的 <code>maxResultSizeChars</code>，
+      与全局 50K 默认值取 <code>Math.min()</code>。GrowthBook flag <code>tengu_satin_quoll</code>
+      可以按工具名 override</li>
+    <li><strong>磁盘持久化</strong>：超过阈值的结果写入
+      <code>{projectDir}/{sessionId}/tool-results/{toolUseId}.{txt|json}</code>，
+      替换为 2KB 预览 + 文件路径引用</li>
+    <li><strong>Per-message 批量预算</strong>：防止 N 个并行工具各自在阈值内但聚合超标
+      （例如 10 x 40K = 400K）</li>
+  </ol>
+
+  <pre><span class="cmt">// 持久化后，模型看到的内容：</span>
+&lt;<span class="type">persisted-output</span>&gt;
+Output too large (<span class="num">385.2KB</span>). Full output saved to:
+  /tmp/claude/.../tool-results/toolu_01XYZ.txt
+
+Preview (first <span class="num">2.0KB</span>):
+<span class="str">[前 2KB 的内容，在换行符处截断]</span>
+...
+&lt;/<span class="type">persisted-output</span>&gt;</pre>
+
+  <div class="callout">
+    <strong>空结果防护 (inc-4586)：</strong>空的 tool_result 会导致某些模型（如 capybara）发出
+    <code>\n\nHuman:</code> 停止序列。Claude Code 的解决方案是注入一个标记文本：
+    <code>(toolName completed with no output)</code>
+  </div>
+
+  <p>一个精妙的优化：<code>tool_use_id</code> 是唯一的，同一 ID 的内容是确定性的，
+    所以写入文件使用 <code>flag: 'wx'</code>（排他写入）——
+    如果文件已存在（microcompact 重放时），直接跳过写入，避免重复 I/O。</p>
+</section>
+
+<!-- ═══════════════ SECTION 8 ═══════════════ -->
+<section class="section" id="s8">
+  <div class="section-header">
+    <div class="section-num">08</div>
+    <h2>令牌估算优化</h2>
+    <p class="section-lead">
+      精确计数代价太高，粗估不够准确。Claude Code 用分层策略平衡速度与精度：
+      精确 API 计数做基准，粗估补差值，文件类型感知调整比率。
+    </p>
+  </div>
+
+  <p><code>tokenEstimation.ts</code> 和 <code>tokens.ts</code> 构成了令牌计数的核心。
+    最重要的函数是 <code>tokenCountWithEstimation()</code> —— 它是所有阈值检查（autocompact、session memory 等）
+    的<strong>唯一正确方式</strong>。</p>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">分层估算策略</h3>
+
+  <pre><span class="kw">export function</span> <span class="fn">tokenCountWithEstimation</span>(messages): <span class="type">number</span> {
+  <span class="cmt">// 1. 找到最后一个有 usage 的 assistant 消息</span>
+  <span class="cmt">// 2. 回溯到同一 API 响应的第一个分片（处理并行工具调用）</span>
+  <span class="cmt">// 3. 用精确 usage 做基准</span>
+  <span class="cmt">// 4. 对后续新消息做粗估算补差</span>
+  <span class="kw">return</span> getTokenCountFromUsage(usage)
+    + roughTokenCountEstimationForMessages(messages.slice(i + <span class="num">1</span>));
+}</pre>
+
+  <p>粗估算的核心是 <code>roughTokenCountEstimation</code>：字符数 / 4 ≈ token 数。
+    但对于 JSON 文件，这个比率不够准确：</p>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-cyan)"></span>文件类型感知的比率调整</div>
+    <pre><span class="kw">function</span> <span class="fn">bytesPerTokenForFileType</span>(ext: <span class="type">string</span>): <span class="type">number</span> {
+  <span class="kw">switch</span> (ext) {
+    <span class="kw">case</span> <span class="str">'json'</span>:
+    <span class="kw">case</span> <span class="str">'jsonl'</span>:
+    <span class="kw">case</span> <span class="str">'jsonc'</span>:
+      <span class="kw">return</span> <span class="num">2</span>;  <span class="cmt">// JSON 有大量单字符 token: { } : , "</span>
+    <span class="kw">default</span>:
+      <span class="kw">return</span> <span class="num">4</span>;  <span class="cmt">// 通用文本的经验值</span>
+  }
+}</pre>
+    <p style="font-size:13px;color:var(--text-tertiary);margin-top:8px;">注释原文："Dense JSON has many single-character tokens which makes the real ratio closer to 2 rather than the default 4"</p>
+  </div>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">并行工具调用的精确处理</h3>
+
+  <p>当模型发出并行工具调用时，流式代码为每个 content block 生成独立的 AssistantMessage，
+    但它们共享同一个 <code>message.id</code> 和 <code>usage</code>。消息数组看起来像：</p>
+
+  <pre><span class="cmt">// [..., assistant(id=A), user(result), assistant(id=A), user(result), ...]</span></pre>
+
+  <p><code>tokenCountWithEstimation</code> 会回溯到同一 <code>message.id</code> 的第一个分片，
+    确保所有交错的 tool_result 都被计入估算范围 —— 否则只会估算最后一个 result，严重低估。</p>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">特殊类型的固定估算</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>内容类型</th><th>估算方式</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td>图片 / PDF</td><td>固定 2000 tokens</td><td>base64 长度 ÷ 4 会严重高估（1MB = ~325K tokens vs 实际 ~2K）</td></tr>
+        <tr><td>文本</td><td>字符数 / 4</td><td>通用经验值</td></tr>
+        <tr><td>JSON</td><td>字符数 / 2</td><td>单字符 token 密度高</td></tr>
+        <tr><td>tool_use</td><td>name + stringify(input) / 4</td><td>API 会重新序列化</td></tr>
+        <tr><td>thinking</td><td>字符数 / 4</td><td>纯文本</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════ SECTION 9 ═══════════════ -->
+<section class="section" id="s9">
+  <div class="section-header">
+    <div class="section-num">09</div>
+    <h2>OpenTelemetry 可观测性架构</h2>
+    <p class="section-lead">
+      三路信号（Metrics / Logs / Traces）独立配置，按需初始化，
+      支持 gRPC / HTTP+Protobuf / HTTP+JSON / Prometheus / BigQuery 五种导出后端，
+      全部带超时保护的优雅关闭。
+    </p>
+  </div>
+
+  <p><code>instrumentation.ts</code> 是 ~826 行的可观测性基础设施，覆盖三种遥测信号：</p>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-purple)"></span>遥测架构总览</div>
+    <div class="diagram">                        ┌─────────────────────────────┐
+                        │    Environment Variables     │
+                        │  OTEL_METRICS_EXPORTER=otlp  │
+                        │  OTEL_LOGS_EXPORTER=otlp     │
+                        │  OTEL_TRACES_EXPORTER=otlp   │
+                        │  OTEL_EXPORTER_OTLP_PROTOCOL │
+                        └──────────┬──────────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              ▼                    ▼                     ▼
+     ┌────────────────┐  ┌────────────────┐   ┌────────────────┐
+     │ MeterProvider   │  │ LoggerProvider │   │ TracerProvider │
+     │ (PeriodicReader)│  │ (BatchLogProc) │   │ (BatchSpanProc)│
+     └───────┬────────┘  └───────┬────────┘   └───────┬────────┘
+             │                   │                     │
+        ┌────┴────┐         ┌───┴───┐            ┌───┴───┐
+        ▼         ▼         ▼       ▼            ▼       ▼
+     BigQuery  OTLP-*    OTLP-*  Console      OTLP-*  Console
+     (5min)   (grpc|     (grpc|               (grpc|
+              http|       http|                http|
+              proto)      proto)               proto)</div>
+  </div>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">BigQuery 指标导出</h3>
+  <p>API 客户（排除 Claude.ai 订阅者）和 C4E/Teams 用户会额外获得 BigQuery 指标导出，
+    导出间隔为 5 分钟（vs OTLP 的 60 秒默认），以减少 BigQuery 写入负载。</p>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">优雅关闭协议</h3>
+
+  <pre><span class="kw">const</span> shutdownTelemetry = <span class="kw">async</span> () <span class="op">=></span> {
+  <span class="kw">const</span> timeoutMs = parseInt(
+    process.env.CLAUDE_CODE_OTEL_SHUTDOWN_TIMEOUT_MS || <span class="str">'2000'</span>
+  );
+  <span class="cmt">// 每个 provider 独立 flush→shutdown 链</span>
+  <span class="cmt">// 避免慢 logger flush 阻塞 tracer/meter shutdown</span>
+  <span class="kw">const</span> chains = [meterProvider.shutdown()];
+  <span class="kw">if</span> (loggerProvider) chains.push(
+    loggerProvider.forceFlush().then(() <span class="op">=></span> loggerProvider.shutdown())
+  );
+  <span class="kw">await</span> Promise.race([
+    Promise.all(chains),
+    telemetryTimeout(timeoutMs, <span class="str">'OpenTelemetry shutdown timeout'</span>)
+  ]);
+};</pre>
+
+  <div class="callout">
+    <strong>Console exporter 的陷阱：</strong>Console exporter 会按定时器向 stdout 写入 <code>console.dir</code> 输出。
+    在 stream-json 模式下 stdout 是 SDK 消息通道 —— 第一行的 <code>{</code> 会打断 SDK 的 line reader。
+    <code>initializeTelemetry</code> 在格式化输出模式下自动剥离 console exporter。
+  </div>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">Perfetto 追踪</h3>
+  <p>独立于 OTEL 的 Perfetto 追踪系统，通过 <code>CLAUDE_CODE_PERFETTO_TRACE=1</code> 启用，
+    生成可在 <a href="https://ui.perfetto.dev" style="color:var(--accent-blue)">Perfetto UI</a> 中查看的本地 trace 文件。</p>
+</section>
+
+<!-- ═══════════════ SECTION 10 ═══════════════ -->
+<section class="section" id="s10">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <h2>流式执行与投机推理</h2>
+    <p class="section-lead">
+      StreamingToolExecutor 实现了并发安全的流式工具执行，
+      投机推理系统在用户思考时提前运行只读操作，
+      自动压缩在上下文快满时优雅降级。
+    </p>
+  </div>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">StreamingToolExecutor</h3>
+
+  <p><code>StreamingToolExecutor.ts</code> 是工具并行执行的核心。它实现了一个带优先级的并发调度器：</p>
+
+  <ul>
+    <li><strong>Concurrent-safe 工具</strong>（如 Read、Grep、Glob）可以互相并行执行</li>
+    <li><strong>Non-concurrent 工具</strong>（如 Bash、Edit）需要独占执行</li>
+    <li>结果按工具接收顺序缓冲和发射，保证消息序列一致性</li>
+    <li>任一 Bash 工具出错时，通过子 AbortController 取消所有兄弟工具</li>
+  </ul>
+
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent-green)"></span>投机推理系统 (speculation.ts)</div>
+    <p style="font-size:14px;margin-bottom:12px;">当用户在输入框中停留时，系统可以提前猜测下一步操作并预执行只读工具：</p>
+    <ul style="font-size:14px;">
+      <li>最多 <strong>20 轮</strong>投机推理，<strong>100 条</strong>消息上限</li>
+      <li>安全工具白名单：Read, Glob, Grep, ToolSearch, LSP, TaskGet, TaskList</li>
+      <li>写入工具白名单：Edit, Write, NotebookEdit（在 overlay 中执行，不修改真实文件系统）</li>
+      <li>如果投机结果与用户实际请求匹配，直接采纳结果，跳过实际执行</li>
+    </ul>
+  </div>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">自动压缩 (autoCompact)</h3>
+
+  <p>当上下文窗口接近上限时，<code>autoCompact.ts</code> 触发自动压缩：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>参数</th><th>值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>压缩阈值</td><td>context_window - 33K</td><td>13K buffer + 20K output reserve</td></tr>
+        <tr><td>最大输出 reserve</td><td>20K tokens</td><td>基于 p99.99 compact summary = 17,387 tokens</td></tr>
+        <tr><td>连续失败熔断</td><td>3 次</td><td>避免无限重试（BQ 数据：曾有会话连续失败 3,272 次）</td></tr>
+        <tr><td>可压缩工具</td><td>Read, Bash, Grep, Glob, WebSearch...</td><td>只压缩文本密集型工具结果</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="margin-top:24px; font-size:17px; font-weight:600;">Time-based Microcompact</h3>
+
+  <p><code>microCompact.ts</code> 实现了比完整 compact 更轻量的压缩：对旧的工具结果进行
+    原地清除（替换为 <code>[Old tool result content cleared]</code>），
+    不需要额外的 API 调用来生成摘要。Cached Microcompact 更进一步 ——
+    利用 API 的 <code>cache_edits</code> 功能，在不打断 prompt cache 的情况下删除旧内容。</p>
+
+  <div class="callout perf">
+    <strong>性能洞察：</strong>从源码分析可以看出，Claude Code 的性能优化不是单点优化，
+    而是一个<strong>完整的性能工程体系</strong>：
+    启动时用并行预取和 DCE 压缩时间，运行时用 prompt caching 和 token 估算减少 API 开销，
+    上下文管理用三层截断 + 自动压缩防止溢出，
+    可观测性用分层采样确保监控零开销。
+    每一层都有明确的 escape hatch（环境变量、GrowthBook flag）以支持渐进式调优。
+  </div>
+</section>
+
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>基于 <a href="https://github.com/anthropics/claude-code">claude-code</a> 源码分析生成 | Claude Code Source Deep Dive Series</p>
+  </div>
+</footer>
+
+</body>
+</html>

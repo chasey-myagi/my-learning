@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 系统提示词工程：动态 Prompt 构建的全链路解析</title>
+<style>
+/* ===== CSS Variables ===== */
+:root {
+  --bg: #f4f0ec;
+  --bg-alt: #eae4dd;
+  --bg-code: #1e1b18;
+  --fg: #1c1917;
+  --fg-2: #44403c;
+  --fg-3: #78716c;
+  --accent: #dc4a1a;
+  --accent-2: #9a3412;
+  --green: #15803d;
+  --green-bg: #ecfdf5;
+  --red-bg: #fef2f2;
+  --border: #d6d0c8;
+  --tag-bg: rgba(220,74,26,0.08);
+  --tag-fg: var(--accent-2);
+  --quote-bg: rgba(28,25,23,0.03);
+  --glow: rgba(220,74,26,0.15);
+}
+[data-theme="dark"] {
+  --bg: #0c0a09;
+  --bg-alt: #1c1917;
+  --bg-code: #0a0908;
+  --fg: #e7e5e4;
+  --fg-2: #a8a29e;
+  --fg-3: #78716c;
+  --accent: #fb923c;
+  --accent-2: #fdba74;
+  --green: #4ade80;
+  --green-bg: rgba(74,222,128,0.08);
+  --red-bg: rgba(248,113,113,0.08);
+  --border: #292524;
+  --tag-bg: rgba(251,146,60,0.12);
+  --tag-fg: var(--accent);
+  --quote-bg: rgba(255,255,255,0.03);
+  --glow: rgba(251,146,60,0.1);
+}
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.75;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ===== Progress Bar ===== */
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px; z-index: 1000;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  width: 0%; transition: width 0.1s linear;
+}
+
+/* ===== Theme Toggle ===== */
+.theme-toggle {
+  position: fixed; top: 1rem; right: 1rem; z-index: 999;
+  background: var(--bg-alt); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.5rem 0.8rem;
+  cursor: pointer; font-size: 0.85rem; color: var(--fg-2);
+  transition: all 0.2s;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ===== Navigation ===== */
+nav.toc {
+  position: fixed; left: 0; top: 3rem; width: 280px; height: calc(100vh - 3rem);
+  overflow-y: auto; padding: 1.5rem 1rem; background: var(--bg);
+  border-right: 1px solid var(--border); z-index: 100;
+  transition: transform 0.3s;
+}
+nav.toc h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg-3); margin-bottom: 0.75rem; }
+nav.toc a {
+  display: block; padding: 0.35rem 0.75rem; margin-bottom: 0.15rem;
+  font-size: 0.82rem; color: var(--fg-3); text-decoration: none;
+  border-radius: 6px; border-left: 2px solid transparent;
+  transition: all 0.2s; line-height: 1.5;
+}
+nav.toc a:hover { color: var(--accent); background: var(--tag-bg); }
+nav.toc a.active { color: var(--accent); border-left-color: var(--accent); background: var(--tag-bg); font-weight: 600; }
+
+/* ===== Main Content ===== */
+main {
+  margin-left: 280px; padding: 3rem 2rem 6rem;
+  max-width: calc(65ch + 280px + 4rem);
+}
+
+/* ===== Header ===== */
+.hero {
+  padding: 3rem 0 2rem; margin-bottom: 3rem;
+  border-bottom: 1px solid var(--border);
+}
+.hero h1 {
+  font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; line-height: 1.3; margin-bottom: 0.75rem;
+}
+.hero .subtitle { font-size: 1.05rem; color: var(--fg-2); line-height: 1.6; }
+.hero .meta { margin-top: 1rem; font-size: 0.8rem; color: var(--fg-3); display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.hero .meta span { display: flex; align-items: center; gap: 0.3rem; }
+
+/* ===== Sections ===== */
+section { margin-bottom: 3.5rem; }
+section.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+section.reveal.visible { opacity: 1; transform: translateY(0); }
+h2 {
+  font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;
+  padding-bottom: 0.5rem; border-bottom: 2px solid var(--accent);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+h2 .num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; border-radius: 8px;
+  background: var(--tag-bg); color: var(--accent);
+  font-size: 0.85rem; font-weight: 700; flex-shrink: 0;
+}
+h3 { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.75rem; color: var(--fg); }
+h4 { font-size: 0.95rem; font-weight: 600; margin: 1rem 0 0.5rem; color: var(--fg-2); }
+p { margin-bottom: 1rem; color: var(--fg-2); max-width: 65ch; }
+
+/* ===== Code Blocks ===== */
+pre {
+  background: var(--bg-code); color: #e7e5e4; border-radius: 10px;
+  padding: 1.25rem 1.5rem; margin: 1rem 0 1.5rem;
+  overflow-x: auto; font-size: 0.82rem; line-height: 1.7;
+  border: 1px solid var(--border); position: relative;
+}
+pre .file-label {
+  position: absolute; top: 0; right: 0;
+  background: var(--accent); color: #fff; font-size: 0.65rem;
+  padding: 0.15rem 0.6rem; border-radius: 0 9px 0 8px;
+  font-weight: 600; letter-spacing: 0.03em;
+}
+code {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+}
+:not(pre) > code {
+  background: var(--tag-bg); color: var(--tag-fg);
+  padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.82em;
+}
+
+/* ===== Lists ===== */
+ul, ol { margin: 0.5rem 0 1rem 1.5rem; color: var(--fg-2); }
+li { margin-bottom: 0.4rem; max-width: 65ch; }
+li::marker { color: var(--accent); }
+
+/* ===== Tags ===== */
+.tag {
+  display: inline-block; padding: 0.15em 0.55em;
+  background: var(--tag-bg); color: var(--tag-fg);
+  border-radius: 4px; font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.tag.green { background: var(--green-bg); color: var(--green); }
+
+/* ===== Cards ===== */
+.card {
+  background: var(--bg-alt); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1rem 0;
+}
+.card-title { font-weight: 700; font-size: 0.95rem; color: var(--fg); margin-bottom: 0.5rem; }
+.card p:last-child { margin-bottom: 0; }
+
+/* ===== Blockquote ===== */
+blockquote {
+  background: var(--quote-bg); border-left: 3px solid var(--accent);
+  padding: 1rem 1.25rem; margin: 1rem 0; border-radius: 0 8px 8px 0;
+}
+blockquote p { margin-bottom: 0; font-style: italic; }
+
+/* ===== Tables ===== */
+table {
+  width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem;
+  font-size: 0.85rem;
+}
+th { text-align: left; padding: 0.6rem 0.8rem; background: var(--bg-alt); border-bottom: 2px solid var(--accent); color: var(--fg); font-weight: 600; }
+td { padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); color: var(--fg-2); }
+tr:hover td { background: var(--tag-bg); }
+
+/* ===== Diagram Box ===== */
+.diagram {
+  background: var(--bg-alt); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0;
+  font-family: 'SF Mono', monospace; font-size: 0.8rem;
+  line-height: 1.8; overflow-x: auto; color: var(--fg-2);
+}
+.diagram .hl { color: var(--accent); font-weight: 700; }
+.diagram .gr { color: var(--green); }
+.diagram .dim { color: var(--fg-3); }
+
+/* ===== Flow Nodes ===== */
+.flow { display: flex; flex-direction: column; gap: 0.5rem; margin: 1.5rem 0; }
+.flow-node {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem; border-radius: 10px;
+  background: var(--bg-alt); border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.flow-node:hover { border-color: var(--accent); }
+.flow-node .idx {
+  width: 1.5rem; height: 1.5rem; border-radius: 6px;
+  background: var(--accent); color: #fff; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+}
+.flow-node .label { font-size: 0.85rem; color: var(--fg); font-weight: 500; }
+.flow-node .desc { font-size: 0.78rem; color: var(--fg-3); margin-left: auto; }
+.flow-arrow { text-align: center; color: var(--fg-3); font-size: 0.8rem; line-height: 1; }
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  nav.toc { transform: translateX(-100%); }
+  nav.toc.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.2); }
+  main { margin-left: 0; padding: 2rem 1.25rem 4rem; }
+  .menu-btn { display: block; }
+}
+@media (min-width: 901px) { .menu-btn { display: none; } }
+.menu-btn {
+  position: fixed; top: 1rem; left: 1rem; z-index: 999;
+  background: var(--bg-alt); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.5rem 0.8rem;
+  cursor: pointer; font-size: 0.85rem; color: var(--fg-2);
+}
+
+/* ===== Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  html { scroll-behavior: auto; }
+  section.reveal { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">Light / Dark</button>
+<button class="menu-btn" onclick="document.querySelector('nav.toc').classList.toggle('open')">Menu</button>
+
+<nav class="toc">
+  <h3>Chapters</h3>
+  <a href="#ch1">1. System Prompt 整体架构</a>
+  <a href="#ch2">2. CLAUDE.md 多级加载机制</a>
+  <a href="#ch3">3. Memory 注入系统</a>
+  <a href="#ch4">4. 工具声明注入策略</a>
+  <a href="#ch5">5. system-reminder 动态插入</a>
+  <a href="#ch6">6. 上下文附件拼装流程</a>
+  <a href="#ch7">7. Agent 提示词定制</a>
+  <a href="#ch8">8. 用户指令优先级体系</a>
+  <a href="#ch9">9. Prompt 缓存与性能优化</a>
+  <a href="#ch10">10. 架构图与数据流总结</a>
+</nav>
+
+<main>
+<header class="hero">
+  <h1>Claude Code 系统提示词工程<br>动态 Prompt 构建的全链路解析</h1>
+  <p class="subtitle">
+    深入 Claude Code 源码，解析 system prompt 从静态模板到运行时拼装的完整机制 --
+    涵盖 CLAUDE.md 加载、memory 注入、工具声明、缓存优化等核心链路。
+  </p>
+  <div class="meta">
+    <span>源码版本：claude-code (2025-06)</span>
+    <span>研究日期：2026-03-31</span>
+    <span>核心文件：~15 个关键模块</span>
+  </div>
+</header>
+
+<!-- ==================== Chapter 1 ==================== -->
+<section id="ch1" class="reveal">
+<h2><span class="num">1</span> System Prompt 整体架构</h2>
+
+<p>Claude Code 的 system prompt 并非一个静态字符串，而是一个由多个模块协作、动态拼装的 <code>SystemPrompt</code> 类型 -- 本质上是一个品牌化的 <code>readonly string[]</code> 数组。每一个元素代表提示词的一个逻辑区段。</p>
+
+<h3>类型定义</h3>
+<pre><span class="file-label">src/utils/systemPromptType.ts</span>
+export type SystemPrompt = readonly string[] & {
+  readonly __brand: 'SystemPrompt'
+}
+
+export function asSystemPrompt(value: readonly string[]): SystemPrompt {
+  return value as SystemPrompt
+}</pre>
+
+<p>品牌化类型的设计确保了 system prompt 数组不能被意外替换为普通字符串数组，所有的构建、拼接都必须通过 <code>asSystemPrompt()</code> 工厂函数。</p>
+
+<h3>核心入口：<code>getSystemPrompt()</code></h3>
+<p>位于 <code>src/constants/prompts.ts:444</code>，这是构建默认系统提示词的主函数。它的返回值是 <code>string[]</code>，后续被 <code>buildEffectiveSystemPrompt()</code> 包装为 <code>SystemPrompt</code>。</p>
+
+<pre><span class="file-label">src/constants/prompts.ts</span>
+export async function getSystemPrompt(
+  tools: Tools,
+  model: string,
+  additionalWorkingDirectories?: string[],
+  mcpClients?: MCPServerConnection[],
+): Promise&lt;string[]&gt; {
+  // 简化模式：只返回 CWD 和日期
+  if (isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
+    return [`You are Claude Code...\nCWD: ${getCwd()}\nDate: ...`]
+  }
+
+  // 正常模式：分为 静态 + 动态 两大区段
+  return [
+    // --- 静态内容（可缓存） ---
+    getSimpleIntroSection(outputStyleConfig),  // 身份定义
+    getSimpleSystemSection(),                  // 系统行为规则
+    getSimpleDoingTasksSection(),              // 代码任务指引
+    getActionsSection(),                       // 操作安全警告
+    getUsingYourToolsSection(enabledTools),    // 工具使用规范
+    getSimpleToneAndStyleSection(),            // 语气风格
+    getOutputEfficiencySection(),              // 输出效率
+
+    // === 动态边界标记 ===
+    SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
+
+    // --- 动态内容（每次可能变化） ---
+    ...resolvedDynamicSections,  // 由 systemPromptSection 注册
+  ].filter(s => s !== null)
+}</pre>
+
+<h3>构建优先级：<code>buildEffectiveSystemPrompt()</code></h3>
+<p>位于 <code>src/utils/systemPrompt.ts:41</code>，它决定了最终使用哪套系统提示词。优先级从高到低：</p>
+
+<div class="flow">
+  <div class="flow-node"><span class="idx">0</span><span class="label">Override System Prompt</span><span class="desc">loop mode 设置，完全替代</span></div>
+  <div class="flow-arrow">|</div>
+  <div class="flow-node"><span class="idx">1</span><span class="label">Coordinator Prompt</span><span class="desc">协调者模式</span></div>
+  <div class="flow-arrow">|</div>
+  <div class="flow-node"><span class="idx">2</span><span class="label">Agent System Prompt</span><span class="desc">主线程 Agent 定义的提示词</span></div>
+  <div class="flow-arrow">|</div>
+  <div class="flow-node"><span class="idx">3</span><span class="label">Custom System Prompt</span><span class="desc">--system-prompt CLI 参数</span></div>
+  <div class="flow-arrow">|</div>
+  <div class="flow-node"><span class="idx">4</span><span class="label">Default System Prompt</span><span class="desc">标准 Claude Code 提示词</span></div>
+</div>
+
+<p>无论选择了哪套主提示词，<code>appendSystemPrompt</code> 总是追加在末尾（除非 override 模式）。</p>
+</section>
+
+<!-- ==================== Chapter 2 ==================== -->
+<section id="ch2" class="reveal">
+<h2><span class="num">2</span> CLAUDE.md 多级加载机制</h2>
+
+<p>CLAUDE.md 是 Claude Code 最核心的用户指令系统。它实现了一个 <strong>四级优先级</strong> 的文件加载机制，定义在 <code>src/utils/claudemd.ts</code> 的开头注释中。</p>
+
+<h3>四级加载顺序</h3>
+<table>
+<thead>
+<tr><th>优先级</th><th>类型</th><th>路径</th><th>说明</th></tr>
+</thead>
+<tbody>
+<tr><td><span class="tag">1 低</span></td><td>Managed</td><td><code>/etc/claude-code/CLAUDE.md</code></td><td>全局策略指令（企业管理员）</td></tr>
+<tr><td><span class="tag">2</span></td><td>User</td><td><code>~/.claude/CLAUDE.md</code></td><td>用户私有全局指令</td></tr>
+<tr><td><span class="tag">3</span></td><td>Project</td><td><code>CLAUDE.md</code>, <code>.claude/CLAUDE.md</code>, <code>.claude/rules/*.md</code></td><td>项目指令（提交到仓库）</td></tr>
+<tr><td><span class="tag green">4 高</span></td><td>Local</td><td><code>CLAUDE.local.md</code></td><td>私有项目指令（不提交）</td></tr>
+</tbody>
+</table>
+
+<blockquote><p>文件以<strong>反优先级顺序</strong>加载（Managed 先加载），因为模型对最后出现的内容关注度更高。越靠后 = 越高优先级。</p></blockquote>
+
+<h3>目录遍历逻辑</h3>
+<p>Project 和 Local 类型通过从 CWD 向上遍历至根目录来发现文件。越接近 CWD 的文件优先级越高：</p>
+
+<pre><span class="file-label">src/utils/claudemd.ts:851-858</span>
+const dirs: string[] = []
+const originalCwd = getOriginalCwd()
+let currentDir = originalCwd
+
+while (currentDir !== parse(currentDir).root) {
+  dirs.push(currentDir)
+  currentDir = dirname(currentDir)
+}
+// 从 root 向下处理（root -> CWD），确保 CWD 层级最后加载
+for (const dir of dirs.reverse()) { ... }</pre>
+
+<h3>Rules 目录系统</h3>
+<p>除了 CLAUDE.md 文件，每级还支持 <code>.claude/rules/*.md</code> 目录，通过 <code>processMdRules()</code> 递归加载所有 <code>.md</code> 文件。Rules 文件还支持 <strong>条件匹配</strong>机制 -- 通过 frontmatter 的 <code>paths</code> 字段指定 glob 模式：</p>
+
+<pre><span class="file-label">.claude/rules/react-components.md</span>
+---
+paths:
+  - src/components/**
+  - src/pages/**
+---
+Use React functional components with hooks.
+Always add proper TypeScript types.</pre>
+
+<h3>@include 指令</h3>
+<p>Memory 文件支持 <code>@path</code> 语法来引用其他文件，最大嵌套深度为 5 层。路径解析通过 <code>extractIncludePathsFromTokens()</code> 基于 marked lexer 实现，仅处理文本节点中的 <code>@</code> 引用，跳过代码块：</p>
+
+<pre><span class="file-label">src/utils/claudemd.ts:459</span>
+const includeRegex = /(?:^|\s)@((?:[^\s\\]|\\ )+)/g
+// 支持: @path, @./relative, @~/home, @/absolute</pre>
+
+<h3>HTML 注释剥离</h3>
+<p>加载时会自动剥离 CLAUDE.md 中的块级 HTML 注释（<code>&lt;!-- ... --&gt;</code>），允许用户在指令文件中添加不被注入的注释。这通过 <code>stripHtmlComments()</code> 使用 marked 的 lexer 在块级别精确识别。</p>
+
+<h3>内容格式化输出</h3>
+<p><code>getClaudeMds()</code> 函数负责将所有加载的文件格式化为最终字符串，每个文件加上路径和类型描述：</p>
+
+<pre><span class="file-label">src/utils/claudemd.ts:1153-1194</span>
+export const getClaudeMds = (memoryFiles: MemoryFileInfo[]): string => {
+  for (const file of memoryFiles) {
+    const description =
+      file.type === 'Project'
+        ? ' (project instructions, checked into the codebase)'
+        : file.type === 'User'
+          ? " (user's private global instructions for all projects)"
+          : ...
+    memories.push(`Contents of ${file.path}${description}:\n\n${content}`)
+  }
+  return `${MEMORY_INSTRUCTION_PROMPT}\n\n${memories.join('\n\n')}`
+}</pre>
+
+<p>其中 <code>MEMORY_INSTRUCTION_PROMPT</code> 是一段关键的覆盖指令：</p>
+<pre>"Codebase and user instructions are shown below. Be sure to adhere
+to these instructions. IMPORTANT: These instructions OVERRIDE any
+default behavior and you MUST follow them exactly as written."</pre>
+</section>
+
+<!-- ==================== Chapter 3 ==================== -->
+<section id="ch3" class="reveal">
+<h2><span class="num">3</span> Memory 注入系统</h2>
+
+<p>Claude Code 拥有两套记忆系统：<strong>CLAUDE.md 指令文件</strong>（上一章）和<strong>自动记忆（Auto Memory / Team Memory）</strong>。两者都通过 system prompt 注入，但路径不同。</p>
+
+<h3>自动记忆（memdir）</h3>
+<p>自动记忆的核心位于 <code>src/memdir/</code> 目录。入口点是 <code>MEMORY.md</code> 文件，存储在 <code>~/.claude/projects/&lt;slug&gt;/memory/</code> 目录下。</p>
+
+<pre><span class="file-label">src/memdir/memdir.ts:34-38</span>
+export const ENTRYPOINT_NAME = 'MEMORY.md'
+export const MAX_ENTRYPOINT_LINES = 200
+export const MAX_ENTRYPOINT_BYTES = 25_000</pre>
+
+<p><code>MEMORY.md</code> 是一个索引文件，每条记忆指向独立的主题文件。超过 200 行或 25KB 的内容会被截断，并附加警告信息。</p>
+
+<h3>记忆注入到 System Prompt</h3>
+<p><code>loadMemoryPrompt()</code> 是记忆注入到系统提示词的关键函数，它作为一个 <code>systemPromptSection</code> 注册在动态区段中：</p>
+
+<pre><span class="file-label">src/constants/prompts.ts:495</span>
+systemPromptSection('memory', () => loadMemoryPrompt()),</pre>
+
+<p>这意味着记忆内容在会话中只计算一次，之后被缓存直到 <code>/clear</code> 或 <code>/compact</code>。</p>
+
+<h3>记忆类型分类系统</h3>
+<p><code>buildMemoryLines()</code> 定义了一个四类型分类法（user / feedback / project / reference），并生成包含创建/搜索指南的完整行为指令。模型被指导将记忆写入独立文件，并在 <code>MEMORY.md</code> 中维护索引。</p>
+
+<h3>MEMORY.md 通过 CLAUDE.md 管道注入</h3>
+<p>一个关键的设计：<code>MEMORY.md</code> 的内容同时通过 CLAUDE.md 管道以 <code>AutoMem</code> 类型加载（<code>claudemd.ts:980-992</code>），这意味着它也作为 <code>getUserContext()</code> 的一部分被注入到 <code>&lt;system-reminder&gt;</code> 中。</p>
+
+<pre><span class="file-label">src/utils/claudemd.ts:980-992</span>
+if (isAutoMemoryEnabled()) {
+  const { info: memdirEntry } = await safelyReadMemoryFileAsync(
+    getAutoMemEntrypoint(), 'AutoMem',
+  )
+  if (memdirEntry) {
+    result.push(memdirEntry)  // 加入 memoryFiles 数组
+  }
+}</pre>
+
+<h3>Team Memory</h3>
+<p>团队记忆（<code>TeamMem</code> 类型）通过 <code>teamMemPaths</code> 模块管理，内容用 <code>&lt;team-memory-content source="shared"&gt;</code> 标签包裹，以区分来源。</p>
+</section>
+
+<!-- ==================== Chapter 4 ==================== -->
+<section id="ch4" class="reveal">
+<h2><span class="num">4</span> 工具声明注入策略</h2>
+
+<p>Claude Code 中的工具声明<strong>不是嵌入在 system prompt 文本中</strong>，而是通过 Anthropic Messages API 的 <code>tools</code> 参数独立传递。但 system prompt 中包含了大量关于工具使用的行为指引。</p>
+
+<h3>工具声明序列化</h3>
+<p><code>toolToAPISchema()</code>（位于 <code>src/utils/api.ts:119</code>）负责将每个 <code>Tool</code> 对象转换为 API 兼容的 schema：</p>
+
+<pre><span class="file-label">src/utils/api.ts:119-159</span>
+export async function toolToAPISchema(
+  tool: Tool,
+  options: { ... },
+): Promise&lt;BetaToolUnion&gt; {
+  // 会话稳定的基础 schema：name, description, input_schema
+  // 通过 toolSchemaCache 缓存，防止 mid-session 的 GrowthBook
+  // 翻转导致序列化变化
+  const cache = getToolSchemaCache()
+  let base = cache.get(cacheKey)
+  if (!base) {
+    let input_schema = ('inputJSONSchema' in tool)
+      ? tool.inputJSONSchema
+      : zodToJsonSchema(tool.inputSchema)
+    // ...
+  }
+}</pre>
+
+<h3>工具使用指引在 System Prompt 中</h3>
+<p><code>getUsingYourToolsSection()</code> 根据当前启用的工具集动态生成指引。核心理念是引导模型<strong>优先使用专用工具而非 Bash</strong>：</p>
+
+<pre><span class="file-label">src/constants/prompts.ts:291-301</span>
+const providedToolSubitems = [
+  `To read files use ${FILE_READ_TOOL_NAME} instead of cat`,
+  `To edit files use ${FILE_EDIT_TOOL_NAME} instead of sed`,
+  `To create files use ${FILE_WRITE_TOOL_NAME} instead of echo`,
+  `To search for files use ${GLOB_TOOL_NAME} instead of find`,
+  `To search content use ${GREP_TOOL_NAME} instead of grep`,
+  `Reserve ${BASH_TOOL_NAME} exclusively for system commands...`,
+]</pre>
+
+<h3>工具延迟加载（Deferred Tools）</h3>
+<p>通过 <code>defer_loading</code> 标记，部分工具（如 MCP 工具）可以在初始请求中仅声明名称，由 <code>ToolSearch</code> 工具在运行时动态获取完整 schema。这减少了初始 prompt 大小。变更通过 <code>deferred_tools_delta</code> 附件增量通知。</p>
+
+<h3>Swarm 字段过滤</h3>
+<p>当 Agent Swarm 未启用时，<code>filterSwarmFieldsFromSchema()</code> 会从工具 schema 中移除 swarm 相关字段（如 <code>launchSwarm</code>、<code>teammateCount</code>），避免混淆模型。</p>
+</section>
+
+<!-- ==================== Chapter 5 ==================== -->
+<section id="ch5" class="reveal">
+<h2><span class="num">5</span> system-reminder 动态插入</h2>
+
+<p><code>&lt;system-reminder&gt;</code> 是 Claude Code 在运行时向模型注入上下文信息的核心载体。它不是系统提示词的一部分，而是作为<strong>消息流中的用户消息</strong>注入的。</p>
+
+<h3>注入机制：<code>prependUserContext()</code></h3>
+<p>位于 <code>src/utils/api.ts:449</code>，这个函数将 <code>getUserContext()</code> 的内容包装为 <code>&lt;system-reminder&gt;</code> 标签，作为消息列表的第一条消息（元消息）：</p>
+
+<pre><span class="file-label">src/utils/api.ts:449-474</span>
+export function prependUserContext(
+  messages: Message[],
+  context: { [k: string]: string },
+): Message[] {
+  return [
+    createUserMessage({
+      content: `&lt;system-reminder&gt;
+As you answer the user's questions, you can use the following context:
+${Object.entries(context)
+  .map(([key, value]) => `# ${key}\n${value}`)
+  .join('\n')}
+
+      IMPORTANT: this context may or may not be relevant to your tasks.
+      You should not respond to this context unless it is highly
+      relevant to your task.
+&lt;/system-reminder&gt;`,
+      isMeta: true,
+    }),
+    ...messages,
+  ]
+}</pre>
+
+<h3>userContext 的内容来源</h3>
+<p><code>getUserContext()</code>（位于 <code>src/context.ts:155</code>）返回一个 key-value 对象，包含：</p>
+<ul>
+  <li><strong>claudeMd</strong> -- 所有 CLAUDE.md 内容的合并输出</li>
+  <li><strong>currentDate</strong> -- 当前日期（<code>Today's date is YYYY-MM-DD.</code>）</li>
+</ul>
+
+<h3>systemContext 的追加方式</h3>
+<p>与 userContext 不同，<code>getSystemContext()</code> 的内容直接追加到 system prompt 数组的末尾：</p>
+
+<pre><span class="file-label">src/query.ts:449-451</span>
+const fullSystemPrompt = asSystemPrompt(
+  appendSystemContext(systemPrompt, systemContext),
+)
+// appendSystemContext 只是将 key:value 对拼接成一个字符串追加到数组末尾</pre>
+
+<p><code>systemContext</code> 包含 <code>gitStatus</code>（初始 git 状态快照）和可选的 <code>cacheBreaker</code>（调试用注入）。</p>
+
+<h3>system prompt 声明标签的作用</h3>
+<p>System prompt 本身也告诉模型如何理解 <code>&lt;system-reminder&gt;</code>：</p>
+
+<pre><span class="file-label">src/constants/prompts.ts:132-133</span>
+"Tool results and user messages may include &lt;system-reminder&gt; tags.
+&lt;system-reminder&gt; tags contain useful information and reminders.
+They are automatically added by the system, and bear no direct
+relation to the specific tool results or user messages in which
+they appear."</pre>
+</section>
+
+<!-- ==================== Chapter 6 ==================== -->
+<section id="ch6" class="reveal">
+<h2><span class="num">6</span> 上下文附件拼装流程</h2>
+
+<p>附件（Attachments）是 Claude Code 在每个对话轮次中动态注入上下文信息的机制。它们作为 <code>AttachmentMessage</code> 类型的消息插入到消息流中。</p>
+
+<h3>附件采集：<code>getAttachments()</code></h3>
+<p>位于 <code>src/utils/attachments.ts:743</code>，这个函数在每轮用户输入后调用，协调 20+ 个附件提供者的并行执行：</p>
+
+<div class="card">
+<div class="card-title">用户输入驱动的附件</div>
+<p>仅在有用户输入时触发：</p>
+<ul>
+  <li><code>at_mentioned_files</code> -- 处理 @ 文件引用</li>
+  <li><code>mcp_resources</code> -- MCP 资源解析</li>
+  <li><code>agent_mentions</code> -- Agent @ 提及</li>
+  <li><code>skill_discovery</code> -- 技能发现（实验性）</li>
+</ul>
+</div>
+
+<div class="card">
+<div class="card-title">全线程附件（每轮都执行）</div>
+<p>无论主线程还是子 agent 都会计算：</p>
+<ul>
+  <li><code>queued_commands</code> -- 排队的命令通知</li>
+  <li><code>date_change</code> -- 日期变更检测</li>
+  <li><code>deferred_tools_delta</code> -- 工具增量更新</li>
+  <li><code>agent_listing_delta</code> -- Agent 列表增量</li>
+  <li><code>mcp_instructions_delta</code> -- MCP 指令增量</li>
+  <li><code>changed_files</code> -- 已变更文件通知</li>
+  <li><code>nested_memory</code> -- 嵌套记忆（条件规则匹配）</li>
+  <li><code>dynamic_skill</code> -- 动态技能附件</li>
+  <li><code>skill_listing</code> -- 技能列表</li>
+  <li><code>plan_mode</code> / <code>plan_mode_exit</code> -- 计划模式提醒</li>
+  <li><code>todo_reminders</code> -- 任务提醒</li>
+  <li><code>critical_system_reminder</code> -- 关键系统提醒</li>
+  <li><code>compaction_reminder</code> -- 压缩提醒</li>
+</ul>
+</div>
+
+<h3>嵌套记忆（Nested Memory）</h3>
+<p>条件化的 <code>.claude/rules/*.md</code> 文件不是在启动时全部加载，而是在每轮基于文件操作动态匹配。当模型读写了匹配 glob 模式的文件时，对应的规则会作为附件注入：</p>
+
+<pre><span class="file-label">src/utils/attachments.ts:872</span>
+maybe('nested_memory', () => getNestedMemoryAttachments(context)),</pre>
+
+<h3>相关记忆召回（Relevant Memories）</h3>
+<p>通过异步预取机制（<code>startRelevantMemoryPrefetch</code>），Claude Code 会在每轮搜索与当前任务相关的记忆文件，通过 <code>&lt;system-reminder&gt;</code> 注入。每个文件限制 4KB，每轮最多 5 个文件（20KB），会话累计上限 60KB。</p>
+
+<pre><span class="file-label">src/utils/attachments.ts:269-289</span>
+const MAX_MEMORY_LINES = 200
+const MAX_MEMORY_BYTES = 4096  // 每文件 4KB
+
+export const RELEVANT_MEMORIES_CONFIG = {
+  MAX_SESSION_BYTES: 60 * 1024,  // 会话累计 60KB
+}</pre>
+</section>
+
+<!-- ==================== Chapter 7 ==================== -->
+<section id="ch7" class="reveal">
+<h2><span class="num">7</span> Agent 提示词定制</h2>
+
+<p>Claude Code 支持通过 Agent 定义自定义子 agent 的行为。Agent 可以完全替换默认系统提示词，或在 proactive 模式下作为追加内容。</p>
+
+<h3>Agent 定义结构</h3>
+<p>Agent 通过 <code>.claude/agents/</code> 目录下的 Markdown 或 JSON 文件定义，由 <code>loadAgentsDir.ts</code> 加载。每个 Agent 包含：</p>
+
+<pre><span class="file-label">AgentJsonSchema (src/tools/AgentTool/loadAgentsDir.ts:73-80)</span>
+z.object({
+  description: z.string().min(1),
+  tools: z.array(z.string()).optional(),
+  disallowedTools: z.array(z.string()).optional(),
+  prompt: z.string().min(1),
+  model: z.string().optional(),
+  // ... 更多字段
+})</pre>
+
+<h3>子 Agent 系统提示词构建</h3>
+<p>子 Agent 的系统提示词通过 <code>enhanceSystemPromptWithEnvDetails()</code> 增强，添加环境信息和行为指引：</p>
+
+<pre><span class="file-label">src/constants/prompts.ts:760-791</span>
+export async function enhanceSystemPromptWithEnvDetails(
+  existingSystemPrompt: string[],
+  model: string,
+  additionalWorkingDirectories?: string[],
+): Promise&lt;string[]&gt; {
+  const notes = `Notes:
+- Agent threads always have their cwd reset between bash calls,
+  as a result please only use absolute file paths.
+- In your final response, share file paths that are relevant...
+- The assistant MUST avoid using emojis.
+- Do not use a colon before tool calls.`
+
+  const envInfo = await computeEnvInfo(model, ...)
+  return [...existingSystemPrompt, notes, envInfo]
+}</pre>
+
+<h3>默认 Agent Prompt</h3>
+<p>当自定义 Agent 的 <code>getSystemPrompt()</code> 失败时，回退到 <code>DEFAULT_AGENT_PROMPT</code>：</p>
+
+<pre><span class="file-label">src/constants/prompts.ts:758</span>
+export const DEFAULT_AGENT_PROMPT = `You are an agent for Claude Code,
+Anthropic's official CLI for Claude. Given the user's message, you
+should use the tools available to complete the task. Complete the
+task fully -- don't gold-plate, but don't leave it half-done...`</pre>
+
+<h3>内置 Agent 类型</h3>
+<p>Claude Code 包含多个内置 Agent：</p>
+<ul>
+  <li><code>exploreAgent</code> -- 代码库探索和深度研究</li>
+  <li><code>planAgent</code> -- 计划生成</li>
+  <li><code>verificationAgent</code> -- 对抗性验证（实验性）</li>
+  <li><code>generalPurposeAgent</code> -- 通用子任务</li>
+  <li><code>claudeCodeGuideAgent</code> -- 帮助指南</li>
+</ul>
+<p>内置 Agent 可以访问 <code>toolUseContext</code>（工具上下文），而自定义 Agent 只调用无参的 <code>getSystemPrompt()</code>。</p>
+
+<h3>Agent Memory</h3>
+<p>Agent 也支持独立的记忆系统（<code>agentMemory.ts</code>），记忆作用域可以是 <code>auto</code>（自动记忆目录）或其他路径。当 Agent 加载了记忆时，会触发 <code>tengu_agent_memory_loaded</code> 事件追踪。</p>
+</section>
+
+<!-- ==================== Chapter 8 ==================== -->
+<section id="ch8" class="reveal">
+<h2><span class="num">8</span> 用户指令优先级体系</h2>
+
+<p>理解 Claude Code 中不同指令源的优先级是关键。整个系统可以从两个维度来看：<strong>System Prompt 层</strong>和<strong>消息流层</strong>。</p>
+
+<h3>System Prompt 层的优先级</h3>
+<p>在 system prompt 数组中，越靠后的内容越被重视。<code>getSystemPrompt()</code> 的返回顺序：</p>
+
+<div class="diagram">
+<span class="dim">// 1. 静态行为指引（模型身份、安全规则、工具使用）</span>
+<span class="hl">getSimpleIntroSection</span>  -->  模型身份定义
+<span class="hl">getSimpleSystemSection</span>  -->  系统行为规则
+<span class="hl">getSimpleDoingTasksSection</span>  -->  代码任务指引
+<span class="hl">getActionsSection</span>  -->  操作安全（可逆性考量）
+<span class="hl">getUsingYourToolsSection</span>  -->  工具使用规范
+<span class="hl">getOutputEfficiencySection</span>  -->  输出效率要求
+
+<span class="dim">// === SYSTEM_PROMPT_DYNAMIC_BOUNDARY === //</span>
+
+<span class="dim">// 2. 动态内容（会话特定、用户特定）</span>
+<span class="hl">session_guidance</span>  -->  会话特定引导
+<span class="gr">memory</span>  -->  自动记忆指令 <span class="dim">(loadMemoryPrompt)</span>
+<span class="hl">env_info</span>  -->  环境信息（CWD、Git、OS）
+<span class="gr">language</span>  -->  语言偏好
+<span class="hl">mcp_instructions</span>  -->  MCP 服务器指令
+<span class="hl">scratchpad</span>  -->  暂存目录
+<span class="hl">frc</span>  -->  函数结果清理
+
+<span class="dim">// 3. systemContext 追加</span>
+<span class="gr">gitStatus</span>  -->  Git 状态快照
+</div>
+
+<h3>消息流层的优先级</h3>
+<p>在消息流中，CLAUDE.md 的内容以 <code>&lt;system-reminder&gt;</code> 形式作为<strong>第一条用户消息</strong>注入。关键文本指出：</p>
+
+<pre>"These instructions OVERRIDE any default behavior and you MUST follow
+them exactly as written."</pre>
+
+<p>这意味着 CLAUDE.md 中的指令优先级<strong>高于系统提示词中的默认行为</strong>。</p>
+
+<h3>CLAUDE.md 内部优先级</h3>
+
+<table>
+<thead>
+<tr><th>加载顺序</th><th>类型</th><th>实际优先级</th><th>原因</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>Managed</td><td>最低（但不可覆盖）</td><td>企业策略，位置最前</td></tr>
+<tr><td>2</td><td>User (~/.claude/CLAUDE.md)</td><td>中低</td><td>全局个人偏好</td></tr>
+<tr><td>3</td><td>Project (CLAUDE.md)</td><td>中高</td><td>项目级指令</td></tr>
+<tr><td>4</td><td>Local (CLAUDE.local.md)</td><td>最高</td><td>位置最后，模型关注度最高</td></tr>
+</tbody>
+</table>
+
+<h3>设置源控制</h3>
+<p>每级加载都受到设置源开关的控制：</p>
+<ul>
+  <li><code>isSettingSourceEnabled('userSettings')</code> -- 控制 User 级别</li>
+  <li><code>isSettingSourceEnabled('projectSettings')</code> -- 控制 Project 级别</li>
+  <li><code>isSettingSourceEnabled('localSettings')</code> -- 控制 Local 级别</li>
+  <li><code>claudeMdExcludes</code> 设置 -- 通过 glob 模式排除特定文件</li>
+</ul>
+
+<h3>排除机制</h3>
+<p><code>isClaudeMdExcluded()</code> 支持通过 picomatch 模式匹配排除特定 CLAUDE.md 文件，并处理了 macOS 上 <code>/tmp</code> -> <code>/private/tmp</code> 的符号链接问题。</p>
+</section>
+
+<!-- ==================== Chapter 9 ==================== -->
+<section id="ch9" class="reveal">
+<h2><span class="num">9</span> Prompt 缓存与性能优化</h2>
+
+<p>系统提示词的构建涉及多层缓存策略，这对控制 API 开销和延迟至关重要。</p>
+
+<h3>静态/动态边界（Dynamic Boundary）</h3>
+<p>系统提示词被一个特殊标记 <code>SYSTEM_PROMPT_DYNAMIC_BOUNDARY</code> 分为两段：</p>
+
+<pre><span class="file-label">src/constants/prompts.ts:114</span>
+export const SYSTEM_PROMPT_DYNAMIC_BOUNDARY =
+  '__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__'</pre>
+
+<p>这个标记在 <code>splitSysPromptPrefix()</code> 中被识别，将 prompt 分为最多 4 个缓存块：</p>
+
+<div class="card">
+<div class="card-title">Global Cache 模式（1P 且有边界标记）</div>
+<table>
+<thead><tr><th>块</th><th>cacheScope</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>Attribution Header</td><td><code>null</code></td><td>计费头</td></tr>
+<tr><td>System Prompt Prefix</td><td><code>null</code></td><td>CLI 标识前缀</td></tr>
+<tr><td>Static Content</td><td><code>'global'</code></td><td>边界前的所有内容，跨 org 可缓存</td></tr>
+<tr><td>Dynamic Content</td><td><code>null</code></td><td>边界后的内容，包含用户特定数据</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><code>'global'</code> 缓存范围意味着这些内容可以在<strong>所有组织间</strong>共享缓存，极大减少重复计算。</p>
+
+<h3>systemPromptSection 缓存</h3>
+<p>动态区段通过 <code>systemPromptSections.ts</code> 提供两种注册方式：</p>
+
+<pre><span class="file-label">src/constants/systemPromptSections.ts</span>
+// 普通区段：计算一次后缓存，直到 /clear 或 /compact
+systemPromptSection(name, computeFn)
+
+// 危险区段：每轮重新计算，会破坏 prompt 缓存
+DANGEROUS_uncachedSystemPromptSection(name, computeFn, reason)</pre>
+
+<p>缓存存储在 <code>getSystemPromptSectionCache()</code>（位于 bootstrap state 中），<code>/clear</code> 和 <code>/compact</code> 时通过 <code>clearSystemPromptSections()</code> 重置。</p>
+
+<h3>getUserContext / getSystemContext 缓存</h3>
+<p>这两个函数都使用 <code>lodash.memoize()</code> 实现单次计算缓存：</p>
+<ul>
+  <li><code>getUserContext()</code> -- CLAUDE.md 内容 + 日期，会话内稳定</li>
+  <li><code>getSystemContext()</code> -- Git 状态 + 注入，会话内稳定</li>
+</ul>
+<p>缓存失效通过显式调用 <code>.cache.clear?.()</code> 实现。</p>
+
+<h3>getMemoryFiles 缓存</h3>
+<p><code>getMemoryFiles()</code> 也使用 <code>memoize()</code>，确保目录遍历和文件读取只在会话启动时执行一次。通过 <code>resetGetMemoryFilesCache()</code> 在压缩后重置，并带有 <code>InstructionsLoaded</code> hook 触发机制。</p>
+
+<h3>工具 Schema 缓存</h3>
+<p><code>toolSchemaCache</code> 确保工具的 JSON Schema 在会话中只序列化一次，防止 GrowthBook 特性开关翻转导致的中途变化破坏缓存。</p>
+
+<h3>MCP 指令增量策略</h3>
+<p>MCP 服务器指令从每轮在 system prompt 中重复（<code>DANGEROUS_uncachedSystemPromptSection</code>）改为<strong>增量附件</strong>模式（<code>mcp_instructions_delta</code>），只在服务器连接/断开时发送变更，大幅减少了缓存失效。</p>
+</section>
+
+<!-- ==================== Chapter 10 ==================== -->
+<section id="ch10" class="reveal">
+<h2><span class="num">10</span> 架构图与数据流总结</h2>
+
+<h3>完整数据流</h3>
+<div class="diagram">
+<span class="hl">┌─────────────────────────────────────────────────────────────────┐</span>
+<span class="hl">│                    System Prompt 构建链路                        │</span>
+<span class="hl">└─────────────────────────────────────────────────────────────────┘</span>
+
+<span class="gr">getSystemPrompt()</span>                     <span class="dim">// src/constants/prompts.ts</span>
+  ├── 静态区段
+  │   ├── getSimpleIntroSection()       <span class="dim">身份 + 安全规则</span>
+  │   ├── getSimpleSystemSection()      <span class="dim">系统行为规范</span>
+  │   ├── getSimpleDoingTasksSection()  <span class="dim">代码任务指引</span>
+  │   ├── getActionsSection()           <span class="dim">操作安全考量</span>
+  │   ├── getUsingYourToolsSection()    <span class="dim">工具使用指引（动态）</span>
+  │   ├── getSimpleToneAndStyleSection()<span class="dim">语气风格</span>
+  │   └── getOutputEfficiencySection()  <span class="dim">输出效率</span>
+  │
+  ├── <span class="hl">SYSTEM_PROMPT_DYNAMIC_BOUNDARY</span>  <span class="dim">缓存边界标记</span>
+  │
+  └── 动态区段 (systemPromptSection)
+      ├── session_guidance              <span class="dim">Agent/Skill/Ask 指引</span>
+      ├── <span class="gr">memory</span>                       <span class="dim">loadMemoryPrompt() -> memdir</span>
+      ├── env_info                      <span class="dim">CWD/Git/OS/Model</span>
+      ├── language                      <span class="dim">语言偏好</span>
+      ├── mcp_instructions              <span class="dim">MCP 服务器指令</span>
+      ├── scratchpad                    <span class="dim">暂存目录</span>
+      └── frc                           <span class="dim">函数结果清理</span>
+          │
+          v
+<span class="gr">buildEffectiveSystemPrompt()</span>           <span class="dim">// src/utils/systemPrompt.ts</span>
+  ├── override? -> [overridePrompt]     <span class="dim">loop mode</span>
+  ├── coordinator? -> [coordinatorPrompt]
+  ├── agent? -> [agentPrompt]           <span class="dim">或 proactive 模式下追加</span>
+  ├── custom? -> [customPrompt]         <span class="dim">--system-prompt</span>
+  └── default -> [...defaultPrompt]
+      + appendSystemPrompt
+          │
+          v
+<span class="hl">appendSystemContext()</span>                  <span class="dim">// src/utils/api.ts</span>
+  + gitStatus                           <span class="dim">Git 状态快照</span>
+  + cacheBreaker                        <span class="dim">调试注入</span>
+          │
+          v
+<span class="gr">splitSysPromptPrefix()</span>                <span class="dim">// src/utils/api.ts</span>
+  -> [attribution, prefix, static(global), dynamic(null)]
+          │
+          v
+<span class="hl">API Messages Request</span>
+  system: SystemPromptBlock[]           <span class="dim">带缓存标记的 prompt 块</span>
+  tools:  BetaToolUnion[]               <span class="dim">工具 schema（独立通道）</span>
+  messages: [
+    <span class="gr">&lt;system-reminder&gt;</span>                   <span class="dim">prependUserContext()</span>
+      # claudeMd                        <span class="dim">CLAUDE.md 多级合并</span>
+      # currentDate                     <span class="dim">当前日期</span>
+    &lt;/system-reminder&gt;
+    ...userMessages
+    ...attachmentMessages               <span class="dim">getAttachments() 动态注入</span>
+  ]
+</div>
+
+<h3>关键文件索引</h3>
+<table>
+<thead><tr><th>文件</th><th>职责</th></tr></thead>
+<tbody>
+<tr><td><code>src/constants/prompts.ts</code></td><td>主系统提示词生成器，包含所有静态/动态区段函数</td></tr>
+<tr><td><code>src/utils/systemPrompt.ts</code></td><td>buildEffectiveSystemPrompt -- 优先级选择器</td></tr>
+<tr><td><code>src/utils/systemPromptType.ts</code></td><td>SystemPrompt 品牌化类型定义</td></tr>
+<tr><td><code>src/constants/systemPromptSections.ts</code></td><td>动态区段注册与缓存管理</td></tr>
+<tr><td><code>src/utils/claudemd.ts</code></td><td>CLAUDE.md 四级加载 + rules 目录 + @include</td></tr>
+<tr><td><code>src/context.ts</code></td><td>getUserContext / getSystemContext 构建</td></tr>
+<tr><td><code>src/utils/api.ts</code></td><td>prependUserContext / appendSystemContext / splitSysPromptPrefix</td></tr>
+<tr><td><code>src/memdir/memdir.ts</code></td><td>自动记忆系统 -- loadMemoryPrompt / buildMemoryPrompt</td></tr>
+<tr><td><code>src/utils/attachments.ts</code></td><td>20+ 附件提供者的编排引擎</td></tr>
+<tr><td><code>src/query.ts</code></td><td>主查询循环 -- 组装最终 prompt + messages</td></tr>
+<tr><td><code>src/tools/AgentTool/runAgent.ts</code></td><td>子 Agent 提示词构建 + enhanceSystemPromptWithEnvDetails</td></tr>
+<tr><td><code>src/tools/AgentTool/loadAgentsDir.ts</code></td><td>Agent 定义加载器（Markdown/JSON）</td></tr>
+</tbody>
+</table>
+
+<h3>设计原则总结</h3>
+<div class="card">
+<div class="card-title">1. 分层覆盖（Layered Override）</div>
+<p>系统默认行为 < CLAUDE.md 指令 < 用户实时输入。每一层都可以被上层覆盖，但下层提供了合理的默认值。</p>
+</div>
+<div class="card">
+<div class="card-title">2. 缓存优先（Cache-First）</div>
+<p>通过 Dynamic Boundary 标记、memoize 缓存、增量附件等手段，最大化 prompt 的可缓存比例。静态内容用 global scope 跨组织缓存。</p>
+</div>
+<div class="card">
+<div class="card-title">3. 关注点分离（Separation of Concerns）</div>
+<p>工具声明走 API tools 参数，用户指令走 system-reminder 消息，系统行为走 system prompt，动态上下文走 attachments。每个通道有独立的缓存和更新策略。</p>
+</div>
+<div class="card">
+<div class="card-title">4. 安全声明前置（Safety First）</div>
+<p>CYBER_RISK_INSTRUCTION 在身份定义之后立即出现，操作安全（getActionsSection）独立为一个完整区段，确保安全规则在模型的注意力高峰期被读取。</p>
+</div>
+</section>
+
+</main>
+
+<script>
+// ===== Theme Toggle =====
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+}
+// Respect system preference on load
+if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+  document.documentElement.setAttribute('data-theme', 'light');
+}
+
+// ===== Progress Bar =====
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+});
+
+// ===== Scroll Reveal =====
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// ===== Active Nav Link =====
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('nav.toc a');
+const navObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const active = document.querySelector(`nav.toc a[href="#${entry.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => navObserver.observe(s));
+
+// Close mobile nav on link click
+navLinks.forEach(a => a.addEventListener('click', () => {
+  document.querySelector('nav.toc').classList.remove('open');
+}));
+</script>
+</body>
+</html>

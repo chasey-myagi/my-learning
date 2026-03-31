@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 安全体系：从 Bash 沙箱到纵深防御</title>
+<style>
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-tertiary: #1a1a25;
+  --bg-card: #16161f;
+  --bg-code: #0d0d14;
+  --text-primary: #e8e8f0;
+  --text-secondary: #9898b0;
+  --text-muted: #6868808c;
+  --accent: #6366f1;
+  --accent-light: #818cf8;
+  --accent-dim: #4f46e520;
+  --red: #ef4444;
+  --red-dim: #ef444420;
+  --orange: #f59e0b;
+  --orange-dim: #f59e0b20;
+  --green: #10b981;
+  --green-dim: #10b98120;
+  --cyan: #06b6d4;
+  --cyan-dim: #06b6d420;
+  --pink: #ec4899;
+  --pink-dim: #ec489920;
+  --border: #2a2a3a;
+  --border-subtle: #1e1e2e;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html[data-theme="light"] {
+  --bg-primary: #fafafa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f3f4f6;
+  --bg-card: #ffffff;
+  --bg-code: #f1f5f9;
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a6a;
+  --text-muted: #9898b0;
+  --accent: #4f46e5;
+  --accent-light: #6366f1;
+  --accent-dim: #4f46e510;
+  --red-dim: #ef444410;
+  --orange-dim: #f59e0b10;
+  --green-dim: #10b98110;
+  --cyan-dim: #06b6d410;
+  --pink-dim: #ec489910;
+  --border: #e2e2f0;
+  --border-subtle: #eeeef5;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: var(--transition);
+  box-shadow: var(--shadow);
+}
+.theme-toggle:hover { border-color: var(--accent); transform: scale(1.05); }
+
+/* Hero */
+.hero {
+  padding: 80px 0 60px;
+  text-align: center;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, var(--accent-dim) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--accent-light);
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+.hero h1 {
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero .subtitle {
+  font-size: 17px;
+  color: var(--text-secondary);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* Meta info */
+.meta-bar {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.meta-item .icon { font-size: 15px; }
+
+/* TOC */
+.toc {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  margin: 48px 0;
+}
+.toc h2 {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.toc-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 32px;
+}
+@media (max-width: 640px) { .toc-list { grid-template-columns: 1fr; } }
+.toc-list a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  transition: var(--transition);
+}
+.toc-list a:hover { color: var(--accent-light); }
+.toc-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--accent-dim);
+  color: var(--accent-light);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Sections */
+section {
+  margin-bottom: 64px;
+}
+section h2 {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+section h2 .sec-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+section .sec-lead {
+  color: var(--text-secondary);
+  font-size: 15px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 28px 0 12px;
+  color: var(--text-primary);
+}
+section p {
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  font-size: 15px;
+}
+
+/* Code blocks */
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px 20px;
+  overflow-x: auto;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 16px 0;
+  color: var(--text-primary);
+}
+code {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  background: var(--bg-code);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent-light);
+}
+pre code { background: none; padding: 0; }
+.code-label {
+  display: inline-block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+/* Callout boxes */
+.callout {
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  margin: 20px 0;
+  font-size: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+.callout-content { flex: 1; }
+.callout-content strong { display: block; margin-bottom: 4px; font-size: 14px; }
+.callout-content p { font-size: 14px; margin-bottom: 0; }
+.callout.danger { background: var(--red-dim); border-left: 3px solid var(--red); }
+.callout.danger .callout-icon { color: var(--red); }
+.callout.warning { background: var(--orange-dim); border-left: 3px solid var(--orange); }
+.callout.warning .callout-icon { color: var(--orange); }
+.callout.info { background: var(--cyan-dim); border-left: 3px solid var(--cyan); }
+.callout.info .callout-icon { color: var(--cyan); }
+.callout.success { background: var(--green-dim); border-left: 3px solid var(--green); }
+.callout.success .callout-icon { color: var(--green); }
+
+/* Diagram/flow */
+.arch-diagram {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  margin: 24px 0;
+  text-align: center;
+}
+.arch-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+.arch-layer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-radius: var(--radius-xs);
+  font-size: 14px;
+  font-weight: 500;
+  transition: var(--transition);
+}
+.arch-layer:hover { transform: translateX(4px); }
+.arch-layer .layer-num {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.arch-layer .layer-label { flex: 1; text-align: left; }
+.arch-layer .layer-files { font-size: 12px; color: var(--text-muted); text-align: right; }
+.l1 { background: var(--red-dim); }
+.l1 .layer-num { background: var(--red); color: #fff; }
+.l2 { background: var(--orange-dim); }
+.l2 .layer-num { background: var(--orange); color: #000; }
+.l3 { background: var(--cyan-dim); }
+.l3 .layer-num { background: var(--cyan); color: #000; }
+.l4 { background: var(--green-dim); }
+.l4 .layer-num { background: var(--green); color: #000; }
+.l5 { background: var(--pink-dim); }
+.l5 .layer-num { background: var(--pink); color: #fff; }
+.l6 { background: var(--accent-dim); }
+.l6 .layer-num { background: var(--accent); color: #fff; }
+.arch-arrow {
+  font-size: 20px;
+  color: var(--text-muted);
+  letter-spacing: 4px;
+  margin: 4px 0;
+}
+
+/* Feature grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  transition: var(--transition);
+}
+.feature-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.feature-card .fc-icon { font-size: 24px; margin-bottom: 10px; }
+.feature-card h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.feature-card p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+
+/* Table */
+.table-wrap {
+  overflow-x: auto;
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+thead { background: var(--bg-tertiary); }
+th {
+  text-align: left;
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--accent-dim); }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tag-red { background: var(--red-dim); color: var(--red); }
+.tag-orange { background: var(--orange-dim); color: var(--orange); }
+.tag-green { background: var(--green-dim); color: var(--green); }
+.tag-cyan { background: var(--cyan-dim); color: var(--cyan); }
+.tag-accent { background: var(--accent-dim); color: var(--accent-light); }
+
+/* Detail list */
+.detail-list {
+  list-style: none;
+  margin: 16px 0;
+}
+.detail-list li {
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.detail-list .bullet {
+  color: var(--accent-light);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 48px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+  <span id="themeIcon">&#9790;</span>
+</div>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      &#128274; Deep Source Analysis
+    </div>
+    <h1>Claude Code 安全体系<br>从 Bash 沙箱到纵深防御</h1>
+    <p class="subtitle">基于源码的深度剖析 -- 解构 Claude Code 如何在赋予 AI 命令行能力的同时，构建多层安全防线</p>
+    <div class="meta-bar">
+      <div class="meta-item"><span class="icon">&#128218;</span> 源码版本 2025.Q2</div>
+      <div class="meta-item"><span class="icon">&#128197;</span> 2026-03-31</div>
+      <div class="meta-item"><span class="icon">&#128196;</span> 约 25,000 行安全相关代码</div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+<!-- TOC -->
+<nav class="toc">
+  <h2>&#128466;&#65039; 目录</h2>
+  <ol class="toc-list">
+    <li><a href="#s1"><span class="toc-num">1</span>安全架构总览 -- 纵深防御模型</a></li>
+    <li><a href="#s2"><span class="toc-num">2</span>Bash 沙箱机制 -- OS 级隔离</a></li>
+    <li><a href="#s3"><span class="toc-num">3</span>AST 安全解析 -- tree-sitter 驱动</a></li>
+    <li><a href="#s4"><span class="toc-num">4</span>静态安全验证器链</a></li>
+    <li><a href="#s5"><span class="toc-num">5</span>危险命令检测与拦截</a></li>
+    <li><a href="#s6"><span class="toc-num">6</span>文件系统防护体系</a></li>
+    <li><a href="#s7"><span class="toc-num">7</span>sed 注入防御 -- 深度验证</a></li>
+    <li><a href="#s8"><span class="toc-num">8</span>密钥与认证安全</a></li>
+    <li><a href="#s9"><span class="toc-num">9</span>企业策略与网络安全</a></li>
+    <li><a href="#s10"><span class="toc-num">10</span>设计哲学与总结</a></li>
+  </ol>
+</nav>
+
+<!-- Section 1 -->
+<section id="s1">
+  <h2><span class="sec-icon" style="background:var(--red-dim);color:var(--red);">&#128737;</span> 安全架构总览 -- 纵深防御模型</h2>
+  <p class="sec-lead">Claude Code 的安全不是单点防护，而是六层纵深防御（Defense-in-Depth）。每一层独立工作，即使某层被绕过，后续层仍然能阻止攻击。</p>
+
+  <div class="arch-diagram">
+    <div class="arch-layers">
+      <div class="arch-layer l1">
+        <span class="layer-num">L1</span>
+        <span class="layer-label">OS 级沙箱隔离 (Seatbelt / bubblewrap)</span>
+        <span class="layer-files">sandbox-adapter.ts</span>
+      </div>
+      <div class="arch-arrow">&#8595;</div>
+      <div class="arch-layer l2">
+        <span class="layer-num">L2</span>
+        <span class="layer-label">AST 语法解析 + 语义提取 (tree-sitter)</span>
+        <span class="layer-files">ast.ts, parser.ts</span>
+      </div>
+      <div class="arch-arrow">&#8595;</div>
+      <div class="arch-layer l3">
+        <span class="layer-num">L3</span>
+        <span class="layer-label">静态安全验证器链 (20+ 独立验证器)</span>
+        <span class="layer-files">bashSecurity.ts</span>
+      </div>
+      <div class="arch-arrow">&#8595;</div>
+      <div class="arch-layer l4">
+        <span class="layer-num">L4</span>
+        <span class="layer-label">权限规则匹配 (allow / deny / ask)</span>
+        <span class="layer-files">bashPermissions.ts</span>
+      </div>
+      <div class="arch-arrow">&#8595;</div>
+      <div class="arch-layer l5">
+        <span class="layer-num">L5</span>
+        <span class="layer-label">路径验证 + 文件系统防护</span>
+        <span class="layer-files">pathValidation.ts, filesystem.ts</span>
+      </div>
+      <div class="arch-arrow">&#8595;</div>
+      <div class="arch-layer l6">
+        <span class="layer-num">L6</span>
+        <span class="layer-label">用户审批 (人类参与决策 / Human-in-the-Loop)</span>
+        <span class="layer-files">permissions.ts</span>
+      </div>
+    </div>
+  </div>
+
+  <p>核心设计原则是 <strong>Fail-Closed</strong>：任何无法理解或解析的命令，都会回退到"需要用户批准"的状态。从源码注释可以直接看到这一哲学：</p>
+  <pre><code>// The key design property is FAIL-CLOSED: we never interpret structure we
+// don't understand. If tree-sitter produces a node we haven't explicitly
+// allowlisted, we refuse to extract argv and the caller must ask the user.</code></pre>
+
+  <div class="callout info">
+    <span class="callout-icon">&#128161;</span>
+    <div class="callout-content">
+      <strong>关键架构决策</strong>
+      <p>沙箱是独立于权限系统的 OS 级屏障。即使所有静态分析器都被绕过、用户误批准了危险命令，沙箱仍然能阻止文件系统写入和网络访问。这就是"纵深防御"的意义。</p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2 -->
+<section id="s2">
+  <h2><span class="sec-icon" style="background:var(--orange-dim);color:var(--orange);">&#128230;</span> Bash 沙箱机制 -- OS 级隔离</h2>
+  <p class="sec-lead">沙箱是整个安全体系的最外层。它在操作系统层面限制进程的文件系统访问、网络连接和系统调用，由 <code>@anthropic-ai/sandbox-runtime</code> 包提供。</p>
+
+  <h3>双平台沙箱实现</h3>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="fc-icon">&#127823;</div>
+      <h4>macOS: Seatbelt</h4>
+      <p>使用 macOS 原生的 <code>sandbox-exec</code> 机制（Seatbelt 框架），通过 SBPL（Sandbox Profile Language）定义允许的文件路径、网络域名和系统调用。支持 glob 模式匹配路径。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fc-icon">&#128039;</div>
+      <h4>Linux/WSL: bubblewrap</h4>
+      <p>使用 <code>bwrap</code>（bubblewrap）进行命名空间隔离。通过 bind-mount 精确控制可读/可写目录，配合 <code>socat</code> 进行网络过滤。不支持 glob 模式（已知限制）。</p>
+    </div>
+  </div>
+
+  <h3>沙箱配置转换</h3>
+  <p><code>sandbox-adapter.ts</code> 是桥接层，将 Claude Code 的设置格式转换为沙箱运行时配置。核心转换逻辑覆盖三个维度：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>维度</th><th>配置来源</th><th>安全策略</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-red">文件系统</span></td>
+          <td>permissions.allow/deny + sandbox.filesystem.*</td>
+          <td>当前目录默认可写，settings.json / .claude/skills 始终 deny-write</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-cyan">网络</span></td>
+          <td>WebFetch 域名规则 + sandbox.network.*</td>
+          <td>企业可启用 allowManagedDomainsOnly 锁定域名白名单</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-green">进程</span></td>
+          <td>sandbox.enableWeakerNestedSandbox</td>
+          <td>嵌套沙箱（Docker-in-sandbox）可选放宽</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Bare Git Repo 攻击防御</h3>
+  <p>一个精巧的安全细节：攻击者可能在工作目录植入 <code>HEAD</code>、<code>objects/</code>、<code>refs/</code> 等文件，让 Git 将工作目录误判为 bare repo。如果 <code>config</code> 中含有 <code>core.fsmonitor</code>，就能在非沙箱 git 命令中实现代码执行。</p>
+  <pre><code>// SECURITY: Git's is_git_directory() treats cwd as a bare repo if it has
+// HEAD + objects/ + refs/. An attacker planting these (plus a config with
+// core.fsmonitor) escapes the sandbox when Claude's unsandboxed git runs.
+const bareGitRepoFiles = ['HEAD', 'objects', 'refs', 'hooks', 'config']
+// 已存在的文件：deny-write（只读绑定）
+// 不存在的文件：命令结束后 scrub（清除植入文件）</code></pre>
+
+  <h3>沙箱启用判断</h3>
+  <p><code>shouldUseSandbox.ts</code> 的决策流程：</p>
+  <ul class="detail-list">
+    <li><span class="bullet">1.</span> 检查 <code>SandboxManager.isSandboxingEnabled()</code> -- 平台是否支持、依赖是否就绪、设置是否开启</li>
+    <li><span class="bullet">2.</span> 检查 <code>dangerouslyDisableSandbox</code> 参数 -- 需要策略允许才能生效</li>
+    <li><span class="bullet">3.</span> 检查 <code>excludedCommands</code> -- 用户配置的排除命令（注意：这是便利功能，不是安全边界）</li>
+  </ul>
+
+  <div class="callout warning">
+    <span class="callout-icon">&#9888;&#65039;</span>
+    <div class="callout-content">
+      <strong>源码注释原文</strong>
+      <p><em>"NOTE: excludedCommands is a user-facing convenience feature, not a security boundary. It is not a security bug to be able to bypass excludedCommands."</em> 真正的安全控制是沙箱权限系统本身。</p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3 -->
+<section id="s3">
+  <h2><span class="sec-icon" style="background:var(--cyan-dim);color:var(--cyan);">&#127795;</span> AST 安全解析 -- tree-sitter 驱动</h2>
+  <p class="sec-lead"><code>ast.ts</code> 使用 tree-sitter-bash 解析命令，替代了早期基于 shell-quote + 手写字符遍历的方案。核心思路：用允许列表（allowlist）而非阻止列表。</p>
+
+  <h3>解析架构</h3>
+  <p>tree-sitter 将 bash 命令解析为抽象语法树，然后 <code>ast.ts</code> 遍历语法树，对每个节点进行分类：</p>
+  <pre><code>type ParseForSecurityResult =
+  | { kind: 'simple'; commands: SimpleCommand[] }   // 可以安全提取 argv[]
+  | { kind: 'too-complex'; reason: string }          // 无法分析，需要用户审批
+  | { kind: 'parse-unavailable' }                    // tree-sitter 不可用</code></pre>
+
+  <h3>节点类型允许列表</h3>
+  <p>关键设计：只允许已知安全的节点类型通过。未知节点类型一律触发 <code>too-complex</code>：</p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="fc-icon">&#9989;</div>
+      <h4>结构节点 (递归遍历)</h4>
+      <p><code>program</code>, <code>list</code>, <code>pipeline</code>, <code>redirected_statement</code> -- 递归进入找叶子节点</p>
+    </div>
+    <div class="feature-card">
+      <div class="fc-icon">&#128308;</div>
+      <h4>危险节点 (立即拒绝)</h4>
+      <p><code>command_substitution</code>, <code>process_substitution</code>, <code>subshell</code>, <code>for_statement</code>, <code>function_definition</code> 等 14 种</p>
+    </div>
+  </div>
+
+  <h3>解析差异攻击防护</h3>
+  <p>bash 和 tree-sitter 在某些边界情况下对命令的解析不一致（Parser Differential），这是一类重要的攻击面。<code>ast.ts</code> 内置了多种预检：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>检测项</th><th>对应正则/逻辑</th><th>防御目标</th></tr></thead>
+      <tbody>
+        <tr><td>控制字符</td><td><code>/[\x00-\x08\x0B-\x1F\x7F]/</code></td><td>bash 静默丢弃但 tree-sitter 保留的字符</td></tr>
+        <tr><td>Unicode 空白</td><td><code>/[\u00A0\u1680\u2000-\u200B...]/</code></td><td>不可见空白让用户看不到隐藏内容</td></tr>
+        <tr><td>反斜杠空格</td><td><code>/\\[ \t]/</code></td><td>bash 视为转义空格，tree-sitter 保留原文</td></tr>
+        <tr><td>Zsh 动态目录</td><td><code>/~\[/</code></td><td>~[name] 在 zsh 中可执行任意代码</td></tr>
+        <tr><td>Zsh EQUALS</td><td><code>/(?:^|[\s;&|])=[a-zA-Z_]/</code></td><td>=cmd 展开为 which cmd 的完整路径</td></tr>
+        <tr><td>花括号展开</td><td><code>/\{[^{}\s]*(,|\.\.)[^{}\s]*\}/</code></td><td>tree-sitter 不展开花括号，bash 会</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>变量追踪与安全展开</h3>
+  <p><code>ast.ts</code> 还实现了轻量级变量追踪（<code>varScope</code>），当命令中出现 <code>VAR=value && cmd $VAR</code> 时，能追踪 VAR 的赋值并安全替换。但对于危险场景（如 <code>$IFS</code> 注入、bare 变量的 word-splitting），会保守拒绝：</p>
+  <pre><code>// Unquoted $VAR in bash undergoes word-splitting (on $IFS) and pathname
+// expansion (glob matching on * ? [). A value containing these metacharacters
+// cannot be trusted as a bare arg: `VAR="-rf /" && rm $VAR` -> bash runs
+// `rm -rf /` (two args) but our argv would have `['rm', '-rf /']` (one arg)</code></pre>
+</section>
+
+<!-- Section 4 -->
+<section id="s4">
+  <h2><span class="sec-icon" style="background:var(--green-dim);color:var(--green);">&#128279;</span> 静态安全验证器链</h2>
+  <p class="sec-lead"><code>bashSecurity.ts</code> 实现了 20+ 个独立验证器，按顺序串联执行。每个验证器返回 <code>allow | ask | passthrough</code>，一旦触发 <code>ask</code> 就要求用户审批。</p>
+
+  <h3>验证器清单</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>验证器</th><th>检测内容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td><code>validateEmpty</code></td><td>空命令直接允许</td></tr>
+        <tr><td>2</td><td><code>validateSafeCommandSubstitution</code></td><td>安全的 heredoc 替换模式 <code>$(cat &lt;&lt;'EOF'...)</code></td></tr>
+        <tr><td>3</td><td><code>validateGitCommit</code></td><td>git commit -m 的安全子集</td></tr>
+        <tr><td>4</td><td><code>validateJqCommand</code></td><td>jq 的 <code>system()</code> 函数和危险 flag</td></tr>
+        <tr><td>5</td><td><code>validateIncompleteCommands</code></td><td>以 tab、<code>-</code>、操作符开头的片段</td></tr>
+        <tr><td>6</td><td><code>validateObfuscatedFlags</code></td><td>ANSI-C 引用 <code>$'...'</code>、空引号拼接 <code>"""-f"</code></td></tr>
+        <tr><td>7</td><td><code>validateShellMetacharacters</code></td><td>引号内的 <code>; | &</code></td></tr>
+        <tr><td>8</td><td><code>validateDangerousVariables</code></td><td>变量紧邻重定向/管道 <code>$VAR |</code></td></tr>
+        <tr><td>9</td><td><code>validateDangerousPatterns</code></td><td>反引号、<code>$()</code>、<code>${}</code>、进程替换</td></tr>
+        <tr><td>10</td><td><code>validateRedirections</code></td><td>输入/输出重定向 <code>&lt;</code> <code>&gt;</code></td></tr>
+        <tr><td>11</td><td><code>validateNewlines</code></td><td>换行符分隔多命令</td></tr>
+        <tr><td>12</td><td><code>validateCarriageReturn</code></td><td>CR 导致的解析差异攻击</td></tr>
+        <tr><td>13</td><td><code>validateIfsInjection</code></td><td><code>IFS=</code> 赋值改变分词行为</td></tr>
+        <tr><td>14</td><td><code>validateProcEnvironAccess</code></td><td><code>/proc/*/environ</code> 读取敏感环境变量</td></tr>
+        <tr><td>15</td><td><code>validateMalformedTokenInjection</code></td><td>不平衡引号 + 命令分隔符（HackerOne 发现）</td></tr>
+        <tr><td>16</td><td><code>validateBackslashEscapedWhitespace</code></td><td>反斜杠转义空格/换行</td></tr>
+        <tr><td>17</td><td><code>validateBraceExpansion</code></td><td>花括号展开 <code>{a,b}</code></td></tr>
+        <tr><td>18</td><td><code>validateControlCharacters</code></td><td>控制字符 <code>\x00-\x1F</code></td></tr>
+        <tr><td>19</td><td><code>validateUnicodeWhitespace</code></td><td>不可见 Unicode 空白</td></tr>
+        <tr><td>20</td><td><code>validateZshDangerousCommands</code></td><td>zsh 专属危险命令（见下文）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Zsh 特殊危险命令</h3>
+  <p>由于 BashTool 通过用户默认 shell 执行（通常是 zsh），需要额外检测 zsh 特有的危险命令：</p>
+  <pre><code>const ZSH_DANGEROUS_COMMANDS = new Set([
+  'zmodload',    // 加载 zsh 模块（mapfile, net/tcp, zpty...）
+  'emulate',     // -c 参数是 eval 等价物
+  'sysopen',     // 精细文件操作 (zsh/system)
+  'sysread', 'syswrite', 'sysseek',  // 直接 fd 读写
+  'zpty',        // 伪终端命令执行
+  'ztcp',        // TCP 连接（数据窃取）
+  'zsocket',     // Unix/TCP 套接字
+  'zf_rm', 'zf_mv', 'zf_ln', 'zf_chmod',  // 绕过二进制检查的内置命令
+  // ... 更多
+])</code></pre>
+
+  <div class="callout danger">
+    <span class="callout-icon">&#9760;&#65039;</span>
+    <div class="callout-content">
+      <strong>为什么 zmodload 最危险？</strong>
+      <p><code>zmodload zsh/system</code> 可以加载 sysopen/syswrite（文件 I/O），<code>zsh/zpty</code> 可以执行命令，<code>zsh/net/tcp</code> 可以建立网络连接窃取数据。一条 <code>zmodload</code> 就能打开多个攻击面。</p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 5 -->
+<section id="s5">
+  <h2><span class="sec-icon" style="background:var(--red-dim);color:var(--red);">&#128163;</span> 危险命令检测与拦截</h2>
+  <p class="sec-lead">三层检测机制独立运作：静态模式匹配、权限规则系统、和用户提示信息生成。</p>
+
+  <h3>破坏性命令警告</h3>
+  <p><code>destructiveCommandWarning.ts</code> 对已知的高风险命令模式生成人类可读的警告信息，在用户审批界面显示。这是 <strong>纯信息性的</strong>，不影响权限判断逻辑：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模式</th><th>警告信息</th><th>类别</th></tr></thead>
+      <tbody>
+        <tr><td><code>git reset --hard</code></td><td>Note: may discard uncommitted changes</td><td><span class="tag tag-red">Git</span></td></tr>
+        <tr><td><code>git push --force</code></td><td>Note: may overwrite remote history</td><td><span class="tag tag-red">Git</span></td></tr>
+        <tr><td><code>git clean -f</code></td><td>Note: may permanently delete untracked files</td><td><span class="tag tag-red">Git</span></td></tr>
+        <tr><td><code>git commit --amend</code></td><td>Note: may rewrite the last commit</td><td><span class="tag tag-orange">Git</span></td></tr>
+        <tr><td><code>rm -rf</code></td><td>Note: may recursively force-remove files</td><td><span class="tag tag-red">File</span></td></tr>
+        <tr><td><code>DROP TABLE</code></td><td>Note: may drop database objects</td><td><span class="tag tag-red">DB</span></td></tr>
+        <tr><td><code>kubectl delete</code></td><td>Note: may delete Kubernetes resources</td><td><span class="tag tag-orange">Infra</span></td></tr>
+        <tr><td><code>terraform destroy</code></td><td>Note: may destroy infrastructure</td><td><span class="tag tag-red">Infra</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>危险权限模式检测</h3>
+  <p><code>dangerousPatterns.ts</code> 定义了在 auto-mode 下必须清除的危险权限前缀：</p>
+  <pre><code>export const DANGEROUS_BASH_PATTERNS: readonly string[] = [
+  // 解释器 -- 可执行任意代码
+  'python', 'python3', 'node', 'deno', 'ruby', 'perl', 'php',
+  // 包管理器 -- 可运行任意脚本
+  'npx', 'bunx', 'npm run', 'yarn run',
+  // Shell
+  'bash', 'sh', 'zsh', 'fish',
+  // 元命令
+  'eval', 'exec', 'env', 'xargs', 'sudo',
+  // 远程执行
+  'ssh',
+]</code></pre>
+
+  <div class="callout info">
+    <span class="callout-icon">&#128161;</span>
+    <div class="callout-content">
+      <strong>设计理念</strong>
+      <p>允许规则如 <code>Bash(python:*)</code> 意味着模型可以执行任意 Python 代码。在 auto-mode 下，这些规则会被自动剥离（<code>permissionSetup.ts</code>），强制每次执行都需要用户确认。</p>
+    </div>
+  </div>
+
+  <h3>命令语义解释</h3>
+  <p><code>commandSemantics.ts</code> 处理的不是安全检测，而是命令退出码的语义理解 -- <code>grep</code> 返回 1 不是错误（而是"未找到匹配"），<code>diff</code> 返回 1 表示"文件不同"。这防止 Claude 误将正常行为判定为错误。</p>
+</section>
+
+<!-- Section 6 -->
+<section id="s6">
+  <h2><span class="sec-icon" style="background:var(--green-dim);color:var(--green);">&#128193;</span> 文件系统防护体系</h2>
+  <p class="sec-lead">多层文件系统保护覆盖路径验证、危险路径拦截、大小写混淆防御和符号链接安全。</p>
+
+  <h3>路径验证</h3>
+  <p><code>pathValidation.ts</code> 为每个文件操作命令定义了路径提取器和操作类型（read/write/create），然后对提取的路径进行多重检查：</p>
+  <ul class="detail-list">
+    <li><span class="bullet">&#9654;</span> <strong>路径遍历检查</strong>：检测 <code>..</code> 路径遍历尝试（<code>containsPathTraversal</code>）</li>
+    <li><span class="bullet">&#9654;</span> <strong>符号链接解析</strong>：<code>safeResolvePath</code> 先解析符号链接再验证，防止符号链接指向受保护路径</li>
+    <li><span class="bullet">&#9654;</span> <strong>工作目录限制</strong>：写操作默认只允许在项目工作目录内</li>
+    <li><span class="bullet">&#9654;</span> <strong>UNC 路径防护</strong>：<code>containsVulnerableUncPath</code> 检测 Windows UNC 路径攻击</li>
+  </ul>
+
+  <h3>危险路径绝对拦截</h3>
+  <p><code>isDangerousRemovalPath</code> 对高危删除目标实行零容忍，即使用户配置了 allow 规则也必须手动审批：</p>
+  <pre><code>// 危险路径包括：
+// - '*' (删除所有文件)
+// - /*  (任何以 /* 结尾的路径)
+// - /   (根目录)
+// - ~   (家目录)
+// - /usr, /tmp, /etc 等根目录直接子目录
+// - C:\, D:\ (Windows 驱动器根)
+// - C:\Windows, C:\Users 等</code></pre>
+
+  <h3>敏感文件保护</h3>
+  <p><code>filesystem.ts</code> 定义了两组受保护目标：</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="fc-icon">&#128196;</div>
+      <h4>DANGEROUS_FILES</h4>
+      <p><code>.gitconfig</code>, <code>.bashrc</code>, <code>.zshrc</code>, <code>.profile</code>, <code>.mcp.json</code>, <code>.ripgreprc</code> -- 可被用于代码执行或数据窃取的配置文件</p>
+    </div>
+    <div class="feature-card">
+      <div class="fc-icon">&#128194;</div>
+      <h4>DANGEROUS_DIRECTORIES</h4>
+      <p><code>.git</code>, <code>.vscode</code>, <code>.idea</code>, <code>.claude</code> -- 包含敏感配置或可执行文件的目录</p>
+    </div>
+  </div>
+
+  <h3>大小写混淆防御</h3>
+  <p>macOS 和 Windows 的文件系统是大小写不敏感的，攻击者可以用 <code>.cLauDe/Settings.locaL.json</code> 绕过保护。<code>normalizeCaseForComparison</code> 统一转换为小写进行比较：</p>
+  <pre><code>// This prevents bypassing security checks using mixed-case paths on
+// case-insensitive filesystems (macOS/Windows)
+export function normalizeCaseForComparison(path: string): string {
+  return path.toLowerCase()
+}</code></pre>
+
+  <h3>沙箱写入白名单</h3>
+  <p>当沙箱启用时，写入路径不仅要满足应用层权限，还要在沙箱白名单中。但即使在白名单中，<code>denyWithinAllow</code> 列表（如 <code>.claude/settings.json</code>）仍然被禁止写入 -- 防止沙箱逃逸。</p>
+</section>
+
+<!-- Section 7 -->
+<section id="s7">
+  <h2><span class="sec-icon" style="background:var(--pink-dim);color:var(--pink);">&#128295;</span> sed 注入防御 -- 深度验证</h2>
+  <p class="sec-lead"><code>sedValidation.ts</code> 专门处理 sed 命令的安全验证。sed 表面是文本替换工具，但包含 <code>w</code>（写文件）、<code>e</code>（执行命令）等危险操作。</p>
+
+  <h3>白名单模式</h3>
+  <p>只有两种 sed 模式被允许自动执行：</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="fc-icon">&#128065;</div>
+      <h4>Pattern 1: 行打印</h4>
+      <p><code>sed -n '1,5p'</code> -- 必须有 <code>-n</code> 标志，表达式只允许 <code>Np</code>、<code>N,Mp</code> 形式的打印命令</p>
+    </div>
+    <div class="feature-card">
+      <div class="fc-icon">&#128260;</div>
+      <h4>Pattern 2: 替换</h4>
+      <p><code>sed 's/old/new/g'</code> -- 只允许 <code>/</code> 作为分隔符，flag 限制为 <code>g p i I m M 1-9</code>，禁止 <code>w e W E</code></p>
+    </div>
+  </div>
+
+  <h3>多层防御策略</h3>
+  <p>即使命令匹配了白名单模式，仍然经过 <code>containsDangerousOperations</code> 黑名单二次检查：</p>
+  <ul class="detail-list">
+    <li><span class="bullet">&#10060;</span> <strong>非 ASCII 字符</strong>：拒绝 Unicode 同形字（fullwidth <code>w</code> = <code>&#65367;</code>）</li>
+    <li><span class="bullet">&#10060;</span> <strong>花括号</strong>：拒绝 sed 块语法（过于复杂无法分析）</li>
+    <li><span class="bullet">&#10060;</span> <strong>换行符</strong>：拒绝多行命令</li>
+    <li><span class="bullet">&#10060;</span> <strong>反斜杠技巧</strong>：<code>s\</code> 反斜杠分隔符、<code>\|</code> <code>\#</code> 替代分隔符</li>
+    <li><span class="bullet">&#10060;</span> <strong>写命令</strong>：任何位置的 <code>w file</code>、<code>W file</code></li>
+    <li><span class="bullet">&#10060;</span> <strong>执行命令</strong>：任何位置的 <code>e</code>、<code>e cmd</code></li>
+    <li><span class="bullet">&#10060;</span> <strong>替换 flag</strong>：<code>s/old/new/w</code> 或 <code>s/old/new/e</code></li>
+    <li><span class="bullet">&#10060;</span> <strong>偏执检查</strong>：以 <code>s</code> 开头且以 <code>w/W/e/E</code> 结尾的未知模式</li>
+  </ul>
+
+  <h3>Flag 组合攻击防御</h3>
+  <pre><code>// 拒绝危险的 flag 组合：-ew, -eW, -ee, -we
+// 这些可以将 sed 的 -e 表达式和 -w 写入文件合并在一个标志中
+if (/-e[wWe]/.test(withoutSed) || /-w[eE]/.test(withoutSed)) {
+  throw new Error('Dangerous flag combination detected')
+}</code></pre>
+
+  <div class="callout success">
+    <span class="callout-icon">&#9989;</span>
+    <div class="callout-content">
+      <strong>设计哲学</strong>
+      <p>sed 验证遵循"保守拒绝"原则。<code>containsDangerousOperations</code> 的注释写道：<em>"CONSERVATIVE REJECTIONS: Broadly reject patterns that could be dangerous. When in doubt, treat as unsafe."</em></p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 8 -->
+<section id="s8">
+  <h2><span class="sec-icon" style="background:var(--accent-dim);color:var(--accent-light);">&#128272;</span> 密钥与认证安全</h2>
+  <p class="sec-lead">API 密钥和 OAuth 令牌通过平台原生安全存储管理，配合性能优化的预取机制。</p>
+
+  <h3>存储架构</h3>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="fc-icon">&#127823;</div>
+      <h4>macOS: Keychain</h4>
+      <p>通过 <code>security</code> CLI 工具操作 macOS Keychain。服务名为 <code>Claude Code</code>（旧版 API Key）和 <code>Claude Code-credentials</code>（OAuth 令牌）。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fc-icon">&#128039;</div>
+      <h4>其他平台: 纯文本 + Fallback</h4>
+      <p><code>plainTextStorage.ts</code> 作为回退。macOS 上使用 <code>createFallbackStorage(keychain, plainText)</code> 级联策略。Linux 暂无 libsecret 集成（TODO）。</p>
+    </div>
+  </div>
+
+  <h3>Keychain 预取优化</h3>
+  <p><code>keychainPrefetch.ts</code> 是一个精巧的性能优化：在 <code>main.tsx</code> 初始化阶段并行启动两个 keychain 读取子进程，与模块加载并行执行：</p>
+  <pre><code>// 两个 keychain 读取各约 32ms，串行需要 ~65ms
+// 预取后在 main.tsx import 阶段并行完成，几乎零成本
+export function startKeychainPrefetch(): void {
+  const oauthSpawn = spawnSecurity(credentialsServiceName)
+  const legacySpawn = spawnSecurity(legacyServiceName)
+  prefetchPromise = Promise.all([oauthSpawn, legacySpawn])
+}</code></pre>
+
+  <h3>安全细节</h3>
+  <ul class="detail-list">
+    <li><span class="bullet">&#128274;</span> <strong>stdin 长度限制</strong>：<code>security -i</code> 命令使用 4096 字节的 fgets 缓冲区。超长输入会被截断导致数据丢失。设定 <code>SECURITY_STDIN_LINE_LIMIT = 4096 - 64</code> 作为安全上限。</li>
+    <li><span class="bullet">&#128274;</span> <strong>缓存 TTL</strong>：Keychain 读取结果有 TTL 缓存，避免每次 API 请求都启动子进程。</li>
+    <li><span class="bullet">&#128274;</span> <strong>Stale-While-Error</strong>：如果 keychain 读取失败，保留之前的缓存值（而非缓存 null），防止一次性故障导致"未登录"错误。</li>
+    <li><span class="bullet">&#128274;</span> <strong>超时处理</strong>：预取有 10 秒超时。超时的结果不会写入缓存（因为可能确实有 key），让同步路径重试。</li>
+  </ul>
+</section>
+
+<!-- Section 9 -->
+<section id="s9">
+  <h2><span class="sec-icon" style="background:var(--cyan-dim);color:var(--cyan);">&#127760;</span> 企业策略与网络安全</h2>
+  <p class="sec-lead">企业部署通过 MDM 配置、Policy Limits API 和网络白名单实现集中安全管理。</p>
+
+  <h3>MDM 企业管理</h3>
+  <p>通过操作系统级别的 MDM（Mobile Device Management）读取企业策略：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>平台</th><th>配置路径</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>macOS</td><td><code>com.anthropic.claudecode</code> pref domain</td><td>只读取 /Library/Managed Preferences/（管理员写入），不读取用户 ~/Library</td></tr>
+        <tr><td>Windows</td><td><code>HKLM\SOFTWARE\Policies\ClaudeCode</code></td><td>HKLM 需要管理员权限，HKCU 为最低优先级</td></tr>
+        <tr><td>Linux</td><td><code>/etc/claude-code/managed-settings.json</code></td><td>无 MDM 等价物，使用文件替代</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>优先级遵循 "first source wins"：<strong>remote > HKLM/plist > managed-settings.json > HKCU</strong></p>
+
+  <h3>Policy Limits 服务</h3>
+  <p><code>policyLimits/index.ts</code> 从 Anthropic API 获取组织级策略限制，用于禁用特定 CLI 功能。设计特点：</p>
+  <ul class="detail-list">
+    <li><span class="bullet">&#9654;</span> <strong>Fail-Open</strong>：API 失败时不阻塞（非 fail-closed，这是特例）-- 用户体验优先</li>
+    <li><span class="bullet">&#9654;</span> <strong>ETag 缓存</strong>：304 Not Modified 减少带宽</li>
+    <li><span class="bullet">&#9654;</span> <strong>1 小时后台轮询</strong>：保持策略最新</li>
+    <li><span class="bullet">&#9654;</span> <strong>OAuth 资格检查</strong>：只有 Team/Enterprise 订阅用户才获取策略</li>
+  </ul>
+
+  <h3>网络安全边界</h3>
+  <p>WebFetch 工具（<code>WebFetchTool.ts</code>）有独立的域名白名单和安全限制：</p>
+
+  <div class="callout warning">
+    <span class="callout-icon">&#9888;&#65039;</span>
+    <div class="callout-content">
+      <strong>WebFetch 白名单 != 沙箱网络白名单</strong>
+      <p>源码注释特别强调：预批准域名列表（130+ 个开发文档站点）<strong>只用于 WebFetch GET 请求</strong>。沙箱网络限制不会继承这个列表，因为部分域名（如 huggingface.co、kaggle.com）允许文件上传，不限制的网络访问会导致数据泄露风险。</p>
+    </div>
+  </div>
+
+  <p>企业可通过 <code>sandbox.network.allowManagedDomainsOnly: true</code> 将网络访问完全限制在策略配置的域名白名单内，覆盖用户自行添加的域名。</p>
+
+  <h3>沙箱 settings.json 写入防护</h3>
+  <p>沙箱配置特别将 settings 文件加入写入黑名单，防止沙箱内进程通过修改配置文件来逃逸沙箱：</p>
+  <pre><code>// Always deny writes to settings.json files to prevent sandbox escape
+const settingsPaths = SETTING_SOURCES.map(source =>
+  getSettingsFilePathForSource(source)
+).filter(Boolean)
+denyWrite.push(...settingsPaths)
+denyWrite.push(getManagedSettingsDropInDir())
+// 同时保护 .claude/skills 目录
+denyWrite.push(resolve(originalCwd, '.claude', 'skills'))</code></pre>
+</section>
+
+<!-- Section 10 -->
+<section id="s10">
+  <h2><span class="sec-icon" style="background:var(--accent-dim);color:var(--accent-light);">&#128218;</span> 设计哲学与总结</h2>
+  <p class="sec-lead">从源码中提炼出的安全设计原则，以及这套体系的整体评价。</p>
+
+  <h3>核心设计原则</h3>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="fc-icon">&#128683;</div>
+      <h4>Fail-Closed</h4>
+      <p>任何未理解的命令结构都回退到用户审批。宁可多问，不可放过。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fc-icon">&#128737;</div>
+      <h4>Defense-in-Depth</h4>
+      <p>六层独立安全机制。即使 L3 的静态分析被绕过，L1 的沙箱仍然生效。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fc-icon">&#128270;</div>
+      <h4>Allowlist > Denylist</h4>
+      <p>AST 解析用允许列表、sed 验证用允许模式。已知安全的才放行，其余一律拒绝。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fc-icon">&#128295;</div>
+      <h4>Parser Differential 意识</h4>
+      <p>系统性处理 bash/tree-sitter/shell-quote 三方解析差异，每个差异点都有对应的验证器。</p>
+    </div>
+  </div>
+
+  <h3>安全体系全景</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>防护层</th><th>关键文件</th><th>攻击面</th><th>防御手段</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-red">OS 沙箱</span></td>
+          <td>sandbox-adapter.ts</td>
+          <td>文件系统越界、网络外泄</td>
+          <td>Seatbelt / bwrap 进程隔离</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-orange">语法解析</span></td>
+          <td>ast.ts</td>
+          <td>解析差异攻击</td>
+          <td>tree-sitter + 节点类型允许列表</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-cyan">静态验证</span></td>
+          <td>bashSecurity.ts</td>
+          <td>命令注入、替换、混淆</td>
+          <td>20+ 独立验证器串联</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-green">路径防护</span></td>
+          <td>pathValidation.ts</td>
+          <td>路径遍历、符号链接</td>
+          <td>路径解析 + 危险路径黑名单</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-accent">sed 防御</span></td>
+          <td>sedValidation.ts</td>
+          <td>sed w/e 命令注入</td>
+          <td>白名单模式 + 黑名单双重检查</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-cyan">密钥管理</span></td>
+          <td>secureStorage/*</td>
+          <td>API Key 泄露</td>
+          <td>macOS Keychain + 缓存 TTL</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-accent">企业策略</span></td>
+          <td>policyLimits/*, mdm/*</td>
+          <td>未授权功能使用</td>
+          <td>MDM + 远程策略 + 域名锁定</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-orange">网络边界</span></td>
+          <td>preapproved.ts</td>
+          <td>数据外泄</td>
+          <td>GET-only 白名单，沙箱独立控制</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>代码质量观察</h3>
+  <ul class="detail-list">
+    <li><span class="bullet">&#9989;</span> <strong>安全注释极其详尽</strong>：几乎每个安全检查都有多段注释解释"为什么"以及"不这样做会怎样"。包含具体的攻击向量和 CVE 引用。</li>
+    <li><span class="bullet">&#9989;</span> <strong>HackerOne 漏洞响应</strong>：源码中直接引用了 HackerOne 报告发现的漏洞（如 <code>validateMalformedTokenInjection</code>），并标注了修复逻辑。</li>
+    <li><span class="bullet">&#9989;</span> <strong>测试驱动</strong>：每个安全模块都有对应的测试文件，覆盖正常路径和攻击路径。</li>
+    <li><span class="bullet">&#9989;</span> <strong>性能感知的安全</strong>：安全机制不以牺牲性能为代价。keychain 预取、memoized 路径解析、子命令数量上限（50）都是例证。</li>
+    <li><span class="bullet">&#128308;</span> <strong>复杂度风险</strong>：bashSecurity.ts 超过 1500 行，正则表达式密集。复杂度本身是安全风险 -- 但目前通过清晰的函数分离和详尽的注释控制住了。</li>
+  </ul>
+
+  <div class="callout success">
+    <span class="callout-icon">&#127942;</span>
+    <div class="callout-content">
+      <strong>结论</strong>
+      <p>Claude Code 的安全体系是工业级的纵深防御实现。它不依赖任何单一机制，而是通过 OS 沙箱、AST 解析、静态验证器链、路径防护、权限规则和人类审批六层独立防线的叠加，构建了一个即使单层失效也不会全面崩溃的安全架构。源码中对 parser differential 攻击的系统性处理，是目前开源 AI 编码工具中罕见的安全成熟度。</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p>Claude Code Security Deep Dive -- Source-based analysis of <code>@anthropic-ai/claude-code</code></p>
+    <p style="margin-top:8px;">Generated by Claude Opus 4.6 | 2026-03-31</p>
+  </div>
+</footer>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', next);
+  document.getElementById('themeIcon').textContent = next === 'light' ? '\u2600' : '\u263E';
+  localStorage.setItem('theme', next);
+}
+(function() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('themeIcon').textContent = '\u2600';
+  }
+})();
+</script>
+</body>
+</html>
